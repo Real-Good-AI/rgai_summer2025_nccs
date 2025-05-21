@@ -1,0 +1,1341 @@
+variable_name,variable_description,variable_source,form_location,variable_coverage,form_scope,variable_datatype
+DUP_RTRN_X,Indicates duplicate return,NA,NA,2012-2022,PC-501C3,integer
+EIN2,Reformatted EIN,NA,NA,2012-2022,PC-501C3,character
+F9_00_EXEMPT_STAT_501C3_X,Indicates a 501(c)(3) organization,HD,"F990-EZ-PART-00-SECTION-J;
+F990-PC-PART-00-SECTION-I",2012-2019,PC-501C3,integer
+F9_00_GROUP_EXEMPT_NUM,Group exemption number,HD,"F990-EZ-PART-00-SECTION-F;
+F990-PC-PART-00-SECTION-HC",2012-2013,PC-501C3,integer
+F9_00_ORG_ADDR_CITY,Address of Filing Organization (US City),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",2012-2019,PC-501C3,character
+F9_00_ORG_ADDR_L1,Address of Filing Organization (US Line 1),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",2012-2019,PC-501C3,character
+F9_00_ORG_ADDR_STATE,Address of Filing Organization (US State),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",2012-2019,PC-501C3,character
+F9_00_ORG_ADDR_ZIP,Address of Filing Organization (US Zip Code),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",2012-2019,PC-501C3,character
+F9_00_ORG_EIN,Orgainization Employer Identification Number (EIN),HD,F990-PC-PART-00-SECTION-D,2012-2022,PC-501C3,character
+F9_00_ORG_NAME_DBA_L1,Doing business as (line 1),HD,F990-PC-PART-00-SECTION-C,2012-2019,PC-501C3,character
+F9_00_ORG_NAME_L1,Name of Filing Organization (line 1),HD,F990-PC-PART-00-SECTION-C,2012-2019,PC-501C3,character
+F9_00_RETURN_TYPE,Return type,HD,F990-PC-PART-00-LINE-00,2012-2013,PC-501C3,integer
+F9_00_TAX_PERIOD_BEGIN_DATE,Tax period begin date,HD,F990-PC-PART-00-SECTION-A,2012-2019,PC-501C3,integer
+F9_00_TAX_PERIOD_END_DATE,Tax period end date,HD,F990-PC-PART-00-SECTION-A,2012-2022,PC-501C3,integer
+F9_00_TAX_YEAR,Tax year,HD,F990-PC-PART-00-SECTION-A,2012-2019,PC-501C3,integer
+F9_03_PROG_CODE,Activity2 - Activity code,PC,F990-PC-PART-03-LINE-04-ABCD,2012-2019,PC-501C3,integer
+F9_04_AFS_CONSOL_X,Consolidated audited financial statement?,PC,F990-PC-PART-04-LINE-12B,2012-2022,PC-501C3,character
+F9_04_AFS_IND_X,Independent audited financial statements?,PC,F990-PC-PART-04-LINE-12A,2012-2022,PC-501C3,character
+F9_04_BIZ_TRANSAC_DTK_ENTITY_X,"Was the organization a party to a business transaction with one of the following parties: An entity of which a current or former officer, director, trustee, or key employee (or a family member thereof) was an officer, director, trustee, or direct, or indirect owner?",PC,F990-PC-PART-04-LINE-28C,2012-2022,PC-501C3,character
+F9_04_BIZ_TRANSAC_DTK_FAM_X,"Was the organization a party to a business transaction with one of the following parties: A family member of a current or former officer, director, trustee, or key employee?",PC,F990-PC-PART-04-LINE-28B,2012-2022,PC-501C3,character
+F9_04_BIZ_TRANSAC_DTK_X,"Was the organization a party to a business transaction with one of the following parties: A current former officer, director, trustee, or key employee?",PC,F990-PC-PART-04-LINE-28A,2012-2022,PC-501C3,character
+F9_04_COLLEC_ART_X,Collections of art?,PC,F990-PC-PART-04-LINE-08,2012-2022,PC-501C3,character
+F9_04_COMP_DTK_YES_X,"PartVII; Lines 3; 4; or 5 = ""Yes""?",PC,F990-PC-PART-04-LINE-23,2012-2022,PC-501C3,character
+F9_04_CONSERV_EMT_X,Conservation easements?,PC,F990-PC-PART-04-LINE-07,2012-2022,PC-501C3,character
+F9_04_CONTR_ART_HIST_X,"Did the organization receive contributions of art, historical treasures, or other similar assets, or qualified conservation contributions?",PC,F990-PC-PART-04-LINE-30,2012-2022,PC-501C3,character
+F9_04_CONTR_NONCSH_MT_25K_X,"Did the organization receive more than $25,000 in non-cash contributions?",PC,F990-PC-PART-04-LINE-29,2012-2022,PC-501C3,character
+F9_04_CREDIT_COUNS_X,Credit counseling?,PC,F990-PC-PART-04-LINE-09,2012-2022,PC-501C3,character
+F9_04_DAF_X,,PZ,"F990-EZ-PART-05-LINE-44A;
+F990-PC-PART-04-LINE-06",2012-2022,PC-501C3,character
+F9_04_DESC_IN_501C3_X,Described in 501(c)(3)?,PC,F990-PC-PART-04-LINE-01,2012-2022,PC-501C3,character
+F9_04_DOA_X,Partial liquidation? (F990-PC-PART-04-LINE-31-32-COMBINED: F990-EZ-PART-05-LINE-36),PZ,F990-PC-PART-04-LINE-32,2012-2022,PC-501C3,character
+F9_04_ENDOW_X,Term or permanent endowments?,PC,F990-PC-PART-04-LINE-10,2012-2022,PC-501C3,character
+F9_04_ENTITY_CTRL_X,Did the organization have a controlled entity within the meaning of section 512(b)(13)?,PZ,"F990-EZ-PART-05-LINE-45A;
+F990-PC-PART-04-LINE-35A",2012-2022,PC-501C3,character
+F9_04_ENTITY_DISREG_X,Did the organization own 100% of an entity disregarded as sperate from the organization under Regulations sections 301.7701.2 and 301.7701-3?,PC,F990-PC-PART-04-LINE-33,2012-2022,PC-501C3,character
+F9_04_ENTITY_RLTD_X,Related entity?,PC,F990-PC-PART-04-LINE-34,2012-2022,PC-501C3,character
+F9_04_FRGN_ACT_X,Foreign activities; etc?,"PC;
+PZ",F990-PC-PART-04-LINE-14B,2012-2022,PC-501C3,character
+F9_04_FRGN_OFFICE_X,At any time during the calender year; did the organization maintain an office outside of the U.S.?,PZ,"F990-EZ-PART-05-LINE-42C;
+F990-PC-PART-04-LINE-14A",2012-2022,PC-501C3,character
+F9_04_FUNDR_ACT_X,Fundraising activities?,PC,F990-PC-PART-04-LINE-18,2012-2022,PC-501C3,character
+F9_04_GAMING_X,Special events Indicates revenue from gaming,PZ,"F990-EZ-PART-01-LINE-06;
+F990-PC-PART-04-LINE-19",2012-2022,PC-501C3,character
+F9_04_GRANT_MT_5K_FRGN_INDIV_X,More than $5000 to individuals Part IX; line 3?,PC,F990-PC-PART-04-LINE-16,2012-2022,PC-501C3,character
+F9_04_GRANT_MT_5K_FRGN_ORG_X,More than $5000 to organizations Part IX; line 3?,PC,F990-PC-PART-04-LINE-15,2012-2022,PC-501C3,character
+F9_04_GRANT_MT_5K_US_INDIV_X,Grants to individuals?,PC,F990-PC-PART-04-LINE-22,2012-2022,PC-501C3,character
+F9_04_GRANT_MT_5K_US_ORG_X,Grants to organizations?,PC,F990-PC-PART-04-LINE-21,2012-2022,PC-501C3,character
+F9_04_GRANT_RLTD_PERS_X,Grant to related person?,PC,F990-PC-PART-04-LINE-27,2012-2022,PC-501C3,character
+F9_04_HOSPITAL_AFS_X,Audited financial statements?,PC,F990-PC-PART-04-LINE-20B,2012-2022,PC-501C3,character;integer
+F9_04_HOSPITAL_X,IRS990 - Hospital?,"PZ;
+PC","F990-EZ-PART-05-LINE-44B;
+F990-PC-PART-04-LINE-20A",2012-2022,PC-501C3,character
+F9_04_LOAN_DTK_X,,PZ,"F990-EZ-PART-05-LINE-38A;
+F990-PC-PART-04-LINE-26",2012-2022,PC-501C3,character
+F9_04_LOB_ACT_X,Lobbying activities?,PZ,"F990-EZ-PART-06-LINE-47;
+F990-PC-PART-04-LINE-04",2012-2022,PC-501C3,character
+F9_04_LTD_X,Form990 Part IV - Terminated? (F990-PC-PART-04-LINE-31-32-COMBINED: F990-EZ-PART-05-LINE-36),PZ,F990-PC-PART-04-LINE-31,2012-2022,PC-501C3,character
+F9_04_POLI_ACT_X,Political activities?,PZ,"F990-EZ-PART-05-LINE-46;
+F990-PC-PART-04-LINE-03",2012-2022,PC-501C3,character
+F9_04_PROF_FUNDR_X,Professional fundraising?,PC,F990-PC-PART-04-LINE-17,2012-2022,PC-501C3,character
+F9_04_PROXY_TAX_X,Subject to proxy tax?,PZ,"F990-EZ-PART-05-LINE-35C;
+F990-PC-PART-04-LINE-05",2012-2022,PC-501C3,character
+F9_04_PTR_ACT_X,Did the organization conduct more than 5% of its activities through an entity that is not a related organization and thatis treated as a partnership for federal income tax purposes?,PC,F990-PC-PART-04-LINE-37,2012-2022,PC-501C3,character
+F9_04_REP_FOOTNOTE_FIN48_X,Balance sheet footnote for liability under FIN 48?,PC,F990-PC-PART-04-LINE-11F,2012-2022,PC-501C3,character
+F9_04_REP_INVEST_OTH_SEC_X,Balance sheet investments - other securities amounts reported?,PC,F990-PC-PART-04-LINE-11B,2012-2022,PC-501C3,character
+F9_04_REP_LAND_BLDG_EQUIP_X,Balance sheet land; buildings; equipment amounts reported?,PC,F990-PC-PART-04-LINE-11A,2012-2022,PC-501C3,character
+F9_04_REP_OTH_ASSET_X,Balance sheet other assets amounts reported?,PC,F990-PC-PART-04-LINE-11D,2012-2022,PC-501C3,character
+F9_04_REP_OTH_LIAB_X,Balance sheet other liabilities amounts reported?,PC,F990-PC-PART-04-LINE-11E,2012-2022,PC-501C3,character
+F9_04_REP_PROG_RLTD_X,Balance sheet investments - program related amounts reported?,PC,F990-PC-PART-04-LINE-11C,2012-2022,PC-501C3,character
+F9_04_SCHED_B_REQ_X,Indicates Schedule B is not required,PZ,"F990-EZ-PART-00-SECTION-H;
+F990-PC-PART-04-LINE-02",2012-2022,PC-501C3,character
+F9_04_SCHED_O_REQ_X,"Did the organization complete Schedule O and provide explanatios in Schedule O for Part VI, lines 11b and 19?",PC,F990-PC-PART-04-LINE-38,2012-2022,PC-501C3,character
+F9_04_SCHOOL_X,IRS990 - School?,PZ,"F990-EZ-PART-06-LINE-48;
+F990-PC-PART-04-LINE-13",2012-2022,PC-501C3,character
+F9_04_TAX_EXEMPT_BOND_ESCROW_X,Escrow account?,PC,F990-PC-PART-04-LINE-24C,2012-2022,PC-501C3,character
+F9_04_TAX_EXEMPT_BOND_INVEST_X,Investment income?,PC,F990-PC-PART-04-LINE-24B,2012-2022,PC-501C3,character
+F9_04_TAX_EXEMPT_BOND_ISSUER_X,On behalf of issuer?,PC,"F990-PC-PART-04-LINE-24B;
+F990-PC-PART-04-LINE-24D",2012-2022,PC-501C3,character
+F9_04_TAX_EXEMPT_BOND_X,Tax exempt bonds?,PC,F990-PC-PART-04-LINE-24A,2012-2022,PC-501C3,character
+F9_04_TRANSAC_ENGAGED_X,501(c)(3) and 501(c)(4) orgs: Did the organization engage in any section 4958 excess benefit transaction,PZ,"F990-EZ-PART-05-LINE-40B;
+F990-PC-PART-04-LINE-25A",2012-2022,PC-501C3,character
+F9_04_TRANSAC_PY_X,Prior excess benefit transaction?,"PZ;
+PC",F990-PC-PART-04-LINE-25B,2012-2022,PC-501C3,character
+F9_04_TRANSFER_EXEMPT_ORG_X,Did the organization make any transfers to an exempt non-charitable related organization?,PZ,"F990-EZ-PART-06-LINE-49A;
+F990-PC-PART-04-LINE-36",2012-2022,PC-501C3,character
+F9_05_170C_FORM_1098C_FILED_X,Form 1098-C filed?,PC,F990-PC-PART-05-LINE-07H,2012-2022,PC-501C3,character
+F9_05_170C_FORM_8282_REQ_X,Form 8282 property disposed of?,PC,F990-PC-PART-05-LINE-07C,2012-2022,PC-501C3,character
+F9_05_170C_FORM_8899_FILED_X,Form 8899 filed?,PC,F990-PC-PART-05-LINE-07G,2012-2022,PC-501C3,character
+F9_05_170C_FUNDS_FOR_PREMIUM_X,Funds to pay premiums?,PC,F990-PC-PART-05-LINE-07E,2012-2022,PC-501C3,character
+F9_05_170C_NUM_FORM_8282_FILED_X,Number of 8282s filed,PC,F990-PC-PART-05-LINE-07D,2012-2022,PC-501C3,integer
+F9_05_170C_PREMIUM_PAID_X,Premiums paid?,PC,F990-PC-PART-05-LINE-07F,2012-2022,PC-501C3,character
+F9_05_170C_QUID_PRO_QUO_CONTR_X,Quid pro quo contributions?,PC,F990-PC-PART-05-LINE-07A,2012-2022,PC-501C3,character
+F9_05_170C_QUID_PRO_QUO_NOTIFY_X,Quid pro quo disclosure?,PC,F990-PC-PART-05-LINE-07B,2012-2022,PC-501C3,character
+F9_05_4947_FORM_990_FILED_1041_X,Filed 990 in lieu of 1041?,PZ,"F990-EZ-PART-05-LINE-43;
+F990-PC-PART-05-LINE-12A",2012-2022,PC-501C3,character
+F9_05_4947_TAX_EXEMPT_INT_AMT,Indicates section 4947(a)(1) nonexempt charitable trusts filing Form 990 in lieu of Form 1041,PZ,"F990-EZ-PART-05-LINE-43;
+F990-PC-PART-05-LINE-12B",2012-2022,PC-501C3,integer
+F9_05_501C12_GRO_INCOME_MEMB,Gross income from members,PC,F990-PC-PART-05-LINE-11A,2012-2022,PC-501C3,integer
+F9_05_501C12_GRO_INCOME_OTH,"Gross income, other sources",PC,F990-PC-PART-05-LINE-11B,2012-2022,PC-501C3,integer
+F9_05_501C29_LIC_HEALTH_PLAN_X,Is the organization licensed to issue qualified health plans in more than one state?,PC,F990-PC-PART-05-LINE-13A,2012-2022,PC-501C3,character
+F9_05_501C29_RESERVE_MAINT_AMT,Reserves maintained amount,PC,F990-PC-PART-05-LINE-13C,2012-2022,PC-501C3,integer
+F9_05_501C29_STATE_RESERVE_AMT,State required reserves amount,PC,F990-PC-PART-05-LINE-13B,2012-2022,PC-501C3,integer
+F9_05_501C7_GRO_RCPT_PUB_USE,"501(c)(7) orgs: Gross receipts, included on line 9, for public use of club facilities",PZ,"F990-EZ-PART-05-LINE-39B;
+F990-PC-PART-05-LINE-10B",2012-2022,PC-501C3,integer
+F9_05_501C7_INITIATION_FEES,501(c)(7) orgs: Initiation fees and capital contributions included on line 9,PZ,"F990-EZ-PART-05-LINE-39A;
+F990-PC-PART-05-LINE-10A",2012-2022,PC-501C3,integer
+F9_05_COMPLY_BACKUP_WITHHOLD_X,Compliance with backup witholding?,PC,F990-PC-PART-05-LINE-01C,2012-2022,PC-501C3,character
+F9_05_DAF_DIST_DONOR_X,DAFs - Distribution to donor?,PC,F990-PC-PART-05-LINE-09B,2012-2022,PC-501C3,character
+F9_05_DAF_EXCESS_BIZ_HOLDING_X,Donor advised fund have excess business holdings?,PC,F990-PC-PART-05-LINE-08,2012-2022,PC-501C3,character
+F9_05_DAF_TAXABLE_DIST_X,DAFs - Taxable distributions?,PC,F990-PC-PART-05-LINE-09A,2012-2022,PC-501C3,character
+F9_05_EMPL_TAX_RETURN_FILED_X,Employment tax returns filed?,PC,F990-PC-PART-05-LINE-02B,2012-2022,PC-501C3,character
+F9_05_FRGN_FIN_ACC_X,Foreign financial account?,PZ,"F990-EZ-PART-05-LINE-42B;
+F990-PC-PART-05-LINE-04A",2012-2022,PC-501C3,character
+F9_05_NONDEDUCT_CONTR_NOTIFY_X,Non-deduct. disclosure?,PC,F990-PC-PART-05-LINE-06B,2012-2022,PC-501C3,character
+F9_05_NONDEDUCT_CONTR_X,Non-deductible contributions?,PC,F990-PC-PART-05-LINE-06A,2012-2022,PC-501C3,character
+F9_05_NUM_EMPL,Number of employees,PC,F990-PC-PART-05-LINE-02A,2012-2022,PC-501C3,integer
+F9_05_NUM_FORM_1096_BOX_3,Number forms transmitted with 1096,PC,F990-PC-PART-05-LINE-01A,2012-2022,PC-501C3,integer;numeric
+F9_05_NUM_FORM_W2G,Number W-2Gs included in 1a,PC,F990-PC-PART-05-LINE-01B,2012-2022,PC-501C3,integer
+F9_05_PTST_FORM_8886T_FILED_X,Form 8886-T filed?,PC,F990-PC-PART-05-LINE-05C,2012-2022,PC-501C3,character
+F9_05_PTST_PARTY_NOTIFY_X,Taxable party notification?,PC,F990-PC-PART-05-LINE-05B,2012-2022,PC-501C3,character
+F9_05_PTST_X,Prohibited tax shelter transaction?,PZ,"F990-EZ-PART-05-LINE-40E;
+F990-PC-PART-05-LINE-05A",2012-2022,PC-501C3,character
+F9_05_TANNING_FORM_720_FILED_X,Form 720 filed and taxes paid on indoor tanning services?,PZ,"F990-EZ-PART-05-LINE-44D;
+F990-PC-PART-05-LINE-14B",2012-2022,PC-501C3,character
+F9_05_TANNING_SVC_PROV_X,Payments received for indoor tanning services?,PZ,"F990-EZ-PART-05-LINE-44C;
+F990-PC-PART-05-LINE-14A",2012-2022,PC-501C3,character
+F9_05_UBIZ_FORM_990T_FILED_X,Form 990-T filed?,"PZ;
+PC","F990-EZ-PART-05-LINE-35B;
+F990-PC-PART-05-LINE-03B",2012-2022,PC-501C3,character
+F9_05_UBIZ_IMCOME_OVER_LIMIT_X,Unrelated business income?,"PZ;
+PC","F990-EZ-PART-05-LINE-35A;
+F990-PC-PART-05-LINE-03A",2012-2022,PC-501C3,character
+F9_07_COMP_DTK_COMP_ORG,Reportable compensation from organization (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED),PZ,"F990-EZ-PART-04-COL-C;
+F990-PC-PART-07-SECTION-A-LINE-01A-COL-D",2012-2019,PC-501C3,numeric
+F9_07_COMP_DTK_COMP_ORG_TOT,"Total, column D (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED)",PC,F990-PC-PART-07-SECTION-A-LINE-01D-COL-D,2012-2022,PC-501C3,integer;numeric
+F9_07_COMP_DTK_COMP_OTH,Other compensation (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED),PZ,"F990-EZ-PART-04-COL-E;
+F990-PC-PART-07-SECTION-A-LINE-01A-COL-F",2012-2019,PC-501C3,numeric
+F9_07_COMP_DTK_COMP_OTH_TOT,"Total, column F (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED)",PC,F990-PC-PART-07-SECTION-A-LINE-01D-COL-F,2012-2022,PC-501C3,integer;numeric
+F9_07_COMP_DTK_COMP_RLTD,Reportable compensation from related organizations (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED),PZ,"F990-EZ-PART-04-COL-C;
+F990-PC-PART-07-SECTION-A-LINE-01A-COL-E",2012-2019,PC-501C3,numeric
+F9_07_COMP_DTK_COMP_RLTD_TOT,"Total, column E (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED)",PC,F990-PC-PART-07-SECTION-A-LINE-01D-COL-E,2012-2022,PC-501C3,integer;numeric
+F9_07_COMP_DTK_NUM_GT_100K,Number individuals greater than $100K (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED),PC,F990-PC-PART-07-SECTION-A-LINE-02,2012-2022,PC-501C3,integer
+F9_07_COMP_KONTR_NUM_GT_100K,Total number of independent contractors who received 100K+ from org,PZ,"F990-EZ-PART-06-LINE-51D;
+F990-PC-PART-07-SECTION-B-LINE-02",2012-2022,PC-501C3,integer
+F9_08_REV_CONTR_TOT,Total contributions,PC,F990-PC-PART-08-LINE-01H-COL-A,2012-2022,PC-501C3,integer64;integer;numeric
+F9_08_REV_MISC_BIZCODE,Other Revenue Misc - Business code,PC,F990-PC-PART-08-LINE-11-ABC-COL-BIZCODE,2012-2022,PC-501C3,numeric;integer
+F9_08_REV_MISC_OTH_EXCL,Excluded by section 512; 513; or 514: amount,PC,F990-PC-PART-08-LINE-11D-COL-D,2012-2019,PC-501C3,numeric;integer
+F9_08_REV_MISC_OTH_RLTD,Related or exempt function revenue,PC,F990-PC-PART-08-LINE-11D-COL-B,2012-2019,PC-501C3,numeric
+F9_08_REV_MISC_OTH_TOT,Miscellaneous Revenue - Total revenue,PC,F990-PC-PART-08-LINE-11D-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_08_REV_MISC_OTH_UBIZ,Unrelated business revenue,PC,F990-PC-PART-08-LINE-11D-COL-C,2012-2019,PC-501C3,numeric
+F9_08_REV_MISC_TOT,Other Revenue Misc - Total revenue,PC,F990-PC-PART-08-LINE-11-ABC-COL-A,2012-2022,PC-501C3,integer;numeric
+F9_08_REV_MISC_TOT_TOT,Other revenue - current year,PZ,"F990-EZ-PART-01-LINE-08;
+F990-PC-PART-08-LINE-11E-COL-A",2012-2022,PC-501C3,integer;numeric
+F9_08_REV_OTH_FUNDR_DIRECT_EXP,Direct expenses,PZ,F990-PC-PART-08-LINE-08B,2012-2022,PC-501C3,numeric;integer
+F9_08_REV_OTH_FUNDR_EVNT_1,IRS990 - 8a-1,PZ,"F990-EZ-PART-01-LINE-06B-1;
+F990-PC-PART-08-LINE-08A-1",2012-2022,PC-501C3,numeric
+F9_08_REV_OTH_FUNDR_NET_TOT,Net Income From Fundraising Events - Total revenue,PZ,F990-PC-PART-08-LINE-08C-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_08_REV_OTH_GAMING,Gross income from gaming activities,PZ,"F990-EZ-PART-01-LINE-06A;
+F990-PC-PART-08-LINE-09A",2012-2022,PC-501C3,numeric;integer
+F9_08_REV_OTH_GAMING_DIRECT_EXP,Direct expenses,PZ,F990-PC-PART-08-LINE-09B,2012-2022,PC-501C3,integer;numeric
+F9_08_REV_OTH_GAMING_NET_TOT,Net Income From Gaming - Total revenue,PZ,F990-PC-PART-08-LINE-09C-COL-A,2012-2022,PC-501C3,integer;numeric
+F9_08_REV_OTH_INVEST_BOND_TOT,Income From Invest Bond Proceeds - Total revenue,PC,F990-PC-PART-08-LINE-04-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_08_REV_OTH_INVEST_INCOME_TOT,Invest income,PZ,"F990-EZ-PART-01-LINE-04;
+F990-PC-PART-08-LINE-03-COL-A",2012-2022,PC-501C3,integer;numeric
+F9_08_REV_OTH_INV_COST_GOODS,Less: cost of goods sold,PZ,"F990-EZ-PART-01-LINE-07B;
+F990-PC-PART-08-LINE-10B",2012-2022,PC-501C3,integer;numeric
+F9_08_REV_OTH_INV_GRO_SALE,gross sales of inventory,PZ,"F990-EZ-PART-01-LINE-07A;
+F990-PC-PART-08-LINE-10A",2012-2022,PC-501C3,integer;numeric
+F9_08_REV_OTH_INV_NET_TOT,Gross profit (or loss) from sales of inventory,PZ,"F990-EZ-PART-01-LINE-07C;
+F990-PC-PART-08-LINE-10C-COL-A",2012-2022,PC-501C3,integer;numeric
+F9_08_REV_OTH_RENT_GRO_PERS,Gross Rents - Amount,PC,F990-PC-PART-08-LINE-06A-COL-ii,2012-2022,PC-501C3,numeric;integer
+F9_08_REV_OTH_RENT_GRO_REAL,Gross Rents - Real amount,PC,F990-PC-PART-08-LINE-06A-COL-i,2012-2022,PC-501C3,numeric
+F9_08_REV_OTH_RENT_INCOME_PERS,Rental Income Or Loss - Amount,PC,F990-PC-PART-08-LINE-06C-COL-ii,2012-2022,PC-501C3,numeric;integer
+F9_08_REV_OTH_RENT_INCOME_REAL,Rental Income Or Loss - Real amount,PC,F990-PC-PART-08-LINE-06C-COL-i,2012-2022,PC-501C3,numeric
+F9_08_REV_OTH_RENT_LESS_EXP_PERS,Less Rental Expenses - Amount,PC,F990-PC-PART-08-LINE-06B-COL-ii,2012-2022,PC-501C3,integer
+F9_08_REV_OTH_RENT_LESS_EXP_REAL,Less Rental Expenses - Real amount,PC,F990-PC-PART-08-LINE-06B-COL-i,2012-2022,PC-501C3,numeric
+F9_08_REV_OTH_RENT_NET_TOT,Net Rental Income Or Loss - Total revenue,PC,F990-PC-PART-08-LINE-06D-COL-A,2012-2022,PC-501C3,integer;numeric
+F9_08_REV_OTH_ROY_TOT,Royalties Revenue - Total revenue,PC,F990-PC-PART-08-LINE-05-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_08_REV_OTH_SALE_ASSET_OTH,Gross Amount Sales Assets - Other amount,PZ,F990-PC-PART-08-LINE-07A-COL-ii,2012-2022,PC-501C3,integer64;integer;numeric
+F9_08_REV_OTH_SALE_ASSET_SEC,Securities amount,"PC;
+PZ",F990-PC-PART-08-LINE-07A-COL-i,2012-2022,PC-501C3,integer64;integer;numeric
+F9_08_REV_OTH_SALE_GAIN_NET_TOT,Gain or (loss) from sale of assets other than inventory,PZ,"F990-EZ-PART-01-LINE-05C;
+F990-PC-PART-08-LINE-07D-COL-A",2012-2022,PC-501C3,integer64;integer;numeric
+F9_08_REV_OTH_SALE_GAIN_OTH,Gain Or Loss - Other amount,PC,F990-PC-PART-08-LINE-07C-COL-ii,2012-2022,PC-501C3,integer;numeric
+F9_08_REV_OTH_SALE_GAIN_SEC,Securities amount,PC,F990-PC-PART-08-LINE-07C-COL-i,2012-2022,PC-501C3,integer64;integer;numeric
+F9_08_REV_OTH_SALE_LESS_COST_OTH,Less Cost Oth Basis Sales Expenses - Other amount,PZ,F990-PC-PART-08-LINE-07B-COL-ii,2012-2022,PC-501C3,integer64;integer;numeric
+F9_08_REV_OTH_SALE_LESS_COST_SEC,Securities amount,PZ,F990-PC-PART-08-LINE-07B-COL-i,2012-2022,PC-501C3,integer64;integer;numeric
+F9_08_REV_PROG_BIZCODE,Program Service Revenue - Business code,PC,F990-PC-PART-08-LINE-02-ABCDE-COL-BIZCODE,2012-2022,PC-501C3,integer
+F9_08_REV_PROG_DESC,Program Service Revenue - Description,PC,F990-PC-PART-08-LINE-02-ABCDE,2012-2019,PC-501C3,numeric
+F9_08_REV_PROG_OTH_TOT,Total Oth Program Service Revenue - Total revenue,PC,F990-PC-PART-08-LINE-02F-COL-A,2012-2022,PC-501C3,numeric;integer64
+F9_08_REV_PROG_TOT,Program Service Revenue - Total revenue,PC,F990-PC-PART-08-LINE-02-ABCDE-COL-A,2012-2022,PC-501C3,integer64;integer
+F9_08_REV_PROG_TOT_TOT,Program service revenue total,PC,F990-PC-PART-08-LINE-02G-COL-A,2012-2022,PC-501C3,integer64;integer;numeric
+F9_08_REV_TOT_TOT,Total Revenue - Total revenue,PC,F990-PC-PART-08-LINE-12-COL-A,2012-2022,PC-501C3,integer64;integer;numeric
+F9_09_EXP_AD_PROMO_TOT,Advertising and promotion - total expense,PC,F990-PC-PART-09-LINE-12-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_09_EXP_BEN_PAID_MEMB_TOT,Benefits Paid to or for Members - Total Expense,PZ,F990-PC-PART-09-LINE-04-COL-A,2012-2022,PC-501C3,integer64;numeric;integer
+F9_09_EXP_COMP_DSQ_PERS_TOT,"Compensation not included above, or to disqualified persons - Total Expense",PC,F990-PC-PART-09-LINE-06-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_09_EXP_COMP_DTK_TOT,"Compensation for Current Officers, Directors, Trustees and Key Employees - Total Expense",PC,F990-PC-PART-09-LINE-05-COL-A,2012-2022,PC-501C3,integer;numeric
+F9_09_EXP_CONF_MEETING_TOT,"Conferences, conventions, and meetings- total expense",PC,F990-PC-PART-09-LINE-19-COL-A,2012-2022,PC-501C3,integer;numeric
+F9_09_EXP_DEPREC_TOT,"Depreciation, depletion, and amortization",PC,F990-PC-PART-09-LINE-22-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_09_EXP_FEE_SVC_ACC_TOT,Fees for Services - Accounting - Total Expense,PC,F990-PC-PART-09-LINE-11C-COL-A,2012-2022,PC-501C3,numeric
+F9_09_EXP_FEE_SVC_FUNDR_TOT,Fees for Professional Fundraising Services - Total Expense,PC,F990-PC-PART-09-LINE-11E-COL-A,2012-2022,PC-501C3,integer;numeric
+F9_09_EXP_FEE_SVC_INVEST_TOT,Investment Management Fees - Total Expense,PC,F990-PC-PART-09-LINE-11F-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_09_EXP_FEE_SVC_LEGAL_TOT,Fees for Services - Legal - Total Expense,PC,F990-PC-PART-09-LINE-11B-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_09_EXP_FEE_SVC_LOB_TOT,Fees for Services - Lobbying - Total Expense,PC,F990-PC-PART-09-LINE-11D-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_09_EXP_FEE_SVC_MGMT_TOT,Fees for Services - Management - Total Expense,PC,F990-PC-PART-09-LINE-11A-COL-A,2012-2022,PC-501C3,numeric
+F9_09_EXP_FEE_SVC_OTH_TOT,Fees for Services - Other - Total Expense,PC,F990-PC-PART-09-LINE-11G-COL-A,2012-2022,PC-501C3,integer;integer64;numeric
+F9_09_EXP_GRANT_FRGN_TOT,total Grants to Foreign Orgs and Governments - Total Expense,PC,F990-PC-PART-09-LINE-03-COL-A,2012-2022,PC-501C3,integer;integer64;numeric
+F9_09_EXP_GRANT_US_INDIV_TOT,Grants To Domestic Individuals - Total,PC,F990-PC-PART-09-LINE-02-COL-A,2012-2022,PC-501C3,numeric
+F9_09_EXP_GRANT_US_ORG_TOT,Grants To Domestic Orgs - Total,PZ,F990-PC-PART-09-LINE-01-COL-A,2012-2022,PC-501C3,numeric
+F9_09_EXP_INFO_TECH_TOT,Information Technology - Total,PC,F990-PC-PART-09-LINE-14-COL-A,2012-2022,PC-501C3,integer64;integer
+F9_09_EXP_INSURANCE_TOT,Insurance - Total,PC,F990-PC-PART-09-LINE-23-COL-A,2012-2022,PC-501C3,numeric
+F9_09_EXP_INT_TOT,Interest - Total,PC,F990-PC-PART-09-LINE-20-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_09_EXP_OCCUPANCY_TOT,Occupancy; rent; utilities; and maintenance,PZ,"F990-EZ-PART-01-LINE-14;
+F990-PC-PART-09-LINE-16-COL-A",2012-2022,PC-501C3,numeric
+F9_09_EXP_OFFICE_TOT,Office Expenses - Total,PZ,F990-PC-PART-09-LINE-13-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_09_EXP_OTH_EMPL_BEN_TOT,Other Employee Benefits - Total,PC,F990-PC-PART-09-LINE-09-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_09_EXP_OTH_OTH_TOT,Other expenses - total expense,PC,F990-PC-PART-09-LINE-24E-COL-A,2012-2022,PC-501C3,integer;numeric
+F9_09_EXP_OTH_SAL_WAGE_TOT,Other Salaries And Wages - Total,PC,F990-PC-PART-09-LINE-07-COL-A,2012-2022,PC-501C3,integer64;integer;numeric
+F9_09_EXP_OTH_TOT,Other Expenses - Total,PC,F990-PC-PART-09-LINE-24-ABCD-COL-A,2012-2022,PC-501C3,integer64;numeric
+F9_09_EXP_PAYROLL_TAX_TOT,Payroll Taxes - Total,PC,F990-PC-PART-09-LINE-10-COL-A,2012-2022,PC-501C3,integer;numeric
+F9_09_EXP_PAY_AFFIL_TOT,Payments To Affiliates - Total,PC,F990-PC-PART-09-LINE-21-COL-A,2012-2022,PC-501C3,numeric
+F9_09_EXP_PENSION_CONTR_TOT,Pension Plan Contributions - Total,PC,F990-PC-PART-09-LINE-08-COL-A,2012-2022,PC-501C3,numeric
+F9_09_EXP_ROY_TOT,Royalties - Total,PC,F990-PC-PART-09-LINE-15-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_09_EXP_TOT_TOT,Total Functional Expenses - Total,PC,F990-PC-PART-09-LINE-25-COL-A,2012-2022,PC-501C3,integer64;integer;numeric
+F9_09_EXP_TRAVEL_ENTMT_TOT,Travel Entrtnmnt Public Officials - Total,PC,F990-PC-PART-09-LINE-18-COL-A,2012-2022,PC-501C3,integer
+F9_09_EXP_TRAVEL_TOT,Travel - Total,PC,F990-PC-PART-09-LINE-17-COL-A,2012-2022,PC-501C3,numeric;integer
+F9_10_ASSET_ACC_NET_EOY,"Net accounts receivable, end of year",PC,F990-PC-PART-10-LINE-04-EOY,2012-2022,PC-501C3,integer64;numeric
+F9_10_ASSET_CASH_EOY,"Cash, non-interest-bearing, end of year",PZ,F990-PC-PART-10-LINE-01-EOY,2012-2022,PC-501C3,numeric;integer
+F9_10_ASSET_EXP_PREPAID_EOY,Ending of year,PC,F990-PC-PART-10-LINE-09-EOY,2012-2022,PC-501C3,numeric
+F9_10_ASSET_INTANGIBLE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-14-EOY,2012-2022,PC-501C3,numeric
+F9_10_ASSET_INVEST_PROG_RLTD_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-13-EOY,2012-2022,PC-501C3,numeric
+F9_10_ASSET_INVEST_SEC_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-11-EOY,2012-2022,PC-501C3,integer64;numeric
+F9_10_ASSET_INVEST_SEC_OTH_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-12-EOY,2012-2022,PC-501C3,integer64;numeric
+F9_10_ASSET_INV_SALE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-08-EOY,2012-2022,PC-501C3,numeric
+F9_10_ASSET_LAND_BLDG_DEPREC,Less: accumulated depreciation,PC,F990-PC-PART-10-LINE-10B,2012-2022,PC-501C3,integer;numeric
+F9_10_ASSET_LAND_BLDG_NET_EOY,Net value including lands; buildings; and equipment; end of year,PZ,"F990-EZ-PART-02-LINE-23-EOY;
+F990-PC-PART-10-LINE-10C-EOY",2012-2019,PC-501C3,integer64
+F9_10_ASSET_LOAN_DSQ_PERS_EOY,Ending of year,PC,F990-PC-PART-10-LINE-06-EOY,2012-2022,PC-501C3,numeric;integer
+F9_10_ASSET_LOAN_OFF_EOY,Ending of year,PC,F990-PC-PART-10-LINE-05-EOY,2012-2022,PC-501C3,numeric
+F9_10_ASSET_NOTE_LOAN_NET_EOY,Ending of year,PC,F990-PC-PART-10-LINE-07-EOY,2012-2022,PC-501C3,integer64;numeric
+F9_10_ASSET_OTH_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-15-EOY,2012-2022,PC-501C3,integer64;numeric
+F9_10_ASSET_PLEDGE_NET_EOY,Ending of year,PC,F990-PC-PART-10-LINE-03-EOY,2012-2022,PC-501C3,integer64;integer;numeric
+F9_10_ASSET_SAVING_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-02-EOY,2012-2022,PC-501C3,integer;integer64;numeric
+F9_10_ASSET_TOT_BOY,"Total assets, beginning of year",PZ,"F990-EZ-PART-02-LINE-25-BOY;
+F990-PC-PART-10-LINE-16-BOY",2012-2013,PC-501C3,integer64
+F9_10_ASSET_TOT_EOY,"Total assets, end of year",PZ,"F990-EZ-PART-02-LINE-25-EOY;
+F990-PC-PART-10-LINE-16-EOY",2012-2022,PC-501C3,integer64;integer;numeric
+F9_10_LIAB_ACC_PAYABLE_EOY,"Accounts payable and accrued expenses, end of year",PC,F990-PC-PART-10-LINE-17-EOY,2012-2022,PC-501C3,integer64;numeric
+F9_10_LIAB_ESCROW_ACC_EOY,"Escrow or custodial account liability, end of year",PC,F990-PC-PART-10-LINE-21-EOY,2012-2022,PC-501C3,numeric;integer
+F9_10_LIAB_GRANT_PAYABLE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-18-EOY,2012-2022,PC-501C3,numeric
+F9_10_LIAB_LOAN_OFF_EOY,Ending of year,PC,F990-PC-PART-10-LINE-22-EOY,2012-2022,PC-501C3,numeric
+F9_10_LIAB_MTG_NOTE_BOY,Beginnning of year,PC,F990-PC-PART-10-LINE-23-BOY,2012-2013,PC-501C3,integer64;integer
+F9_10_LIAB_MTG_NOTE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-23-EOY,2012-2022,PC-501C3,integer64;numeric
+F9_10_LIAB_NOTE_UNSEC_EOY,Ending of year,PC,F990-PC-PART-10-LINE-24-EOY,2012-2022,PC-501C3,integer64;numeric
+F9_10_LIAB_OTH_EOY,Ending of year,PC,F990-PC-PART-10-LINE-25-EOY,2012-2022,PC-501C3,integer64;numeric
+F9_10_LIAB_REV_DEFERRED_EOY,"Deferred revenue, end of year",PC,F990-PC-PART-10-LINE-19-EOY,2012-2022,PC-501C3,integer64;integer;numeric
+F9_10_LIAB_TAX_EXEMPT_BOND_BOY,Beginnning of year,PC,F990-PC-PART-10-LINE-20-BOY,2012-2013,PC-501C3,integer64
+F9_10_LIAB_TAX_EXEMPT_BOND_EOY,Ending of year,PC,F990-PC-PART-10-LINE-20-EOY,2012-2022,PC-501C3,integer64;integer;numeric
+F9_10_LIAB_TOT_BOY,"Total liabilities, beginning of year",PZ,"F990-EZ-PART-02-LINE-26-BOY;
+F990-PC-PART-10-LINE-26-BOY",2012-2013,PC-501C3,integer64
+F9_10_LIAB_TOT_EOY,"Total liabilities, end of year",PZ,"F990-EZ-PART-02-LINE-26-EOY;
+F990-PC-PART-10-LINE-26-EOY",2012-2022,PC-501C3,integer64;numeric
+F9_10_NAFB_CAP_STCK_EOY,"Capital stock or trust principal, or current funds, end of year",PC,F990-PC-PART-10-LINE-30-EOY,2012-2022,PC-501C3,integer64;integer;numeric
+F9_10_NAFB_CAP_SURPLUS_EOY,Ending of year,PC,F990-PC-PART-10-LINE-31-EOY,2012-2022,PC-501C3,integer64;numeric
+F9_10_NAFB_EARNING_RETAINED_BOY,Beginnning of year,PC,F990-PC-PART-10-LINE-32-BOY,2012-2013,PC-501C3,integer64
+F9_10_NAFB_EARNING_RETAINED_EOY,Ending of year,PC,F990-PC-PART-10-LINE-32-EOY,2012-2022,PC-501C3,integer64;integer;numeric
+F9_10_NAFB_RESTRICT_PERM_EOY,Ending of year,PC,F990-PC-PART-10-LINE-29-EOY,2012-2022,PC-501C3,integer64;numeric;integer
+F9_10_NAFB_RESTRICT_TEMP_EOY,Ending of year,PC,F990-PC-PART-10-LINE-28-EOY,2012-2022,PC-501C3,integer64;numeric
+F9_10_NAFB_TOT_BOY,"Net assets or fund balances, beginning of year",PZ,"F990-EZ-PART-02-LINE-27-BOY;
+F990-PC-PART-10-LINE-33-BOY",2012-2013,PC-501C3,integer64
+F9_10_NAFB_TOT_EOY,"Net assets or fund balances, end of year",PZ,"F990-EZ-PART-02-LINE-27-EOY;
+F990-PC-PART-10-LINE-33-EOY",2012-2022,PC-501C3,integer64;integer;numeric
+F9_10_NAFB_TOT_LIAB_NAFB_EOY,Ending of year,PC,F990-PC-PART-10-LINE-34-EOY,2012-2022,PC-501C3,integer64;numeric
+F9_10_NAFB_UNRESTRICT_EOY,Ending of year,PC,F990-PC-PART-10-LINE-27-EOY,2012-2022,PC-501C3,integer64;numeric
+GEO_ZIP5,5-digit Zip Code,NA,NA,2012-2019,PC-501C3,integer
+MISSION_NTEE,NTEE Codes,NA,NA,2012-2019,PC-501C3,character
+SA_01_PCSTAT_ORG_AMT_SUPPORT,Amount of support,PZ,SCHED-A-PART-01-LINE-12G-COL-v,2012-2022,PC-501C3,integer;numeric
+SA_01_PCSTAT_ORG_AMT_SUPPORT_TOT,Sum of amounts of support,PZ,SCHED-A-PART-01-LINE-12G-COL-v-TOT,2012-2019,PC-501C3,integer64;integer
+SA_01_PCSTAT_SUPPORT_ORG_NUM,Number of supported organizations,PZ,SCHED-A-PART-01-LINE-12F,2012-2022,PC-501C3,integer
+SA_01_PCSTAT_SUPPORT_ORG_X,Supporting organization 509(a)(3),PZ,SCHED-A-PART-01-LINE-12,2012-2013,PC-501C3,integer
+SA_02_PUB_CONTR_SBST_TOT,Amounts from substantial contributors total,PZ,SCHED-A-PART-02-SECTION-A-LINE-05-COL-F,2012-2022,PC-501C3,integer64;numeric
+SA_02_PUB_GIFT_GRANT_CONTR_TOT,Gifts Grants Contri Rcvd170 Grp - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-01-COL-F,2012-2022,PC-501C3,integer64;numeric
+SA_02_PUB_SUPPORT_TOT,Public Support Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-06-COL-F,2012-2022,PC-501C3,integer64;numeric
+SA_02_PUB_TAXREV_LEVIED_TOT,Tax Rev Levied For Org Benefit170 - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-02-COL-F,2012-2022,PC-501C3,integer;numeric
+SA_02_PUB_TOT_L123_TOT,Total - Total - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-04-COL-F,2012-2022,PC-501C3,integer64;numeric
+SA_02_PUB_VALUE_SVC_GOVT_TOT,Govt Furn Srvc Fclts Vl170 Grp - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-03-COL-F,2012-2022,PC-501C3,integer;numeric
+SA_02_TOT_AMT_L4_CY_TOT,Amounts From Line4 - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-07-COL-F,2012-2022,PC-501C3,integer64;numeric
+SA_02_TOT_GRO_RCPT_RLTD_ACTS,Gross receipts from admissions; merchandise sold or services performed; or furnishing of facilities in any activity that is related to the organization's tax-exempt purpose,PZ,SCHED-A-PART-02-SECTION-B-LINE-12,2012-2022,PC-501C3,integer64;numeric;integer
+SA_02_TOT_INCOME_GRO_TOT,Gross Investment Income - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-08-COL-F,2012-2022,PC-501C3,integer;integer64
+SA_02_TOT_INCOME_NET_UBIZ_TOT,Net UBI - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-09-COL-F,2012-2022,PC-501C3,numeric;integer
+SA_02_TOT_INCOME_OTH_TOT,Other Income - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-10-COL-F,2012-2022,PC-501C3,integer;integer64;numeric
+SA_02_TOT_SUPPORT_TOT,Form990 Schedule APart II - Total support,PZ,SCHED-A-PART-02-SECTION-B-LINE-11-COL-F,2012-2022,PC-501C3,integer64;numeric
+SA_03_PUB_ADD_L7AB_TOT,Subst And Dsqlfy Prsns Tot Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-07C-COL-F,2012-2022,PC-501C3,integer64;integer;numeric
+SA_03_PUB_AMT_CONTR_SBST_TOT,Amts From Subst Contributors - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-07B-COL-F,2012-2022,PC-501C3,integer64;integer;numeric
+SA_03_PUB_AMT_PERS_DSQ_TOT,Amounts Rcvd Dsqlfy Person Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-07A-COL-F,2012-2022,PC-501C3,numeric
+SA_03_PUB_GIFT_GRANT_CONTR_TOT,Gifts Grants Contrib Received - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-01-COL-F,2012-2022,PC-501C3,integer64;numeric
+SA_03_PUB_GRO_RCPT_ADM_TOT,Gross Receipts Admissions Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-02-COL-F,2012-2022,PC-501C3,integer64;numeric
+SA_03_PUB_GRO_RCPT_NONUBIZ_TOT,Gross Receipts From Non UBI - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-03-COL-F,2012-2022,PC-501C3,integer;integer64;numeric
+SA_03_PUB_SUPPORT_TOT,Public support total,PZ,SCHED-A-PART-03-SECTION-A-LINE-08-COL-F,2012-2022,PC-501C3,integer64;numeric
+SA_03_PUB_TAXREV_LEVIED_TOT,Tax Rev Levied For Org Benefit509 - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-04-COL-F,2012-2022,PC-501C3,integer;numeric
+SA_03_PUB_TOT_L1_5_TOT,Total - Total - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-06-COL-F,2012-2022,PC-501C3,integer64;numeric
+SA_03_PUB_VALUE_SVC_GOVT_TOT,Govt Furn Srvc Fclts Vl509 Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-05-COL-F,2012-2022,PC-501C3,integer;numeric
+SA_03_TOT_ADD_L10AB_TOT,Investment Income And UBTI - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-10C-COL-F,2012-2022,PC-501C3,integer;numeric
+SA_03_TOT_AMT_L6_TOT,Amts From Line6 - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-09-COL-F,2012-2022,PC-501C3,integer64;numeric
+SA_03_TOT_INCOME_GRO_TOT,Gross Investment Income - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-10A-COL-F,2012-2022,PC-501C3,numeric;integer
+SA_03_TOT_INCOME_NET_UBIZ_TOT,Net Income From Other UBI - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-11-COL-F,2012-2022,PC-501C3,numeric;integer
+SA_03_TOT_INCOME_OTH_TOT,Other Income - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-12-COL-F,2012-2022,PC-501C3,numeric
+SA_03_TOT_INCOME_UBIZ_TOT,Post1975 UBTI - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-10B-COL-F,2012-2022,PC-501C3,numeric;integer
+SA_03_TOT_SUPPORT_TOT,Total Support Calendar Year Grp - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-13-COL-F,2012-2022,PC-501C3,integer64;numeric
+SR_02_RLTD_ORG_PCSTAT,Public charity status (if 501(c)(3)),PC,SCHED-R-PART-02-COL-E,2012-2019,PC-501C3,character
+TAX_YEAR,Tax Year,NA,NA,2012-2022,PC-501C3,integer
+DUP_RTRN_X,Indicates duplicate return,NA,NA,1989-2022,PZ-501C3,integer
+EIN2,Reformatted EIN,NA,NA,1989-2022,PZ-501C3,character
+F9_00_EXEMPT_STAT_501C3_X,Indicates a 501(c)(3) organization,HD,"F990-EZ-PART-00-SECTION-J;
+F990-PC-PART-00-SECTION-I",1989-2019,PZ-501C3,integer;character
+F9_00_GROUP_EXEMPT_NUM,Group exemption number,HD,"F990-EZ-PART-00-SECTION-F;
+F990-PC-PART-00-SECTION-HC",1989-2013,PZ-501C3,integer
+F9_00_GRO_RCPT,Gross Receipts (Header),HD,"F990-EZ-PART-00-SECTION-L;
+F990-PC-PART-00-SECTION-G",1989-2019,PZ-501C3,integer64
+F9_00_ORG_ADDR_CITY,Address of Filing Organization (US City),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",1989-2019,PZ-501C3,character
+F9_00_ORG_ADDR_L1,Address of Filing Organization (US Line 1),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",1989-2019,PZ-501C3,character
+F9_00_ORG_ADDR_STATE,Address of Filing Organization (US State),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",1989-2019,PZ-501C3,character
+F9_00_ORG_ADDR_ZIP,Address of Filing Organization (US Zip Code),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",1989-2019,PZ-501C3,character
+F9_00_ORG_EIN,Orgainization Employer Identification Number (EIN),HD,F990-PC-PART-00-SECTION-D,1989-2022,PZ-501C3,character
+F9_00_ORG_NAME_DBA_L1,Doing business as (line 1),HD,F990-PC-PART-00-SECTION-C,1989-2019,PZ-501C3,character
+F9_00_ORG_NAME_L1,Name of Filing Organization (line 1),HD,F990-PC-PART-00-SECTION-C,1989-2019,PZ-501C3,character
+F9_00_RETURN_TYPE,Return type,HD,F990-PC-PART-00-LINE-00,2005-2013,PZ-501C3,integer
+F9_00_TAX_PERIOD_BEGIN_DATE,Tax period begin date,HD,F990-PC-PART-00-SECTION-A,1989-2019,PZ-501C3,integer
+F9_00_TAX_PERIOD_END_DATE,Tax period end date,HD,F990-PC-PART-00-SECTION-A,1989-2022,PZ-501C3,integer
+F9_00_TAX_YEAR,Tax year,HD,F990-PC-PART-00-SECTION-A,1989-2019,PZ-501C3,integer
+F9_01_EXP_BEN_PAID_MEMB_CY,Benefits paid to or for members,PZ,"F990-EZ-PART-01-LINE-11;
+F990-PC-PART-01-LINE-14-CY",2011-2013,PZ-501C3,integer;integer64
+F9_01_EXP_FEE_OTH_PAY_KONTR,Professional fees and other payments to independent contractors,EZ,F990-EZ-PART-01-LINE-13,2011-2013,PZ-501C3,integer;integer64
+F9_01_EXP_FUNDR_TOT_CY,Total fundraising expense - CY,PC,F990-PC-PART-01-LINE-16B,1989-2010,PZ-501C3,integer;integer64
+F9_01_EXP_OTH_CY,Other expenses -CY,PZ,F990-PC-PART-01-LINE-17-CY,2011-2013,PZ-501C3,integer;integer64
+F9_01_EXP_REV_LESS_EXP_CY,Excess or deficit,PZ,"F990-EZ-PART-01-LINE-18;
+F990-PC-PART-01-LINE-19-CY",1995-2022,PZ-501C3,integer;integer64;numeric
+F9_01_EXP_TOT_CY,Total expenses - CY,PZ,"F990-EZ-PART-01-LINE-17;
+F990-PC-PART-01-LINE-18-CY",2012-2022,PZ-501C3,integer;numeric
+F9_01_NAFB_TOT_EOY,Net assets EOY,PZ,"F990-EZ-PART-01-LINE-21;
+F990-PC-PART-01-LINE-22-EOY",1989-2022,PZ-501C3,integer64;numeric
+F9_01_REV_CONTR_TOT_CY_2,Contributions; gifts; grants; and similar amounts received,PZ,F990-EZ-PART-01-LINE-01,2012-2022,PZ-501C3,integer;numeric
+F9_01_REV_INVEST_TOT_CY,Investment income - current year,PZ,"F990-EZ-PART-01-LINE-04;
+F990-PC-PART-01-LINE-10-CY",2012-2022,PZ-501C3,integer
+F9_01_REV_TOT_CY,Total revenue - CY,PZ,"F990-EZ-PART-01-LINE-09;
+F990-PC-PART-01-LINE-12-CY",2012-2022,PZ-501C3,integer;numeric
+F9_03_PROG_CODE,Activity2 - Activity code,PC,F990-PC-PART-03-LINE-04-ABCD,1989-2019,PZ-501C3,integer;character
+F9_03_PROG_EXP_TOT,Total Program Service Revenue (Accomplishments Summary),PZ,"F990-EZ-PART-03-LINE-32;
+F990-PC-PART-03-LINE-04E",2005-2009,PZ-501C3,integer;integer64
+F9_04_AFS_CONSOL_X,Consolidated audited financial statement?,PC,F990-PC-PART-04-LINE-12B,2012-2022,PZ-501C3,character
+F9_04_AFS_IND_X,Independent audited financial statements?,PC,F990-PC-PART-04-LINE-12A,2012-2022,PZ-501C3,character
+F9_04_BIZ_TRANSAC_DTK_ENTITY_X,"Was the organization a party to a business transaction with one of the following parties: An entity of which a current or former officer, director, trustee, or key employee (or a family member thereof) was an officer, director, trustee, or direct, or indirect owner?",PC,F990-PC-PART-04-LINE-28C,2012-2022,PZ-501C3,character
+F9_04_BIZ_TRANSAC_DTK_FAM_X,"Was the organization a party to a business transaction with one of the following parties: A family member of a current or former officer, director, trustee, or key employee?",PC,F990-PC-PART-04-LINE-28B,2012-2022,PZ-501C3,character
+F9_04_BIZ_TRANSAC_DTK_X,"Was the organization a party to a business transaction with one of the following parties: A current former officer, director, trustee, or key employee?",PC,F990-PC-PART-04-LINE-28A,2012-2022,PZ-501C3,character
+F9_04_COLLEC_ART_X,Collections of art?,PC,F990-PC-PART-04-LINE-08,2012-2022,PZ-501C3,character
+F9_04_COMP_DTK_YES_X,"PartVII; Lines 3; 4; or 5 = ""Yes""?",PC,F990-PC-PART-04-LINE-23,2012-2022,PZ-501C3,character
+F9_04_CONSERV_EMT_X,Conservation easements?,PC,F990-PC-PART-04-LINE-07,2012-2022,PZ-501C3,character
+F9_04_CONTR_ART_HIST_X,"Did the organization receive contributions of art, historical treasures, or other similar assets, or qualified conservation contributions?",PC,F990-PC-PART-04-LINE-30,2012-2022,PZ-501C3,character
+F9_04_CONTR_NONCSH_MT_25K_X,"Did the organization receive more than $25,000 in non-cash contributions?",PC,F990-PC-PART-04-LINE-29,2012-2022,PZ-501C3,character
+F9_04_CREDIT_COUNS_X,Credit counseling?,PC,F990-PC-PART-04-LINE-09,2012-2022,PZ-501C3,character
+F9_04_DAF_X,,PZ,"F990-EZ-PART-05-LINE-44A;
+F990-PC-PART-04-LINE-06",2012-2022,PZ-501C3,character
+F9_04_DESC_IN_501C3_X,Described in 501(c)(3)?,PC,F990-PC-PART-04-LINE-01,2012-2022,PZ-501C3,character
+F9_04_DOA_X,Partial liquidation? (F990-PC-PART-04-LINE-31-32-COMBINED: F990-EZ-PART-05-LINE-36),PZ,F990-PC-PART-04-LINE-32,2012-2022,PZ-501C3,character
+F9_04_ENDOW_X,Term or permanent endowments?,PC,F990-PC-PART-04-LINE-10,2012-2022,PZ-501C3,character
+F9_04_ENTITY_CTRL_X,Did the organization have a controlled entity within the meaning of section 512(b)(13)?,PZ,"F990-EZ-PART-05-LINE-45A;
+F990-PC-PART-04-LINE-35A",2012-2022,PZ-501C3,character
+F9_04_ENTITY_DISREG_X,Did the organization own 100% of an entity disregarded as sperate from the organization under Regulations sections 301.7701.2 and 301.7701-3?,PC,F990-PC-PART-04-LINE-33,2012-2022,PZ-501C3,character
+F9_04_ENTITY_RLTD_X,Related entity?,PC,F990-PC-PART-04-LINE-34,2012-2022,PZ-501C3,character
+F9_04_FRGN_ACT_X,Foreign activities; etc?,"PC;
+PZ",F990-PC-PART-04-LINE-14B,2012-2022,PZ-501C3,character
+F9_04_FRGN_OFFICE_X,At any time during the calender year; did the organization maintain an office outside of the U.S.?,PZ,"F990-EZ-PART-05-LINE-42C;
+F990-PC-PART-04-LINE-14A",2012-2022,PZ-501C3,character
+F9_04_FUNDR_ACT_X,Fundraising activities?,PC,F990-PC-PART-04-LINE-18,2012-2022,PZ-501C3,character
+F9_04_GAMING_X,Special events Indicates revenue from gaming,PZ,"F990-EZ-PART-01-LINE-06;
+F990-PC-PART-04-LINE-19",2012-2022,PZ-501C3,character
+F9_04_GRANT_MT_5K_FRGN_INDIV_X,More than $5000 to individuals Part IX; line 3?,PC,F990-PC-PART-04-LINE-16,2012-2022,PZ-501C3,character
+F9_04_GRANT_MT_5K_FRGN_ORG_X,More than $5000 to organizations Part IX; line 3?,PC,F990-PC-PART-04-LINE-15,2012-2022,PZ-501C3,character
+F9_04_GRANT_MT_5K_US_INDIV_X,Grants to individuals?,PC,F990-PC-PART-04-LINE-22,2012-2022,PZ-501C3,character
+F9_04_GRANT_MT_5K_US_ORG_X,Grants to organizations?,PC,F990-PC-PART-04-LINE-21,2012-2022,PZ-501C3,character
+F9_04_GRANT_RLTD_PERS_X,Grant to related person?,PC,F990-PC-PART-04-LINE-27,2012-2022,PZ-501C3,character
+F9_04_HOSPITAL_AFS_X,Audited financial statements?,PC,F990-PC-PART-04-LINE-20B,2012-2022,PZ-501C3,character;integer
+F9_04_HOSPITAL_X,IRS990 - Hospital?,"PZ;
+PC","F990-EZ-PART-05-LINE-44B;
+F990-PC-PART-04-LINE-20A",2012-2022,PZ-501C3,character
+F9_04_LOAN_DTK_AMT,Did the organization file Form 1120-POL for this year?,EZ,F990-EZ-PART-05-LINE-38B,2012-2022,PZ-501C3,integer;numeric
+F9_04_LOAN_DTK_X,,PZ,"F990-EZ-PART-05-LINE-38A;
+F990-PC-PART-04-LINE-26",2012-2022,PZ-501C3,character
+F9_04_LOB_ACT_X,Lobbying activities?,PZ,"F990-EZ-PART-06-LINE-47;
+F990-PC-PART-04-LINE-04",2012-2022,PZ-501C3,character
+F9_04_LTD_DOA_X,Discontinued ops or disposed 25pct assets (F990-PC-PART-04-LINE-31-32-COMBINED: F990-EZ-PART-05-LINE-36),PZ,F990-EZ-PART-05-LINE-36,2012-2022,PZ-501C3,character
+F9_04_LTD_X,Form990 Part IV - Terminated? (F990-PC-PART-04-LINE-31-32-COMBINED: F990-EZ-PART-05-LINE-36),PZ,F990-PC-PART-04-LINE-31,2012-2022,PZ-501C3,character
+F9_04_POLI_ACT_X,Political activities?,PZ,"F990-EZ-PART-05-LINE-46;
+F990-PC-PART-04-LINE-03",2012-2022,PZ-501C3,character
+F9_04_PROF_FUNDR_X,Professional fundraising?,PC,F990-PC-PART-04-LINE-17,2012-2022,PZ-501C3,character
+F9_04_PROXY_TAX_X,Subject to proxy tax?,PZ,"F990-EZ-PART-05-LINE-35C;
+F990-PC-PART-04-LINE-05",2012-2022,PZ-501C3,character
+F9_04_PTR_ACT_X,Did the organization conduct more than 5% of its activities through an entity that is not a related organization and thatis treated as a partnership for federal income tax purposes?,PC,F990-PC-PART-04-LINE-37,2012-2022,PZ-501C3,character
+F9_04_REP_FOOTNOTE_FIN48_X,Balance sheet footnote for liability under FIN 48?,PC,F990-PC-PART-04-LINE-11F,2012-2022,PZ-501C3,character
+F9_04_REP_INVEST_OTH_SEC_X,Balance sheet investments - other securities amounts reported?,PC,F990-PC-PART-04-LINE-11B,2012-2022,PZ-501C3,character
+F9_04_REP_LAND_BLDG_EQUIP_X,Balance sheet land; buildings; equipment amounts reported?,PC,F990-PC-PART-04-LINE-11A,2012-2022,PZ-501C3,character
+F9_04_REP_OTH_ASSET_X,Balance sheet other assets amounts reported?,PC,F990-PC-PART-04-LINE-11D,2012-2022,PZ-501C3,character
+F9_04_REP_OTH_LIAB_X,Balance sheet other liabilities amounts reported?,PC,F990-PC-PART-04-LINE-11E,2012-2022,PZ-501C3,character
+F9_04_REP_PROG_RLTD_X,Balance sheet investments - program related amounts reported?,PC,F990-PC-PART-04-LINE-11C,2012-2022,PZ-501C3,character
+F9_04_SCHED_B_REQ_X,Indicates Schedule B is not required,PZ,"F990-EZ-PART-00-SECTION-H;
+F990-PC-PART-04-LINE-02",2012-2022,PZ-501C3,character
+F9_04_SCHED_O_REQ_X,"Did the organization complete Schedule O and provide explanatios in Schedule O for Part VI, lines 11b and 19?",PC,F990-PC-PART-04-LINE-38,2012-2022,PZ-501C3,character
+F9_04_SCHOOL_X,IRS990 - School?,PZ,"F990-EZ-PART-06-LINE-48;
+F990-PC-PART-04-LINE-13",2012-2022,PZ-501C3,character
+F9_04_TAX_EXEMPT_BOND_ESCROW_X,Escrow account?,PC,F990-PC-PART-04-LINE-24C,2012-2022,PZ-501C3,character
+F9_04_TAX_EXEMPT_BOND_INVEST_X,Investment income?,PC,F990-PC-PART-04-LINE-24B,2012-2022,PZ-501C3,character
+F9_04_TAX_EXEMPT_BOND_ISSUER_X,On behalf of issuer?,PC,"F990-PC-PART-04-LINE-24B;
+F990-PC-PART-04-LINE-24D",2012-2022,PZ-501C3,character
+F9_04_TAX_EXEMPT_BOND_X,Tax exempt bonds?,PC,F990-PC-PART-04-LINE-24A,2012-2022,PZ-501C3,character
+F9_04_TRANSAC_ENGAGED_X,501(c)(3) and 501(c)(4) orgs: Did the organization engage in any section 4958 excess benefit transaction,PZ,"F990-EZ-PART-05-LINE-40B;
+F990-PC-PART-04-LINE-25A",2012-2022,PZ-501C3,character
+F9_04_TRANSAC_PY_X,Prior excess benefit transaction?,"PZ;
+PC",F990-PC-PART-04-LINE-25B,2012-2022,PZ-501C3,character
+F9_04_TRANSFER_EXEMPT_ORG_X,Did the organization make any transfers to an exempt non-charitable related organization?,PZ,"F990-EZ-PART-06-LINE-49A;
+F990-PC-PART-04-LINE-36",2012-2022,PZ-501C3,character
+F9_05_170C_FORM_1098C_FILED_X,Form 1098-C filed?,PC,F990-PC-PART-05-LINE-07H,2012-2022,PZ-501C3,character
+F9_05_170C_FORM_8282_REQ_X,Form 8282 property disposed of?,PC,F990-PC-PART-05-LINE-07C,2012-2022,PZ-501C3,character
+F9_05_170C_FORM_8899_FILED_X,Form 8899 filed?,PC,F990-PC-PART-05-LINE-07G,2012-2022,PZ-501C3,character
+F9_05_170C_FUNDS_FOR_PREMIUM_X,Funds to pay premiums?,PC,F990-PC-PART-05-LINE-07E,2012-2022,PZ-501C3,character
+F9_05_170C_NUM_FORM_8282_FILED_X,Number of 8282s filed,PC,F990-PC-PART-05-LINE-07D,2012-2022,PZ-501C3,integer
+F9_05_170C_PREMIUM_PAID_X,Premiums paid?,PC,F990-PC-PART-05-LINE-07F,2012-2022,PZ-501C3,character
+F9_05_170C_QUID_PRO_QUO_CONTR_X,Quid pro quo contributions?,PC,F990-PC-PART-05-LINE-07A,2012-2022,PZ-501C3,character
+F9_05_170C_QUID_PRO_QUO_NOTIFY_X,Quid pro quo disclosure?,PC,F990-PC-PART-05-LINE-07B,2012-2022,PZ-501C3,character
+F9_05_4947_FORM_990_FILED_1041_X,Filed 990 in lieu of 1041?,PZ,"F990-EZ-PART-05-LINE-43;
+F990-PC-PART-05-LINE-12A",2012-2022,PZ-501C3,character
+F9_05_4947_TAX_EXEMPT_INT_AMT,Indicates section 4947(a)(1) nonexempt charitable trusts filing Form 990 in lieu of Form 1041,PZ,"F990-EZ-PART-05-LINE-43;
+F990-PC-PART-05-LINE-12B",2012-2022,PZ-501C3,integer
+F9_05_501C12_GRO_INCOME_MEMB,Gross income from members,PC,F990-PC-PART-05-LINE-11A,1989-2022,PZ-501C3,integer;integer64
+F9_05_501C12_GRO_INCOME_OTH,"Gross income, other sources",PC,F990-PC-PART-05-LINE-11B,1989-2022,PZ-501C3,integer;integer64
+F9_05_501C29_LIC_HEALTH_PLAN_X,Is the organization licensed to issue qualified health plans in more than one state?,PC,F990-PC-PART-05-LINE-13A,2012-2022,PZ-501C3,character
+F9_05_501C29_RESERVE_MAINT_AMT,Reserves maintained amount,PC,F990-PC-PART-05-LINE-13C,2012-2022,PZ-501C3,integer
+F9_05_501C29_STATE_RESERVE_AMT,State required reserves amount,PC,F990-PC-PART-05-LINE-13B,2012-2022,PZ-501C3,integer
+F9_05_501C7_GRO_RCPT_PUB_USE,"501(c)(7) orgs: Gross receipts, included on line 9, for public use of club facilities",PZ,"F990-EZ-PART-05-LINE-39B;
+F990-PC-PART-05-LINE-10B",1989-2022,PZ-501C3,integer
+F9_05_501C7_INITIATION_FEES,501(c)(7) orgs: Initiation fees and capital contributions included on line 9,PZ,"F990-EZ-PART-05-LINE-39A;
+F990-PC-PART-05-LINE-10A",1989-2022,PZ-501C3,integer
+F9_05_COMPLY_BACKUP_WITHHOLD_X,Compliance with backup witholding?,PC,F990-PC-PART-05-LINE-01C,2012-2022,PZ-501C3,character
+F9_05_DAF_DIST_DONOR_X,DAFs - Distribution to donor?,PC,F990-PC-PART-05-LINE-09B,2012-2022,PZ-501C3,character
+F9_05_DAF_EXCESS_BIZ_HOLDING_X,Donor advised fund have excess business holdings?,PC,F990-PC-PART-05-LINE-08,2012-2022,PZ-501C3,character
+F9_05_DAF_TAXABLE_DIST_X,DAFs - Taxable distributions?,PC,F990-PC-PART-05-LINE-09A,2012-2022,PZ-501C3,character
+F9_05_EMPL_TAX_RETURN_FILED_X,Employment tax returns filed?,PC,F990-PC-PART-05-LINE-02B,2012-2022,PZ-501C3,character
+F9_05_FRGN_FIN_ACC_X,Foreign financial account?,PZ,"F990-EZ-PART-05-LINE-42B;
+F990-PC-PART-05-LINE-04A",2012-2022,PZ-501C3,character
+F9_05_NONDEDUCT_CONTR_NOTIFY_X,Non-deduct. disclosure?,PC,F990-PC-PART-05-LINE-06B,2012-2022,PZ-501C3,character
+F9_05_NONDEDUCT_CONTR_X,Non-deductible contributions?,PC,F990-PC-PART-05-LINE-06A,2012-2022,PZ-501C3,character
+F9_05_NUM_EMPL,Number of employees,PC,F990-PC-PART-05-LINE-02A,2006-2022,PZ-501C3,integer
+F9_05_NUM_FORM_1096_BOX_3,Number forms transmitted with 1096,PC,F990-PC-PART-05-LINE-01A,2012-2022,PZ-501C3,integer
+F9_05_NUM_FORM_W2G,Number W-2Gs included in 1a,PC,F990-PC-PART-05-LINE-01B,2012-2022,PZ-501C3,integer
+F9_05_PTST_FORM_8886T_FILED_X,Form 8886-T filed?,PC,F990-PC-PART-05-LINE-05C,2012-2022,PZ-501C3,character
+F9_05_PTST_PARTY_NOTIFY_X,Taxable party notification?,PC,F990-PC-PART-05-LINE-05B,2012-2022,PZ-501C3,character
+F9_05_PTST_X,Prohibited tax shelter transaction?,PZ,"F990-EZ-PART-05-LINE-40E;
+F990-PC-PART-05-LINE-05A",2012-2022,PZ-501C3,character
+F9_05_TANNING_FORM_720_FILED_X,Form 720 filed and taxes paid on indoor tanning services?,PZ,"F990-EZ-PART-05-LINE-44D;
+F990-PC-PART-05-LINE-14B",2012-2022,PZ-501C3,character
+F9_05_TANNING_SVC_PROV_X,Payments received for indoor tanning services?,PZ,"F990-EZ-PART-05-LINE-44C;
+F990-PC-PART-05-LINE-14A",2012-2022,PZ-501C3,character
+F9_05_UBIZ_FORM_990T_FILED_X,Form 990-T filed?,"PZ;
+PC","F990-EZ-PART-05-LINE-35B;
+F990-PC-PART-05-LINE-03B",2012-2022,PZ-501C3,character
+F9_05_UBIZ_IMCOME_OVER_LIMIT_X,Unrelated business income?,"PZ;
+PC","F990-EZ-PART-05-LINE-35A;
+F990-PC-PART-05-LINE-03A",1998-2022,PZ-501C3,character
+F9_06_ACT_NOT_PREVIOUSLY_REP_X,Did the organization engage in any activity not previously reported to the IRS?,EZ,F990-EZ-PART-05-LINE-33,2012-2022,PZ-501C3,character
+F9_06_GVRN_CHANGE_DOC_X,Were any changes made in the organizing or governing documents but not reported to the IRS?,PZ,"F990-EZ-PART-05-LINE-34;
+F990-PC-PART-06-SECTION-A-LINE-04",2012-2022,PZ-501C3,character
+F9_06_POLI_EXP,Direct or indirect political expenditures.,EZ,F990-EZ-PART-05-LINE-37A,1989-2010; 2012-2022,PZ-501C3,integer;integer64
+F9_06_POLI_FORM1120_POL_FILED_X,Did the organization file Form 1120-POL for this year?,EZ,F990-EZ-PART-05-LINE-37B,2012-2022,PZ-501C3,character
+F9_07_COMP_DTK_COMP_ORG_TOT,"Total, column D (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED)",PC,F990-PC-PART-07-SECTION-A-LINE-01D-COL-D,2012-2022,PZ-501C3,integer;numeric
+F9_07_COMP_DTK_COMP_OTH_TOT,"Total, column F (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED)",PC,F990-PC-PART-07-SECTION-A-LINE-01D-COL-F,2012-2022,PZ-501C3,integer;numeric
+F9_07_COMP_DTK_COMP_RLTD_TOT,"Total, column E (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED)",PC,F990-PC-PART-07-SECTION-A-LINE-01D-COL-E,2012-2022,PZ-501C3,integer;numeric
+F9_07_COMP_DTK_NUM_GT_100K,Number individuals greater than $100K (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED),PC,F990-PC-PART-07-SECTION-A-LINE-02,2012-2022,PZ-501C3,integer
+F9_07_COMP_KONTR_NUM_GT_100K,Total number of independent contractors who received 100K+ from org,PZ,"F990-EZ-PART-06-LINE-51D;
+F990-PC-PART-07-SECTION-B-LINE-02",2012-2022,PZ-501C3,integer
+F9_08_REV_CONTR_GOVT_GRANT,Government grants (contributions),PC,F990-PC-PART-08-LINE-01E,1995-2013,PZ-501C3,integer;integer64
+F9_08_REV_CONTR_MEMBSHIP_DUE,Membership Dues,PZ,"F990-EZ-PART-01-LINE-03;
+F990-PC-PART-08-LINE-01B",1989-2010; 2012-2022,PZ-501C3,integer;numeric
+F9_08_REV_CONTR_TOT,Total contributions,PC,F990-PC-PART-08-LINE-01H-COL-A,1989-2022,PZ-501C3,integer;integer64;numeric
+F9_08_REV_MISC_BIZCODE,Other Revenue Misc - Business code,PC,F990-PC-PART-08-LINE-11-ABC-COL-BIZCODE,2012-2022,PZ-501C3,integer
+F9_08_REV_MISC_OTH_TOT,Miscellaneous Revenue - Total revenue,PC,F990-PC-PART-08-LINE-11D-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_08_REV_MISC_TOT,Other Revenue Misc - Total revenue,PC,F990-PC-PART-08-LINE-11-ABC-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_08_REV_MISC_TOT_TOT,Other revenue - current year,PZ,"F990-EZ-PART-01-LINE-08;
+F990-PC-PART-08-LINE-11E-COL-A",1989-2022,PZ-501C3,integer;integer64;numeric
+F9_08_REV_OTH_EVNT_DIRECT_EXP,Special events direct expenses (F990-PC-PART-08-LINE-08B-09B-COMBINED: F990-EZ-PART-01-LINE-06C),PZ,F990-EZ-PART-01-LINE-06C,1989-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_EVNT_NET_TOT,Special events net income (or loss) (F990-PC-PART-08-LINE-08C-09C-COL-A-COMBINED: F990-EZ-PART-01-LINE-06D),PZ,F990-EZ-PART-01-LINE-06D,1989-2019,PZ-501C3,integer;numeric
+F9_08_REV_OTH_FUNDR_DIRECT_EXP,Direct expenses,PZ,F990-PC-PART-08-LINE-08B,2009-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_FUNDR_EVNT_1,IRS990 - 8a-1,PZ,"F990-EZ-PART-01-LINE-06B-1;
+F990-PC-PART-08-LINE-08A-1",2009-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_FUNDR_NET_TOT,Net Income From Fundraising Events - Total revenue,PZ,F990-PC-PART-08-LINE-08C-COL-A,2009-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_GAMING,Gross income from gaming activities,PZ,"F990-EZ-PART-01-LINE-06A;
+F990-PC-PART-08-LINE-09A",1995-2022; 1989,PZ-501C3,integer;numeric
+F9_08_REV_OTH_GAMING_DIRECT_EXP,Direct expenses,PZ,F990-PC-PART-08-LINE-09B,2009-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_GAMING_NET_TOT,Net Income From Gaming - Total revenue,PZ,F990-PC-PART-08-LINE-09C-COL-A,2009-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_INVEST_BOND_TOT,Income From Invest Bond Proceeds - Total revenue,PC,F990-PC-PART-08-LINE-04-COL-A,2009-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_INVEST_INCOME_TOT,Invest income,PZ,"F990-EZ-PART-01-LINE-04;
+F990-PC-PART-08-LINE-03-COL-A",1989-2022,PZ-501C3,integer64;integer;numeric
+F9_08_REV_OTH_INV_COST_GOODS,Less: cost of goods sold,PZ,"F990-EZ-PART-01-LINE-07B;
+F990-PC-PART-08-LINE-10B",1989-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_INV_GRO_SALE,gross sales of inventory,PZ,"F990-EZ-PART-01-LINE-07A;
+F990-PC-PART-08-LINE-10A",1995-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_INV_NET_TOT,Gross profit (or loss) from sales of inventory,PZ,"F990-EZ-PART-01-LINE-07C;
+F990-PC-PART-08-LINE-10C-COL-A",1989-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_RENT_GRO_PERS,Gross Rents - Amount,PC,F990-PC-PART-08-LINE-06A-COL-ii,2009-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_RENT_GRO_REAL,Gross Rents - Real amount,PC,F990-PC-PART-08-LINE-06A-COL-i,2009-2022,PZ-501C3,integer;integer64;numeric
+F9_08_REV_OTH_RENT_INCOME_PERS,Rental Income Or Loss - Amount,PC,F990-PC-PART-08-LINE-06C-COL-ii,2009-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_RENT_INCOME_REAL,Rental Income Or Loss - Real amount,PC,F990-PC-PART-08-LINE-06C-COL-i,2009-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_RENT_LESS_EXP_PERS,Less Rental Expenses - Amount,PC,F990-PC-PART-08-LINE-06B-COL-ii,2009-2022,PZ-501C3,integer
+F9_08_REV_OTH_RENT_LESS_EXP_REAL,Less Rental Expenses - Real amount,PC,F990-PC-PART-08-LINE-06B-COL-i,2009-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_RENT_NET_TOT,Net Rental Income Or Loss - Total revenue,PC,F990-PC-PART-08-LINE-06D-COL-A,1995-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_ROY_TOT,Royalties Revenue - Total revenue,PC,F990-PC-PART-08-LINE-05-COL-A,2009-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_SALE_ASSET,Gross amount from sale of assets other than inventory (F990-PC-PART-08-LINE-07A-COL-i-ii-COMBINED: F990-EZ-PART-01-LINE-05A),PZ,F990-EZ-PART-01-LINE-05A,2012-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_SALE_ASSET_OTH,Gross Amount Sales Assets - Other amount,PZ,F990-PC-PART-08-LINE-07A-COL-ii,1995-2022,PZ-501C3,integer;integer64;numeric
+F9_08_REV_OTH_SALE_ASSET_SEC,Securities amount,"PC;
+PZ",F990-PC-PART-08-LINE-07A-COL-i,1989-2022,PZ-501C3,integer64;numeric
+F9_08_REV_OTH_SALE_GAIN_NET_TOT,Gain or (loss) from sale of assets other than inventory,PZ,"F990-EZ-PART-01-LINE-05C;
+F990-PC-PART-08-LINE-07D-COL-A",2009-2022,PZ-501C3,integer;integer64;numeric
+F9_08_REV_OTH_SALE_GAIN_OTH,Gain Or Loss - Other amount,PC,F990-PC-PART-08-LINE-07C-COL-ii,1995-2022,PZ-501C3,integer;integer64;numeric
+F9_08_REV_OTH_SALE_GAIN_SEC,Securities amount,PC,F990-PC-PART-08-LINE-07C-COL-i,1995-2022,PZ-501C3,integer;integer64;numeric
+F9_08_REV_OTH_SALE_LESS_COST,Cost or other basis and sales expenses (F990-PC-PART-08-LINE-07B-COL-i-ii-COMBINED: F990-EZ-PART-01-LINE-05B),PZ,F990-EZ-PART-01-LINE-05B,2012-2022,PZ-501C3,integer;numeric
+F9_08_REV_OTH_SALE_LESS_COST_OTH,Less Cost Oth Basis Sales Expenses - Other amount,PZ,F990-PC-PART-08-LINE-07B-COL-ii,1995-2022,PZ-501C3,integer;integer64;numeric
+F9_08_REV_OTH_SALE_LESS_COST_SEC,Securities amount,PZ,F990-PC-PART-08-LINE-07B-COL-i,1989-2022,PZ-501C3,integer64;numeric
+F9_08_REV_PROG_BIZCODE,Program Service Revenue - Business code,PC,F990-PC-PART-08-LINE-02-ABCDE-COL-BIZCODE,2012-2022,PZ-501C3,integer
+F9_08_REV_PROG_OTH_TOT,Total Oth Program Service Revenue - Total revenue,PC,F990-PC-PART-08-LINE-02F-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_08_REV_PROG_TOT,Program Service Revenue - Total revenue,PC,F990-PC-PART-08-LINE-02-ABCDE-COL-A,2012-2022,PZ-501C3,integer;integer64
+F9_08_REV_PROG_TOT_TOT,Program service revenue total,PC,F990-PC-PART-08-LINE-02G-COL-A,1989-2022,PZ-501C3,integer64;integer;numeric
+F9_08_REV_TOT_TOT,Total Revenue - Total revenue,PC,F990-PC-PART-08-LINE-12-COL-A,1989-2022,PZ-501C3,integer64;numeric
+F9_09_EXP_AD_PROMO_TOT,Advertising and promotion - total expense,PC,F990-PC-PART-09-LINE-12-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_BEN_PAID_MEMB_TOT,Benefits Paid to or for Members - Total Expense,PZ,F990-PC-PART-09-LINE-04-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_COMP_DSQ_PERS_TOT,"Compensation not included above, or to disqualified persons - Total Expense",PC,F990-PC-PART-09-LINE-06-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_COMP_DTK_TOT,"Compensation for Current Officers, Directors, Trustees and Key Employees - Total Expense",PC,F990-PC-PART-09-LINE-05-COL-A,1989-2022,PZ-501C3,integer64;integer;numeric
+F9_09_EXP_CONF_MEETING_TOT,"Conferences, conventions, and meetings- total expense",PC,F990-PC-PART-09-LINE-19-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_DEPREC_TOT,"Depreciation, depletion, and amortization",PC,F990-PC-PART-09-LINE-22-COL-A,2008-2022,PZ-501C3,integer;numeric
+F9_09_EXP_FEE_SVC_ACC_TOT,Fees for Services - Accounting - Total Expense,PC,F990-PC-PART-09-LINE-11C-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_FEE_SVC_FUNDR_TOT,Fees for Professional Fundraising Services - Total Expense,PC,F990-PC-PART-09-LINE-11E-COL-A,1989-2022,PZ-501C3,numeric;integer
+F9_09_EXP_FEE_SVC_INVEST_TOT,Investment Management Fees - Total Expense,PC,F990-PC-PART-09-LINE-11F-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_FEE_SVC_LEGAL_TOT,Fees for Services - Legal - Total Expense,PC,F990-PC-PART-09-LINE-11B-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_FEE_SVC_LOB_TOT,Fees for Services - Lobbying - Total Expense,PC,F990-PC-PART-09-LINE-11D-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_FEE_SVC_MGMT_MGMT,Fees for Services - Management - Management and General,PC,F990-PC-PART-09-LINE-11A-COL-C,2005-2009,PZ-501C3,integer
+F9_09_EXP_FEE_SVC_MGMT_TOT,Fees for Services - Management - Total Expense,PC,F990-PC-PART-09-LINE-11A-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_FEE_SVC_OTH_TOT,Fees for Services - Other - Total Expense,PC,F990-PC-PART-09-LINE-11G-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_GRANT_FRGN_TOT,total Grants to Foreign Orgs and Governments - Total Expense,PC,F990-PC-PART-09-LINE-03-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_GRANT_US_INDIV_TOT,Grants To Domestic Individuals - Total,PC,F990-PC-PART-09-LINE-02-COL-A,2011-2022,PZ-501C3,integer;numeric
+F9_09_EXP_GRANT_US_ORG_TOT,Grants To Domestic Orgs - Total,PZ,F990-PC-PART-09-LINE-01-COL-A,2008-2022,PZ-501C3,integer;integer64;numeric
+F9_09_EXP_INFO_TECH_TOT,Information Technology - Total,PC,F990-PC-PART-09-LINE-14-COL-A,2012-2022,PZ-501C3,integer;integer64
+F9_09_EXP_INSURANCE_TOT,Insurance - Total,PC,F990-PC-PART-09-LINE-23-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_INT_TOT,Interest - Total,PC,F990-PC-PART-09-LINE-20-COL-A,2008-2022,PZ-501C3,integer;numeric
+F9_09_EXP_OCCUPANCY_TOT,Occupancy; rent; utilities; and maintenance,PZ,"F990-EZ-PART-01-LINE-14;
+F990-PC-PART-09-LINE-16-COL-A",2008-2022,PZ-501C3,integer;numeric
+F9_09_EXP_OFFICE_TOT,Office Expenses - Total,PZ,F990-PC-PART-09-LINE-13-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_OTH_EMPL_BEN_TOT,Other Employee Benefits - Total,PC,F990-PC-PART-09-LINE-09-COL-A,2008-2022,PZ-501C3,integer;numeric
+F9_09_EXP_OTH_OTH_TOT,Other expenses - total expense,PC,F990-PC-PART-09-LINE-24E-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_OTH_SAL_WAGE_TOT,Other Salaries And Wages - Total,PC,F990-PC-PART-09-LINE-07-COL-A,1995-2022,PZ-501C3,integer;integer64;numeric
+F9_09_EXP_OTH_TOT,Other Expenses - Total,PC,F990-PC-PART-09-LINE-24-ABCD-COL-A,2012-2022,PZ-501C3,numeric;integer
+F9_09_EXP_PAYROLL_TAX_TOT,Payroll Taxes - Total,PC,F990-PC-PART-09-LINE-10-COL-A,1995-2022,PZ-501C3,integer64;integer;numeric
+F9_09_EXP_PAY_AFFIL_TOT,Payments To Affiliates - Total,PC,F990-PC-PART-09-LINE-21-COL-A,1995-2022,PZ-501C3,integer;integer64;numeric
+F9_09_EXP_PENSION_CONTR_TOT,Pension Plan Contributions - Total,PC,F990-PC-PART-09-LINE-08-COL-A,2008-2022,PZ-501C3,integer;numeric
+F9_09_EXP_ROY_TOT,Royalties - Total,PC,F990-PC-PART-09-LINE-15-COL-A,2012-2022,PZ-501C3,integer;numeric
+F9_09_EXP_TOT_TOT,Total Functional Expenses - Total,PC,F990-PC-PART-09-LINE-25-COL-A,1989-2022,PZ-501C3,integer64;numeric
+F9_09_EXP_TRAVEL_ENTMT_TOT,Travel Entrtnmnt Public Officials - Total,PC,F990-PC-PART-09-LINE-18-COL-A,2012-2022,PZ-501C3,integer
+F9_09_EXP_TRAVEL_TOT,Travel - Total,PC,F990-PC-PART-09-LINE-17-COL-A,2012-2022,PZ-501C3,integer
+F9_10_ASSET_ACC_NET_EOY,"Net accounts receivable, end of year",PC,F990-PC-PART-10-LINE-04-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_ASSET_CASH_EOY,"Cash, non-interest-bearing, end of year",PZ,F990-PC-PART-10-LINE-01-EOY,1995-2022,PZ-501C3,integer;numeric
+F9_10_ASSET_EXP_PREPAID_EOY,Ending of year,PC,F990-PC-PART-10-LINE-09-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_ASSET_INTANGIBLE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-14-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_ASSET_INVEST_PROG_RLTD_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-13-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_ASSET_INVEST_SEC_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-11-EOY,1995-2022,PZ-501C3,integer64;integer;numeric
+F9_10_ASSET_INVEST_SEC_OTH_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-12-EOY,1995-2022,PZ-501C3,integer;integer64;numeric
+F9_10_ASSET_INV_SALE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-08-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_ASSET_LAND_BLDG,Land; buildings; and equipment basis,"PC;
+PZ",F990-PC-PART-10-LINE-10A,1995-2007,PZ-501C3,integer;integer64
+F9_10_ASSET_LAND_BLDG_DEPREC,Less: accumulated depreciation,PC,F990-PC-PART-10-LINE-10B,2012-2022,PZ-501C3,integer;numeric
+F9_10_ASSET_LAND_BLDG_NET_BOY,Net value including lands; buildings; and equipment; beginning of year,PZ,"F990-EZ-PART-02-LINE-23-BOY;
+F990-PC-PART-10-LINE-10C-BOY",1995-2010,PZ-501C3,integer;integer64
+F9_10_ASSET_LAND_BLDG_NET_EOY,Net value including lands; buildings; and equipment; end of year,PZ,"F990-EZ-PART-02-LINE-23-EOY;
+F990-PC-PART-10-LINE-10C-EOY",1995-2013,PZ-501C3,integer;integer64
+F9_10_ASSET_LOAN_DSQ_PERS_EOY,Ending of year,PC,F990-PC-PART-10-LINE-06-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_ASSET_LOAN_OFF_EOY,Ending of year,PC,F990-PC-PART-10-LINE-05-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_ASSET_NOTE_LOAN_NET_EOY,Ending of year,PC,F990-PC-PART-10-LINE-07-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_ASSET_OTH_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-15-EOY,1995-2022,PZ-501C3,integer;integer64;numeric
+F9_10_ASSET_PLEDGE_NET_EOY,Ending of year,PC,F990-PC-PART-10-LINE-03-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_ASSET_SAVING_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-02-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_ASSET_TOT_BOY,"Total assets, beginning of year",PZ,"F990-EZ-PART-02-LINE-25-BOY;
+F990-PC-PART-10-LINE-16-BOY",1989-2019,PZ-501C3,integer64
+F9_10_ASSET_TOT_EOY,"Total assets, end of year",PZ,"F990-EZ-PART-02-LINE-25-EOY;
+F990-PC-PART-10-LINE-16-EOY",1989-2022,PZ-501C3,integer64;numeric
+F9_10_LIAB_ACC_PAYABLE_EOY,"Accounts payable and accrued expenses, end of year",PC,F990-PC-PART-10-LINE-17-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_LIAB_ESCROW_ACC_EOY,"Escrow or custodial account liability, end of year",PC,F990-PC-PART-10-LINE-21-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_LIAB_GRANT_PAYABLE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-18-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_LIAB_LOAN_OFF_EOY,Ending of year,PC,F990-PC-PART-10-LINE-22-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_LIAB_MTG_NOTE_BOY,Beginnning of year,PC,F990-PC-PART-10-LINE-23-BOY,1995-2019,PZ-501C3,integer;integer64
+F9_10_LIAB_MTG_NOTE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-23-EOY,1995-2022,PZ-501C3,integer;integer64;numeric
+F9_10_LIAB_NOTE_UNSEC_EOY,Ending of year,PC,F990-PC-PART-10-LINE-24-EOY,2009-2022,PZ-501C3,integer;integer64;numeric
+F9_10_LIAB_OTH_EOY,Ending of year,PC,F990-PC-PART-10-LINE-25-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_LIAB_REV_DEFERRED_EOY,"Deferred revenue, end of year",PC,F990-PC-PART-10-LINE-19-EOY,2012-2022,PZ-501C3,numeric;integer
+F9_10_LIAB_TAX_EXEMPT_BOND_BOY,Beginnning of year,PC,F990-PC-PART-10-LINE-20-BOY,1995-2019,PZ-501C3,integer;integer64
+F9_10_LIAB_TAX_EXEMPT_BOND_EOY,Ending of year,PC,F990-PC-PART-10-LINE-20-EOY,1995-2022,PZ-501C3,integer;integer64;numeric
+F9_10_LIAB_TOT_BOY,"Total liabilities, beginning of year",PZ,"F990-EZ-PART-02-LINE-26-BOY;
+F990-PC-PART-10-LINE-26-BOY",1989-2019,PZ-501C3,integer64
+F9_10_LIAB_TOT_EOY,"Total liabilities, end of year",PZ,"F990-EZ-PART-02-LINE-26-EOY;
+F990-PC-PART-10-LINE-26-EOY",1989-2022,PZ-501C3,integer64;numeric
+F9_10_NAFB_CAP_STCK_EOY,"Capital stock or trust principal, or current funds, end of year",PC,F990-PC-PART-10-LINE-30-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_NAFB_CAP_SURPLUS_EOY,Ending of year,PC,F990-PC-PART-10-LINE-31-EOY,2012-2022,PZ-501C3,integer;numeric
+F9_10_NAFB_EARNING_RETAINED_BOY,Beginnning of year,PC,F990-PC-PART-10-LINE-32-BOY,1995-2019,PZ-501C3,integer;integer64
+F9_10_NAFB_EARNING_RETAINED_EOY,Ending of year,PC,F990-PC-PART-10-LINE-32-EOY,1989-2022,PZ-501C3,integer;integer64;numeric
+F9_10_NAFB_RESTRICT_PERM_EOY,Ending of year,PC,F990-PC-PART-10-LINE-29-EOY,1995-2010; 2012-2022,PZ-501C3,integer;integer64;numeric
+F9_10_NAFB_RESTRICT_TEMP_EOY,Ending of year,PC,F990-PC-PART-10-LINE-28-EOY,1995-2010; 2012-2022,PZ-501C3,integer;integer64;numeric
+F9_10_NAFB_TOT_BOY,"Net assets or fund balances, beginning of year",PZ,"F990-EZ-PART-02-LINE-27-BOY;
+F990-PC-PART-10-LINE-33-BOY",1995-2019,PZ-501C3,integer;integer64
+F9_10_NAFB_TOT_EOY,"Net assets or fund balances, end of year",PZ,"F990-EZ-PART-02-LINE-27-EOY;
+F990-PC-PART-10-LINE-33-EOY",2012-2022,PZ-501C3,integer;numeric
+F9_10_NAFB_TOT_LIAB_NAFB_EOY,Ending of year,PC,F990-PC-PART-10-LINE-34-EOY,2012-2022,PZ-501C3,integer;integer64;numeric
+F9_10_NAFB_UNRESTRICT_EOY,Ending of year,PC,F990-PC-PART-10-LINE-27-EOY,1995-2010; 2012-2022,PZ-501C3,integer64;integer;numeric
+F9_11_RECO_OTH_CHANGE_NAFB,Other changes in net assets,PZ,"F990-EZ-PART-01-LINE-20;
+F990-PC-PART-11-LINE-09",1995-2022,PZ-501C3,integer;integer64;numeric
+GEO_ZIP5,5-digit Zip Code,NA,NA,1989-2019,PZ-501C3,integer;character
+MISSION_NTEE,NTEE Codes,NA,NA,1989-2019,PZ-501C3,character
+SA_01_PCSTAT_ORG_AMT_SUPPORT,Amount of support,PZ,SCHED-A-PART-01-LINE-12G-COL-v,2012-2022,PZ-501C3,integer;numeric
+SA_01_PCSTAT_SUPPORT_ORG_NUM,Number of supported organizations,PZ,SCHED-A-PART-01-LINE-12F,2012-2022,PZ-501C3,integer
+SA_02_PUB_CONTR_SBST_TOT,Amounts from substantial contributors total,PZ,SCHED-A-PART-02-SECTION-A-LINE-05-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_02_PUB_GIFT_GRANT_CONTR_CY,Current tax year,PZ,SCHED-A-PART-02-SECTION-A-LINE-01-COL-E,1995-2010,PZ-501C3,integer;integer64
+SA_02_PUB_GIFT_GRANT_CONTR_TOT,Gifts Grants Contri Rcvd170 Grp - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-01-COL-F,2009-2022,PZ-501C3,integer;integer64;numeric
+SA_02_PUB_SUPPORT_TOT,Public Support Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-06-COL-F,1995-2022,PZ-501C3,integer;integer64;numeric
+SA_02_PUB_TAXREV_LEVIED_TOT,Tax Rev Levied For Org Benefit170 - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-02-COL-F,2009-2022,PZ-501C3,integer;numeric
+SA_02_PUB_TOT_L123_TOT,Total - Total - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-04-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_02_PUB_VALUE_SVC_GOVT_TOT,Govt Furn Srvc Fclts Vl170 Grp - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-03-COL-F,1995-2022,PZ-501C3,integer;numeric
+SA_02_TOT_AMT_L4_CY_TOT,Amounts From Line4 - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-07-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_02_TOT_GRO_RCPT_RLTD_ACTS,Gross receipts from admissions; merchandise sold or services performed; or furnishing of facilities in any activity that is related to the organization's tax-exempt purpose,PZ,SCHED-A-PART-02-SECTION-B-LINE-12,1995-2022,PZ-501C3,integer;integer64;numeric
+SA_02_TOT_INCOME_GRO_TOT,Gross Investment Income - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-08-COL-F,2009-2022,PZ-501C3,integer;integer64
+SA_02_TOT_INCOME_NET_UBIZ_TOT,Net UBI - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-09-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_02_TOT_INCOME_OTH_TOT,Other Income - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-10-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_02_TOT_SUPPORT_TOT,Form990 Schedule APart II - Total support,PZ,SCHED-A-PART-02-SECTION-B-LINE-11-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_03_PUB_ADD_L7AB_TOT,Subst And Dsqlfy Prsns Tot Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-07C-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_03_PUB_AMT_CONTR_SBST_TOT,Amts From Subst Contributors - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-07B-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_03_PUB_AMT_PERS_DSQ_TOT,Amounts Rcvd Dsqlfy Person Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-07A-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_03_PUB_GIFT_GRANT_CONTR_TOT,Gifts Grants Contrib Received - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-01-COL-F,1995-2022,PZ-501C3,integer;integer64;numeric
+SA_03_PUB_GRO_RCPT_ADM_TOT,Gross Receipts Admissions Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-02-COL-F,2009-2022,PZ-501C3,integer;integer64;numeric
+SA_03_PUB_GRO_RCPT_NONUBIZ_TOT,Gross Receipts From Non UBI - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-03-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_03_PUB_SUPPORT_TOT,Public support total,PZ,SCHED-A-PART-03-SECTION-A-LINE-08-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_03_PUB_TAXREV_LEVIED_TOT,Tax Rev Levied For Org Benefit509 - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-04-COL-F,2009-2022,PZ-501C3,integer;numeric
+SA_03_PUB_TOT_L1_5_TOT,Total - Total - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-06-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_03_PUB_VALUE_SVC_GOVT_TOT,Govt Furn Srvc Fclts Vl509 Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-05-COL-F,2009-2022,PZ-501C3,integer;numeric
+SA_03_TOT_ADD_L10AB_TOT,Investment Income And UBTI - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-10C-COL-F,2009-2022,PZ-501C3,integer;numeric
+SA_03_TOT_AMT_L6_TOT,Amts From Line6 - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-09-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_03_TOT_INCOME_GRO_TOT,Gross Investment Income - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-10A-COL-F,1995-2010; 2012-2022,PZ-501C3,integer;integer64;numeric
+SA_03_TOT_INCOME_NET_UBIZ_TOT,Net Income From Other UBI - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-11-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_03_TOT_INCOME_OTH_TOT,Other Income - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-12-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_03_TOT_INCOME_UBIZ_TOT,Post1975 UBTI - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-10B-COL-F,2012-2022,PZ-501C3,integer;numeric
+SA_03_TOT_SUPPORT_TOT,Total Support Calendar Year Grp - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-13-COL-F,1995-2022,PZ-501C3,integer;integer64;numeric
+SC_02_EXP_DIRECT_LOB_FILEORG,Total Direct Lobbying Expenditures - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01B-COL-A,1989-2010,PZ-501C3,integer
+SC_02_EXP_GRASS_LOB_FILEORG,Total Grassroots Lobbying Expenditures - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01A-COL-A,1989-2010,PZ-501C3,integer
+SC_02_EXP_GRASS_M_NONTAX_FILEORG,Total Grassroot Lobbying Minus Nontaxable - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01H-COL-A,1989-2010,PZ-501C3,integer
+SC_02_EXP_GRASS_NONTAX_FILEORG,Grassroots Nontaxable Amount - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01G-COL-A,1995-2010,PZ-501C3,integer
+SC_02_EXP_LOB_M_NONTAX_FILEORG,Total Lobbying Minus Nontaxable - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01I-COL-A,1989-2010,PZ-501C3,integer
+SC_02_EXP_LOB_NONTAX_FILEORG,Lobbying Nontaxable Amount - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01F-COL-A,1995-2010,PZ-501C3,integer
+SC_02_EXP_OTH_EXEMPT_FILEORG,Other exempt purpose expenditures - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01D-COL-A,1995-2010,PZ-501C3,integer;integer64
+SC_02_EXP_TOT_LOB_FILEORG,Total lobbying expenditures - Filing organization's totals,PZ,SCHED-C-PART-02-A-LINE-01C-COL-A,1996-2010,PZ-501C3,integer
+SC_02_LOB_ACT_CONTACT_LEGIS_AMT,Direct contact with legislators; their staffs; government officials; or a legislative body (only for section 501(c)(3))(Amount),PZ,SCHED-C-PART-02-B-LINE-01G-COL-B,1989-2010,PZ-501C3,integer
+SJ_02_COMP_DTK_OTH_ORG,Other compensation ($) from filing organization,PC,SCHED-J-PART-02-COL-B(iii)-LINE-(i),2011-2013,PZ-501C3,integer;integer64
+SR_02_RLTD_ORG_PCSTAT,Public charity status (if 501(c)(3)),PC,SCHED-R-PART-02-COL-E,1989-2019,PZ-501C3,character
+TAX_YEAR,Tax Year,NA,NA,1989-2022,PZ-501C3,integer
+DUP_RTRN_X,Indicates duplicate return,NA,NA,2012-2022,PC-501CE,integer
+EIN2,Reformatted EIN,NA,NA,2012-2022,PC-501CE,character
+F9_00_EXEMPT_STAT_501C3_X,Indicates a 501(c)(3) organization,HD,"F990-EZ-PART-00-SECTION-J;
+F990-PC-PART-00-SECTION-I",2012-2019,PC-501CE,integer
+F9_00_GROUP_EXEMPT_NUM,Group exemption number,HD,"F990-EZ-PART-00-SECTION-F;
+F990-PC-PART-00-SECTION-HC",2012-2013,PC-501CE,integer
+F9_00_ORG_ADDR_CITY,Address of Filing Organization (US City),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",2012-2019,PC-501CE,character
+F9_00_ORG_ADDR_L1,Address of Filing Organization (US Line 1),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",2012-2019,PC-501CE,character
+F9_00_ORG_ADDR_STATE,Address of Filing Organization (US State),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",2012-2019,PC-501CE,character
+F9_00_ORG_ADDR_ZIP,Address of Filing Organization (US Zip Code),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",2012-2019,PC-501CE,character
+F9_00_ORG_EIN,Orgainization Employer Identification Number (EIN),HD,F990-PC-PART-00-SECTION-D,2012-2022,PC-501CE,character
+F9_00_ORG_NAME_DBA_L1,Doing business as (line 1),HD,F990-PC-PART-00-SECTION-C,2012-2019,PC-501CE,character
+F9_00_ORG_NAME_L1,Name of Filing Organization (line 1),HD,F990-PC-PART-00-SECTION-C,2012-2019,PC-501CE,character
+F9_00_RETURN_TYPE,Return type,HD,F990-PC-PART-00-LINE-00,2012-2013,PC-501CE,integer
+F9_00_TAX_PERIOD_BEGIN_DATE,Tax period begin date,HD,F990-PC-PART-00-SECTION-A,2012-2019,PC-501CE,integer
+F9_00_TAX_PERIOD_END_DATE,Tax period end date,HD,F990-PC-PART-00-SECTION-A,2012-2022,PC-501CE,integer
+F9_00_TAX_YEAR,Tax year,HD,F990-PC-PART-00-SECTION-A,2012-2019,PC-501CE,integer
+F9_03_PROG_CODE,Activity2 - Activity code,PC,F990-PC-PART-03-LINE-04-ABCD,2012-2019,PC-501CE,integer
+F9_04_AFS_CONSOL_X,Consolidated audited financial statement?,PC,F990-PC-PART-04-LINE-12B,2012-2022,PC-501CE,character
+F9_04_AFS_IND_X,Independent audited financial statements?,PC,F990-PC-PART-04-LINE-12A,2012-2022,PC-501CE,character
+F9_04_BIZ_TRANSAC_DTK_ENTITY_X,"Was the organization a party to a business transaction with one of the following parties: An entity of which a current or former officer, director, trustee, or key employee (or a family member thereof) was an officer, director, trustee, or direct, or indirect owner?",PC,F990-PC-PART-04-LINE-28C,2012-2022,PC-501CE,character
+F9_04_BIZ_TRANSAC_DTK_FAM_X,"Was the organization a party to a business transaction with one of the following parties: A family member of a current or former officer, director, trustee, or key employee?",PC,F990-PC-PART-04-LINE-28B,2012-2022,PC-501CE,character
+F9_04_BIZ_TRANSAC_DTK_X,"Was the organization a party to a business transaction with one of the following parties: A current former officer, director, trustee, or key employee?",PC,F990-PC-PART-04-LINE-28A,2012-2022,PC-501CE,character
+F9_04_COLLEC_ART_X,Collections of art?,PC,F990-PC-PART-04-LINE-08,2012-2022,PC-501CE,character
+F9_04_COMP_DTK_YES_X,"PartVII; Lines 3; 4; or 5 = ""Yes""?",PC,F990-PC-PART-04-LINE-23,2012-2022,PC-501CE,character
+F9_04_CONSERV_EMT_X,Conservation easements?,PC,F990-PC-PART-04-LINE-07,2012-2022,PC-501CE,character
+F9_04_CONTR_ART_HIST_X,"Did the organization receive contributions of art, historical treasures, or other similar assets, or qualified conservation contributions?",PC,F990-PC-PART-04-LINE-30,2012-2022,PC-501CE,character
+F9_04_CONTR_NONCSH_MT_25K_X,"Did the organization receive more than $25,000 in non-cash contributions?",PC,F990-PC-PART-04-LINE-29,2012-2022,PC-501CE,character
+F9_04_CREDIT_COUNS_X,Credit counseling?,PC,F990-PC-PART-04-LINE-09,2012-2022,PC-501CE,character
+F9_04_DAF_X,,PZ,"F990-EZ-PART-05-LINE-44A;
+F990-PC-PART-04-LINE-06",2012-2022,PC-501CE,character
+F9_04_DESC_IN_501C3_X,Described in 501(c)(3)?,PC,F990-PC-PART-04-LINE-01,2012-2022,PC-501CE,character
+F9_04_DOA_X,Partial liquidation? (F990-PC-PART-04-LINE-31-32-COMBINED: F990-EZ-PART-05-LINE-36),PZ,F990-PC-PART-04-LINE-32,2012-2022,PC-501CE,character
+F9_04_ENDOW_X,Term or permanent endowments?,PC,F990-PC-PART-04-LINE-10,2012-2022,PC-501CE,character
+F9_04_ENTITY_CTRL_X,Did the organization have a controlled entity within the meaning of section 512(b)(13)?,PZ,"F990-EZ-PART-05-LINE-45A;
+F990-PC-PART-04-LINE-35A",2012-2022,PC-501CE,character
+F9_04_ENTITY_DISREG_X,Did the organization own 100% of an entity disregarded as sperate from the organization under Regulations sections 301.7701.2 and 301.7701-3?,PC,F990-PC-PART-04-LINE-33,2012-2022,PC-501CE,character
+F9_04_ENTITY_RLTD_X,Related entity?,PC,F990-PC-PART-04-LINE-34,2012-2022,PC-501CE,character
+F9_04_FRGN_ACT_X,Foreign activities; etc?,"PC;
+PZ",F990-PC-PART-04-LINE-14B,2012-2022,PC-501CE,character
+F9_04_FRGN_OFFICE_X,At any time during the calender year; did the organization maintain an office outside of the U.S.?,PZ,"F990-EZ-PART-05-LINE-42C;
+F990-PC-PART-04-LINE-14A",2012-2022,PC-501CE,character
+F9_04_FUNDR_ACT_X,Fundraising activities?,PC,F990-PC-PART-04-LINE-18,2012-2022,PC-501CE,character
+F9_04_GAMING_X,Special events Indicates revenue from gaming,PZ,"F990-EZ-PART-01-LINE-06;
+F990-PC-PART-04-LINE-19",2012-2022,PC-501CE,character
+F9_04_GRANT_MT_5K_FRGN_INDIV_X,More than $5000 to individuals Part IX; line 3?,PC,F990-PC-PART-04-LINE-16,2012-2022,PC-501CE,character
+F9_04_GRANT_MT_5K_FRGN_ORG_X,More than $5000 to organizations Part IX; line 3?,PC,F990-PC-PART-04-LINE-15,2012-2022,PC-501CE,character
+F9_04_GRANT_MT_5K_US_INDIV_X,Grants to individuals?,PC,F990-PC-PART-04-LINE-22,2012-2022,PC-501CE,character
+F9_04_GRANT_MT_5K_US_ORG_X,Grants to organizations?,PC,F990-PC-PART-04-LINE-21,2012-2022,PC-501CE,character
+F9_04_GRANT_RLTD_PERS_X,Grant to related person?,PC,F990-PC-PART-04-LINE-27,2012-2022,PC-501CE,character
+F9_04_HOSPITAL_AFS_X,Audited financial statements?,PC,F990-PC-PART-04-LINE-20B,2012-2022,PC-501CE,character;integer
+F9_04_HOSPITAL_X,IRS990 - Hospital?,"PZ;
+PC","F990-EZ-PART-05-LINE-44B;
+F990-PC-PART-04-LINE-20A",2012-2022,PC-501CE,character
+F9_04_LOAN_DTK_X,,PZ,"F990-EZ-PART-05-LINE-38A;
+F990-PC-PART-04-LINE-26",2012-2022,PC-501CE,character
+F9_04_LOB_ACT_X,Lobbying activities?,PZ,"F990-EZ-PART-06-LINE-47;
+F990-PC-PART-04-LINE-04",2012-2022,PC-501CE,character
+F9_04_LTD_X,Form990 Part IV - Terminated? (F990-PC-PART-04-LINE-31-32-COMBINED: F990-EZ-PART-05-LINE-36),PZ,F990-PC-PART-04-LINE-31,2012-2022,PC-501CE,character
+F9_04_POLI_ACT_X,Political activities?,PZ,"F990-EZ-PART-05-LINE-46;
+F990-PC-PART-04-LINE-03",2012-2022,PC-501CE,character
+F9_04_PROF_FUNDR_X,Professional fundraising?,PC,F990-PC-PART-04-LINE-17,2012-2022,PC-501CE,character
+F9_04_PROXY_TAX_X,Subject to proxy tax?,PZ,"F990-EZ-PART-05-LINE-35C;
+F990-PC-PART-04-LINE-05",2012-2022,PC-501CE,character
+F9_04_PTR_ACT_X,Did the organization conduct more than 5% of its activities through an entity that is not a related organization and thatis treated as a partnership for federal income tax purposes?,PC,F990-PC-PART-04-LINE-37,2012-2022,PC-501CE,character
+F9_04_REP_FOOTNOTE_FIN48_X,Balance sheet footnote for liability under FIN 48?,PC,F990-PC-PART-04-LINE-11F,2012-2022,PC-501CE,character
+F9_04_REP_INVEST_OTH_SEC_X,Balance sheet investments - other securities amounts reported?,PC,F990-PC-PART-04-LINE-11B,2012-2022,PC-501CE,character
+F9_04_REP_LAND_BLDG_EQUIP_X,Balance sheet land; buildings; equipment amounts reported?,PC,F990-PC-PART-04-LINE-11A,2012-2022,PC-501CE,character
+F9_04_REP_OTH_ASSET_X,Balance sheet other assets amounts reported?,PC,F990-PC-PART-04-LINE-11D,2012-2022,PC-501CE,character
+F9_04_REP_OTH_LIAB_X,Balance sheet other liabilities amounts reported?,PC,F990-PC-PART-04-LINE-11E,2012-2022,PC-501CE,character
+F9_04_REP_PROG_RLTD_X,Balance sheet investments - program related amounts reported?,PC,F990-PC-PART-04-LINE-11C,2012-2022,PC-501CE,character
+F9_04_SCHED_B_REQ_X,Indicates Schedule B is not required,PZ,"F990-EZ-PART-00-SECTION-H;
+F990-PC-PART-04-LINE-02",2012-2022,PC-501CE,character
+F9_04_SCHED_O_REQ_X,"Did the organization complete Schedule O and provide explanatios in Schedule O for Part VI, lines 11b and 19?",PC,F990-PC-PART-04-LINE-38,2012-2022,PC-501CE,character
+F9_04_SCHOOL_X,IRS990 - School?,PZ,"F990-EZ-PART-06-LINE-48;
+F990-PC-PART-04-LINE-13",2012-2022,PC-501CE,character
+F9_04_TAX_EXEMPT_BOND_ESCROW_X,Escrow account?,PC,F990-PC-PART-04-LINE-24C,2012-2022,PC-501CE,character
+F9_04_TAX_EXEMPT_BOND_INVEST_X,Investment income?,PC,F990-PC-PART-04-LINE-24B,2012-2022,PC-501CE,character
+F9_04_TAX_EXEMPT_BOND_ISSUER_X,On behalf of issuer?,PC,"F990-PC-PART-04-LINE-24B;
+F990-PC-PART-04-LINE-24D",2012-2022,PC-501CE,character
+F9_04_TAX_EXEMPT_BOND_X,Tax exempt bonds?,PC,F990-PC-PART-04-LINE-24A,2012-2022,PC-501CE,character
+F9_04_TRANSAC_ENGAGED_X,501(c)(3) and 501(c)(4) orgs: Did the organization engage in any section 4958 excess benefit transaction,PZ,"F990-EZ-PART-05-LINE-40B;
+F990-PC-PART-04-LINE-25A",2012-2022,PC-501CE,character
+F9_04_TRANSAC_PY_X,Prior excess benefit transaction?,"PZ;
+PC",F990-PC-PART-04-LINE-25B,2012-2022,PC-501CE,character
+F9_04_TRANSFER_EXEMPT_ORG_X,Did the organization make any transfers to an exempt non-charitable related organization?,PZ,"F990-EZ-PART-06-LINE-49A;
+F990-PC-PART-04-LINE-36",2012-2022,PC-501CE,character
+F9_05_170C_FORM_1098C_FILED_X,Form 1098-C filed?,PC,F990-PC-PART-05-LINE-07H,2012-2022,PC-501CE,character
+F9_05_170C_FORM_8282_REQ_X,Form 8282 property disposed of?,PC,F990-PC-PART-05-LINE-07C,2012-2022,PC-501CE,character
+F9_05_170C_FORM_8899_FILED_X,Form 8899 filed?,PC,F990-PC-PART-05-LINE-07G,2012-2022,PC-501CE,character
+F9_05_170C_FUNDS_FOR_PREMIUM_X,Funds to pay premiums?,PC,F990-PC-PART-05-LINE-07E,2012-2022,PC-501CE,character
+F9_05_170C_NUM_FORM_8282_FILED_X,Number of 8282s filed,PC,F990-PC-PART-05-LINE-07D,2012-2022,PC-501CE,integer
+F9_05_170C_PREMIUM_PAID_X,Premiums paid?,PC,F990-PC-PART-05-LINE-07F,2012-2022,PC-501CE,character
+F9_05_170C_QUID_PRO_QUO_CONTR_X,Quid pro quo contributions?,PC,F990-PC-PART-05-LINE-07A,2012-2022,PC-501CE,character
+F9_05_170C_QUID_PRO_QUO_NOTIFY_X,Quid pro quo disclosure?,PC,F990-PC-PART-05-LINE-07B,2012-2022,PC-501CE,character
+F9_05_4947_FORM_990_FILED_1041_X,Filed 990 in lieu of 1041?,PZ,"F990-EZ-PART-05-LINE-43;
+F990-PC-PART-05-LINE-12A",2012-2022,PC-501CE,character
+F9_05_4947_TAX_EXEMPT_INT_AMT,Indicates section 4947(a)(1) nonexempt charitable trusts filing Form 990 in lieu of Form 1041,PZ,"F990-EZ-PART-05-LINE-43;
+F990-PC-PART-05-LINE-12B",2012-2022,PC-501CE,integer
+F9_05_501C12_GRO_INCOME_MEMB,Gross income from members,PC,F990-PC-PART-05-LINE-11A,2012-2022,PC-501CE,integer;integer64
+F9_05_501C12_GRO_INCOME_OTH,"Gross income, other sources",PC,F990-PC-PART-05-LINE-11B,2012-2022,PC-501CE,integer
+F9_05_501C29_LIC_HEALTH_PLAN_X,Is the organization licensed to issue qualified health plans in more than one state?,PC,F990-PC-PART-05-LINE-13A,2012-2022,PC-501CE,character
+F9_05_501C29_RESERVE_MAINT_AMT,Reserves maintained amount,PC,F990-PC-PART-05-LINE-13C,2012-2022,PC-501CE,integer;numeric
+F9_05_501C29_STATE_RESERVE_AMT,State required reserves amount,PC,F990-PC-PART-05-LINE-13B,2012-2022,PC-501CE,numeric;integer
+F9_05_501C7_GRO_RCPT_PUB_USE,"501(c)(7) orgs: Gross receipts, included on line 9, for public use of club facilities",PZ,"F990-EZ-PART-05-LINE-39B;
+F990-PC-PART-05-LINE-10B",2012-2022,PC-501CE,integer;numeric
+F9_05_501C7_INITIATION_FEES,501(c)(7) orgs: Initiation fees and capital contributions included on line 9,PZ,"F990-EZ-PART-05-LINE-39A;
+F990-PC-PART-05-LINE-10A",2012-2022,PC-501CE,integer;numeric
+F9_05_COMPLY_BACKUP_WITHHOLD_X,Compliance with backup witholding?,PC,F990-PC-PART-05-LINE-01C,2012-2022,PC-501CE,character
+F9_05_DAF_DIST_DONOR_X,DAFs - Distribution to donor?,PC,F990-PC-PART-05-LINE-09B,2012-2022,PC-501CE,character
+F9_05_DAF_EXCESS_BIZ_HOLDING_X,Donor advised fund have excess business holdings?,PC,F990-PC-PART-05-LINE-08,2012-2022,PC-501CE,character
+F9_05_DAF_TAXABLE_DIST_X,DAFs - Taxable distributions?,PC,F990-PC-PART-05-LINE-09A,2012-2022,PC-501CE,character
+F9_05_EMPL_TAX_RETURN_FILED_X,Employment tax returns filed?,PC,F990-PC-PART-05-LINE-02B,2012-2022,PC-501CE,character
+F9_05_FRGN_FIN_ACC_X,Foreign financial account?,PZ,"F990-EZ-PART-05-LINE-42B;
+F990-PC-PART-05-LINE-04A",2012-2022,PC-501CE,character
+F9_05_NONDEDUCT_CONTR_NOTIFY_X,Non-deduct. disclosure?,PC,F990-PC-PART-05-LINE-06B,2012-2022,PC-501CE,character
+F9_05_NONDEDUCT_CONTR_X,Non-deductible contributions?,PC,F990-PC-PART-05-LINE-06A,2012-2022,PC-501CE,character
+F9_05_NUM_EMPL,Number of employees,PC,F990-PC-PART-05-LINE-02A,2012-2022,PC-501CE,integer
+F9_05_NUM_FORM_1096_BOX_3,Number forms transmitted with 1096,PC,F990-PC-PART-05-LINE-01A,2012-2022,PC-501CE,integer
+F9_05_NUM_FORM_W2G,Number W-2Gs included in 1a,PC,F990-PC-PART-05-LINE-01B,2012-2022,PC-501CE,integer
+F9_05_PTST_FORM_8886T_FILED_X,Form 8886-T filed?,PC,F990-PC-PART-05-LINE-05C,2012-2022,PC-501CE,character
+F9_05_PTST_PARTY_NOTIFY_X,Taxable party notification?,PC,F990-PC-PART-05-LINE-05B,2012-2022,PC-501CE,character
+F9_05_PTST_X,Prohibited tax shelter transaction?,PZ,"F990-EZ-PART-05-LINE-40E;
+F990-PC-PART-05-LINE-05A",2012-2022,PC-501CE,character
+F9_05_TANNING_FORM_720_FILED_X,Form 720 filed and taxes paid on indoor tanning services?,PZ,"F990-EZ-PART-05-LINE-44D;
+F990-PC-PART-05-LINE-14B",2012-2022,PC-501CE,character
+F9_05_TANNING_SVC_PROV_X,Payments received for indoor tanning services?,PZ,"F990-EZ-PART-05-LINE-44C;
+F990-PC-PART-05-LINE-14A",2012-2022,PC-501CE,character
+F9_05_UBIZ_FORM_990T_FILED_X,Form 990-T filed?,"PZ;
+PC","F990-EZ-PART-05-LINE-35B;
+F990-PC-PART-05-LINE-03B",2012-2022,PC-501CE,character
+F9_05_UBIZ_IMCOME_OVER_LIMIT_X,Unrelated business income?,"PZ;
+PC","F990-EZ-PART-05-LINE-35A;
+F990-PC-PART-05-LINE-03A",2012-2022,PC-501CE,character
+F9_07_COMP_DTK_COMP_ORG,Reportable compensation from organization (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED),PZ,"F990-EZ-PART-04-COL-C;
+F990-PC-PART-07-SECTION-A-LINE-01A-COL-D",2012-2019,PC-501CE,numeric
+F9_07_COMP_DTK_COMP_ORG_TOT,"Total, column D (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED)",PC,F990-PC-PART-07-SECTION-A-LINE-01D-COL-D,2012-2022,PC-501CE,integer;numeric
+F9_07_COMP_DTK_COMP_OTH,Other compensation (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED),PZ,"F990-EZ-PART-04-COL-E;
+F990-PC-PART-07-SECTION-A-LINE-01A-COL-F",2012-2019,PC-501CE,numeric
+F9_07_COMP_DTK_COMP_OTH_TOT,"Total, column F (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED)",PC,F990-PC-PART-07-SECTION-A-LINE-01D-COL-F,2012-2022,PC-501CE,integer;numeric
+F9_07_COMP_DTK_COMP_RLTD,Reportable compensation from related organizations (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED),PZ,"F990-EZ-PART-04-COL-C;
+F990-PC-PART-07-SECTION-A-LINE-01A-COL-E",2012-2019,PC-501CE,numeric
+F9_07_COMP_DTK_COMP_RLTD_TOT,"Total, column E (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED)",PC,F990-PC-PART-07-SECTION-A-LINE-01D-COL-E,2012-2022,PC-501CE,integer;numeric
+F9_07_COMP_DTK_NUM_GT_100K,Number individuals greater than $100K (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED),PC,F990-PC-PART-07-SECTION-A-LINE-02,2012-2022,PC-501CE,integer
+F9_07_COMP_KONTR_NUM_GT_100K,Total number of independent contractors who received 100K+ from org,PZ,"F990-EZ-PART-06-LINE-51D;
+F990-PC-PART-07-SECTION-B-LINE-02",2012-2022,PC-501CE,integer
+F9_08_REV_CONTR_TOT,Total contributions,PC,F990-PC-PART-08-LINE-01H-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_08_REV_MISC_BIZCODE,Other Revenue Misc - Business code,PC,F990-PC-PART-08-LINE-11-ABC-COL-BIZCODE,2012-2022,PC-501CE,numeric;integer
+F9_08_REV_MISC_OTH_EXCL,Excluded by section 512; 513; or 514: amount,PC,F990-PC-PART-08-LINE-11D-COL-D,2012-2019,PC-501CE,integer;numeric
+F9_08_REV_MISC_OTH_RLTD,Related or exempt function revenue,PC,F990-PC-PART-08-LINE-11D-COL-B,2012-2019,PC-501CE,numeric
+F9_08_REV_MISC_OTH_TOT,Miscellaneous Revenue - Total revenue,PC,F990-PC-PART-08-LINE-11D-COL-A,2012-2022,PC-501CE,numeric
+F9_08_REV_MISC_OTH_UBIZ,Unrelated business revenue,PC,F990-PC-PART-08-LINE-11D-COL-C,2012-2019,PC-501CE,numeric;integer
+F9_08_REV_MISC_TOT,Other Revenue Misc - Total revenue,PC,F990-PC-PART-08-LINE-11-ABC-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_08_REV_MISC_TOT_TOT,Other revenue - current year,PZ,"F990-EZ-PART-01-LINE-08;
+F990-PC-PART-08-LINE-11E-COL-A",2012-2022,PC-501CE,integer;numeric
+F9_08_REV_OTH_FUNDR_DIRECT_EXP,Direct expenses,PZ,F990-PC-PART-08-LINE-08B,2012-2022,PC-501CE,integer
+F9_08_REV_OTH_FUNDR_EVNT_1,IRS990 - 8a-1,PZ,"F990-EZ-PART-01-LINE-06B-1;
+F990-PC-PART-08-LINE-08A-1",2012-2022,PC-501CE,integer;numeric
+F9_08_REV_OTH_FUNDR_NET_TOT,Net Income From Fundraising Events - Total revenue,PZ,F990-PC-PART-08-LINE-08C-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_08_REV_OTH_GAMING,Gross income from gaming activities,PZ,"F990-EZ-PART-01-LINE-06A;
+F990-PC-PART-08-LINE-09A",2012-2022,PC-501CE,integer;numeric
+F9_08_REV_OTH_GAMING_DIRECT_EXP,Direct expenses,PZ,F990-PC-PART-08-LINE-09B,2012-2022,PC-501CE,numeric;integer
+F9_08_REV_OTH_GAMING_NET_TOT,Net Income From Gaming - Total revenue,PZ,F990-PC-PART-08-LINE-09C-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_08_REV_OTH_INVEST_BOND_TOT,Income From Invest Bond Proceeds - Total revenue,PC,F990-PC-PART-08-LINE-04-COL-A,2012-2022,PC-501CE,integer
+F9_08_REV_OTH_INVEST_INCOME_TOT,Invest income,PZ,"F990-EZ-PART-01-LINE-04;
+F990-PC-PART-08-LINE-03-COL-A",2012-2022,PC-501CE,integer;numeric
+F9_08_REV_OTH_INV_COST_GOODS,Less: cost of goods sold,PZ,"F990-EZ-PART-01-LINE-07B;
+F990-PC-PART-08-LINE-10B",2012-2022,PC-501CE,integer
+F9_08_REV_OTH_INV_GRO_SALE,gross sales of inventory,PZ,"F990-EZ-PART-01-LINE-07A;
+F990-PC-PART-08-LINE-10A",2012-2022,PC-501CE,integer;numeric
+F9_08_REV_OTH_INV_NET_TOT,Gross profit (or loss) from sales of inventory,PZ,"F990-EZ-PART-01-LINE-07C;
+F990-PC-PART-08-LINE-10C-COL-A",2012-2022,PC-501CE,integer;numeric
+F9_08_REV_OTH_RENT_GRO_PERS,Gross Rents - Amount,PC,F990-PC-PART-08-LINE-06A-COL-ii,2012-2022,PC-501CE,integer;numeric
+F9_08_REV_OTH_RENT_GRO_REAL,Gross Rents - Real amount,PC,F990-PC-PART-08-LINE-06A-COL-i,2012-2022,PC-501CE,numeric;integer
+F9_08_REV_OTH_RENT_INCOME_PERS,Rental Income Or Loss - Amount,PC,F990-PC-PART-08-LINE-06C-COL-ii,2012-2022,PC-501CE,integer64;integer
+F9_08_REV_OTH_RENT_INCOME_REAL,Rental Income Or Loss - Real amount,PC,F990-PC-PART-08-LINE-06C-COL-i,2012-2022,PC-501CE,numeric;integer
+F9_08_REV_OTH_RENT_LESS_EXP_PERS,Less Rental Expenses - Amount,PC,F990-PC-PART-08-LINE-06B-COL-ii,2012-2022,PC-501CE,integer
+F9_08_REV_OTH_RENT_LESS_EXP_REAL,Less Rental Expenses - Real amount,PC,F990-PC-PART-08-LINE-06B-COL-i,2012-2022,PC-501CE,integer
+F9_08_REV_OTH_RENT_NET_TOT,Net Rental Income Or Loss - Total revenue,PC,F990-PC-PART-08-LINE-06D-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_08_REV_OTH_ROY_TOT,Royalties Revenue - Total revenue,PC,F990-PC-PART-08-LINE-05-COL-A,2012-2022,PC-501CE,numeric;integer
+F9_08_REV_OTH_SALE_ASSET_OTH,Gross Amount Sales Assets - Other amount,PZ,F990-PC-PART-08-LINE-07A-COL-ii,2012-2022,PC-501CE,integer64;integer;numeric
+F9_08_REV_OTH_SALE_ASSET_SEC,Securities amount,"PC;
+PZ",F990-PC-PART-08-LINE-07A-COL-i,2012-2022,PC-501CE,integer64;integer;numeric
+F9_08_REV_OTH_SALE_GAIN_NET_TOT,Gain or (loss) from sale of assets other than inventory,PZ,"F990-EZ-PART-01-LINE-05C;
+F990-PC-PART-08-LINE-07D-COL-A",2012-2022,PC-501CE,integer;integer64;numeric
+F9_08_REV_OTH_SALE_GAIN_OTH,Gain Or Loss - Other amount,PC,F990-PC-PART-08-LINE-07C-COL-ii,2012-2022,PC-501CE,integer;numeric
+F9_08_REV_OTH_SALE_GAIN_SEC,Securities amount,PC,F990-PC-PART-08-LINE-07C-COL-i,2012-2022,PC-501CE,integer;numeric
+F9_08_REV_OTH_SALE_LESS_COST_OTH,Less Cost Oth Basis Sales Expenses - Other amount,PZ,F990-PC-PART-08-LINE-07B-COL-ii,2012-2022,PC-501CE,integer64;integer;numeric
+F9_08_REV_OTH_SALE_LESS_COST_SEC,Securities amount,PZ,F990-PC-PART-08-LINE-07B-COL-i,2012-2022,PC-501CE,integer64;integer;numeric
+F9_08_REV_PROG_BIZCODE,Program Service Revenue - Business code,PC,F990-PC-PART-08-LINE-02-ABCDE-COL-BIZCODE,2012-2022,PC-501CE,integer
+F9_08_REV_PROG_DESC,Program Service Revenue - Description,PC,F990-PC-PART-08-LINE-02-ABCDE,2012-2019,PC-501CE,numeric
+F9_08_REV_PROG_OTH_TOT,Total Oth Program Service Revenue - Total revenue,PC,F990-PC-PART-08-LINE-02F-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_08_REV_PROG_TOT,Program Service Revenue - Total revenue,PC,F990-PC-PART-08-LINE-02-ABCDE-COL-A,2012-2022,PC-501CE,integer64;integer
+F9_08_REV_PROG_TOT_TOT,Program service revenue total,PC,F990-PC-PART-08-LINE-02G-COL-A,2012-2022,PC-501CE,integer64;integer;numeric
+F9_08_REV_TOT_TOT,Total Revenue - Total revenue,PC,F990-PC-PART-08-LINE-12-COL-A,2012-2022,PC-501CE,integer64;integer;numeric
+F9_09_EXP_AD_PROMO_TOT,Advertising and promotion - total expense,PC,F990-PC-PART-09-LINE-12-COL-A,2012-2022,PC-501CE,numeric;integer
+F9_09_EXP_BEN_PAID_MEMB_TOT,Benefits Paid to or for Members - Total Expense,PZ,F990-PC-PART-09-LINE-04-COL-A,2012-2022,PC-501CE,integer64;numeric
+F9_09_EXP_COMP_DSQ_PERS_TOT,"Compensation not included above, or to disqualified persons - Total Expense",PC,F990-PC-PART-09-LINE-06-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_09_EXP_COMP_DTK_TOT,"Compensation for Current Officers, Directors, Trustees and Key Employees - Total Expense",PC,F990-PC-PART-09-LINE-05-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_09_EXP_CONF_MEETING_TOT,"Conferences, conventions, and meetings- total expense",PC,F990-PC-PART-09-LINE-19-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_09_EXP_DEPREC_TOT,"Depreciation, depletion, and amortization",PC,F990-PC-PART-09-LINE-22-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_09_EXP_FEE_SVC_ACC_TOT,Fees for Services - Accounting - Total Expense,PC,F990-PC-PART-09-LINE-11C-COL-A,2012-2022,PC-501CE,numeric;integer
+F9_09_EXP_FEE_SVC_FUNDR_TOT,Fees for Professional Fundraising Services - Total Expense,PC,F990-PC-PART-09-LINE-11E-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_09_EXP_FEE_SVC_INVEST_TOT,Investment Management Fees - Total Expense,PC,F990-PC-PART-09-LINE-11F-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_09_EXP_FEE_SVC_LEGAL_TOT,Fees for Services - Legal - Total Expense,PC,F990-PC-PART-09-LINE-11B-COL-A,2012-2022,PC-501CE,numeric
+F9_09_EXP_FEE_SVC_LOB_TOT,Fees for Services - Lobbying - Total Expense,PC,F990-PC-PART-09-LINE-11D-COL-A,2012-2022,PC-501CE,numeric;integer
+F9_09_EXP_FEE_SVC_MGMT_TOT,Fees for Services - Management - Total Expense,PC,F990-PC-PART-09-LINE-11A-COL-A,2012-2022,PC-501CE,numeric
+F9_09_EXP_FEE_SVC_OTH_TOT,Fees for Services - Other - Total Expense,PC,F990-PC-PART-09-LINE-11G-COL-A,2012-2022,PC-501CE,numeric;integer
+F9_09_EXP_GRANT_FRGN_TOT,total Grants to Foreign Orgs and Governments - Total Expense,PC,F990-PC-PART-09-LINE-03-COL-A,2012-2022,PC-501CE,numeric
+F9_09_EXP_GRANT_US_INDIV_TOT,Grants To Domestic Individuals - Total,PC,F990-PC-PART-09-LINE-02-COL-A,2012-2022,PC-501CE,numeric;integer
+F9_09_EXP_GRANT_US_ORG_TOT,Grants To Domestic Orgs - Total,PZ,F990-PC-PART-09-LINE-01-COL-A,2012-2022,PC-501CE,numeric
+F9_09_EXP_INFO_TECH_TOT,Information Technology - Total,PC,F990-PC-PART-09-LINE-14-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_09_EXP_INSURANCE_TOT,Insurance - Total,PC,F990-PC-PART-09-LINE-23-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_09_EXP_INT_TOT,Interest - Total,PC,F990-PC-PART-09-LINE-20-COL-A,2012-2022,PC-501CE,numeric;integer
+F9_09_EXP_OCCUPANCY_TOT,Occupancy; rent; utilities; and maintenance,PZ,"F990-EZ-PART-01-LINE-14;
+F990-PC-PART-09-LINE-16-COL-A",2012-2022,PC-501CE,numeric
+F9_09_EXP_OFFICE_TOT,Office Expenses - Total,PZ,F990-PC-PART-09-LINE-13-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_09_EXP_OTH_EMPL_BEN_TOT,Other Employee Benefits - Total,PC,F990-PC-PART-09-LINE-09-COL-A,2012-2022,PC-501CE,integer;integer64
+F9_09_EXP_OTH_OTH_TOT,Other expenses - total expense,PC,F990-PC-PART-09-LINE-24E-COL-A,2012-2022,PC-501CE,integer
+F9_09_EXP_OTH_SAL_WAGE_TOT,Other Salaries And Wages - Total,PC,F990-PC-PART-09-LINE-07-COL-A,2012-2022,PC-501CE,integer;numeric
+F9_09_EXP_OTH_TOT,Other Expenses - Total,PC,F990-PC-PART-09-LINE-24-ABCD-COL-A,2012-2022,PC-501CE,integer64;integer;numeric
+F9_09_EXP_PAYROLL_TAX_TOT,Payroll Taxes - Total,PC,F990-PC-PART-09-LINE-10-COL-A,2012-2022,PC-501CE,integer
+F9_09_EXP_PAY_AFFIL_TOT,Payments To Affiliates - Total,PC,F990-PC-PART-09-LINE-21-COL-A,2012-2022,PC-501CE,numeric
+F9_09_EXP_PENSION_CONTR_TOT,Pension Plan Contributions - Total,PC,F990-PC-PART-09-LINE-08-COL-A,2012-2022,PC-501CE,numeric;integer
+F9_09_EXP_ROY_TOT,Royalties - Total,PC,F990-PC-PART-09-LINE-15-COL-A,2012-2022,PC-501CE,numeric;integer
+F9_09_EXP_TOT_TOT,Total Functional Expenses - Total,PC,F990-PC-PART-09-LINE-25-COL-A,2012-2022,PC-501CE,integer64;integer;numeric
+F9_09_EXP_TRAVEL_ENTMT_TOT,Travel Entrtnmnt Public Officials - Total,PC,F990-PC-PART-09-LINE-18-COL-A,2012-2022,PC-501CE,integer
+F9_09_EXP_TRAVEL_TOT,Travel - Total,PC,F990-PC-PART-09-LINE-17-COL-A,2012-2022,PC-501CE,integer
+F9_10_ASSET_ACC_NET_EOY,"Net accounts receivable, end of year",PC,F990-PC-PART-10-LINE-04-EOY,2012-2022,PC-501CE,numeric
+F9_10_ASSET_CASH_EOY,"Cash, non-interest-bearing, end of year",PZ,F990-PC-PART-10-LINE-01-EOY,2012-2022,PC-501CE,numeric;integer
+F9_10_ASSET_EXP_PREPAID_EOY,Ending of year,PC,F990-PC-PART-10-LINE-09-EOY,2012-2022,PC-501CE,numeric;integer
+F9_10_ASSET_INTANGIBLE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-14-EOY,2012-2022,PC-501CE,numeric
+F9_10_ASSET_INVEST_PROG_RLTD_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-13-EOY,2012-2022,PC-501CE,integer64;numeric
+F9_10_ASSET_INVEST_SEC_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-11-EOY,2012-2022,PC-501CE,integer64;numeric
+F9_10_ASSET_INVEST_SEC_OTH_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-12-EOY,2012-2022,PC-501CE,integer64;numeric
+F9_10_ASSET_INV_SALE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-08-EOY,2012-2022,PC-501CE,numeric;integer
+F9_10_ASSET_LAND_BLDG_DEPREC,Less: accumulated depreciation,PC,F990-PC-PART-10-LINE-10B,2012-2022,PC-501CE,integer;numeric
+F9_10_ASSET_LAND_BLDG_NET_EOY,Net value including lands; buildings; and equipment; end of year,PZ,"F990-EZ-PART-02-LINE-23-EOY;
+F990-PC-PART-10-LINE-10C-EOY",2012-2019,PC-501CE,integer64
+F9_10_ASSET_LOAN_DSQ_PERS_EOY,Ending of year,PC,F990-PC-PART-10-LINE-06-EOY,2012-2022,PC-501CE,numeric;integer
+F9_10_ASSET_LOAN_OFF_EOY,Ending of year,PC,F990-PC-PART-10-LINE-05-EOY,2012-2022,PC-501CE,numeric;integer
+F9_10_ASSET_NOTE_LOAN_NET_EOY,Ending of year,PC,F990-PC-PART-10-LINE-07-EOY,2012-2022,PC-501CE,integer64;numeric
+F9_10_ASSET_OTH_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-15-EOY,2012-2022,PC-501CE,integer64;integer;numeric
+F9_10_ASSET_PLEDGE_NET_EOY,Ending of year,PC,F990-PC-PART-10-LINE-03-EOY,2012-2022,PC-501CE,numeric;integer
+F9_10_ASSET_SAVING_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-02-EOY,2012-2022,PC-501CE,integer64;numeric
+F9_10_ASSET_TOT_BOY,"Total assets, beginning of year",PZ,"F990-EZ-PART-02-LINE-25-BOY;
+F990-PC-PART-10-LINE-16-BOY",2012-2013,PC-501CE,integer64
+F9_10_ASSET_TOT_EOY,"Total assets, end of year",PZ,"F990-EZ-PART-02-LINE-25-EOY;
+F990-PC-PART-10-LINE-16-EOY",2012-2022,PC-501CE,integer64;integer;numeric
+F9_10_LIAB_ACC_PAYABLE_EOY,"Accounts payable and accrued expenses, end of year",PC,F990-PC-PART-10-LINE-17-EOY,2012-2022,PC-501CE,integer64;integer;numeric
+F9_10_LIAB_ESCROW_ACC_EOY,"Escrow or custodial account liability, end of year",PC,F990-PC-PART-10-LINE-21-EOY,2012-2022,PC-501CE,numeric;integer
+F9_10_LIAB_GRANT_PAYABLE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-18-EOY,2012-2022,PC-501CE,numeric
+F9_10_LIAB_LOAN_OFF_EOY,Ending of year,PC,F990-PC-PART-10-LINE-22-EOY,2012-2022,PC-501CE,numeric
+F9_10_LIAB_MTG_NOTE_BOY,Beginnning of year,PC,F990-PC-PART-10-LINE-23-BOY,2012-2013,PC-501CE,integer64
+F9_10_LIAB_MTG_NOTE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-23-EOY,2012-2022,PC-501CE,integer64;integer;numeric
+F9_10_LIAB_NOTE_UNSEC_EOY,Ending of year,PC,F990-PC-PART-10-LINE-24-EOY,2012-2022,PC-501CE,integer64;numeric
+F9_10_LIAB_OTH_EOY,Ending of year,PC,F990-PC-PART-10-LINE-25-EOY,2012-2022,PC-501CE,integer64;numeric
+F9_10_LIAB_REV_DEFERRED_EOY,"Deferred revenue, end of year",PC,F990-PC-PART-10-LINE-19-EOY,2012-2022,PC-501CE,numeric
+F9_10_LIAB_TAX_EXEMPT_BOND_BOY,Beginnning of year,PC,F990-PC-PART-10-LINE-20-BOY,2012-2013,PC-501CE,integer
+F9_10_LIAB_TAX_EXEMPT_BOND_EOY,Ending of year,PC,F990-PC-PART-10-LINE-20-EOY,2012-2022,PC-501CE,integer;numeric
+F9_10_LIAB_TOT_BOY,"Total liabilities, beginning of year",PZ,"F990-EZ-PART-02-LINE-26-BOY;
+F990-PC-PART-10-LINE-26-BOY",2012-2013,PC-501CE,integer64
+F9_10_LIAB_TOT_EOY,"Total liabilities, end of year",PZ,"F990-EZ-PART-02-LINE-26-EOY;
+F990-PC-PART-10-LINE-26-EOY",2012-2022,PC-501CE,integer64;integer;numeric
+F9_10_NAFB_CAP_STCK_EOY,"Capital stock or trust principal, or current funds, end of year",PC,F990-PC-PART-10-LINE-30-EOY,2012-2022,PC-501CE,integer64;integer;numeric
+F9_10_NAFB_CAP_SURPLUS_EOY,Ending of year,PC,F990-PC-PART-10-LINE-31-EOY,2012-2022,PC-501CE,integer64;integer;numeric
+F9_10_NAFB_EARNING_RETAINED_BOY,Beginnning of year,PC,F990-PC-PART-10-LINE-32-BOY,2012-2013,PC-501CE,integer64
+F9_10_NAFB_EARNING_RETAINED_EOY,Ending of year,PC,F990-PC-PART-10-LINE-32-EOY,2012-2022,PC-501CE,integer64;integer;numeric
+F9_10_NAFB_RESTRICT_PERM_EOY,Ending of year,PC,F990-PC-PART-10-LINE-29-EOY,2012-2022,PC-501CE,numeric;integer
+F9_10_NAFB_RESTRICT_TEMP_EOY,Ending of year,PC,F990-PC-PART-10-LINE-28-EOY,2012-2022,PC-501CE,integer64;numeric
+F9_10_NAFB_TOT_BOY,"Net assets or fund balances, beginning of year",PZ,"F990-EZ-PART-02-LINE-27-BOY;
+F990-PC-PART-10-LINE-33-BOY",2012-2013,PC-501CE,integer64
+F9_10_NAFB_TOT_EOY,"Net assets or fund balances, end of year",PZ,"F990-EZ-PART-02-LINE-27-EOY;
+F990-PC-PART-10-LINE-33-EOY",2012-2022,PC-501CE,integer64;integer;numeric
+F9_10_NAFB_TOT_LIAB_NAFB_EOY,Ending of year,PC,F990-PC-PART-10-LINE-34-EOY,2012-2022,PC-501CE,integer64;numeric
+F9_10_NAFB_UNRESTRICT_EOY,Ending of year,PC,F990-PC-PART-10-LINE-27-EOY,2012-2022,PC-501CE,integer;integer64;numeric
+GEO_ZIP5,5-digit Zip Code,NA,NA,2012-2019,PC-501CE,integer
+MISSION_NTEE,NTEE Codes,NA,NA,2012-2019,PC-501CE,character
+SA_01_PCSTAT_ORG_AMT_SUPPORT,Amount of support,PZ,SCHED-A-PART-01-LINE-12G-COL-v,2012-2022,PC-501CE,integer;numeric
+SA_01_PCSTAT_ORG_AMT_SUPPORT_TOT,Sum of amounts of support,PZ,SCHED-A-PART-01-LINE-12G-COL-v-TOT,2012-2019,PC-501CE,integer
+SA_01_PCSTAT_SUPPORT_ORG_NUM,Number of supported organizations,PZ,SCHED-A-PART-01-LINE-12F,2012-2022,PC-501CE,integer
+SA_01_PCSTAT_SUPPORT_ORG_X,Supporting organization 509(a)(3),PZ,SCHED-A-PART-01-LINE-12,2012-2013,PC-501CE,integer
+SA_02_PUB_CONTR_SBST_TOT,Amounts from substantial contributors total,PZ,SCHED-A-PART-02-SECTION-A-LINE-05-COL-F,2012-2022,PC-501CE,integer
+SA_02_PUB_GIFT_GRANT_CONTR_TOT,Gifts Grants Contri Rcvd170 Grp - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-01-COL-F,2012-2022,PC-501CE,integer;numeric
+SA_02_PUB_SUPPORT_TOT,Public Support Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-06-COL-F,2012-2022,PC-501CE,integer;numeric
+SA_02_PUB_TAXREV_LEVIED_TOT,Tax Rev Levied For Org Benefit170 - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-02-COL-F,2012-2022,PC-501CE,integer
+SA_02_PUB_TOT_L123_TOT,Total - Total - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-04-COL-F,2012-2022,PC-501CE,integer;numeric
+SA_02_PUB_VALUE_SVC_GOVT_TOT,Govt Furn Srvc Fclts Vl170 Grp - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-03-COL-F,2012-2022,PC-501CE,integer
+SA_02_TOT_AMT_L4_CY_TOT,Amounts From Line4 - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-07-COL-F,2012-2022,PC-501CE,integer;numeric
+SA_02_TOT_GRO_RCPT_RLTD_ACTS,Gross receipts from admissions; merchandise sold or services performed; or furnishing of facilities in any activity that is related to the organization's tax-exempt purpose,PZ,SCHED-A-PART-02-SECTION-B-LINE-12,2012-2022,PC-501CE,integer
+SA_02_TOT_INCOME_GRO_TOT,Gross Investment Income - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-08-COL-F,2012-2022,PC-501CE,integer
+SA_02_TOT_INCOME_NET_UBIZ_TOT,Net UBI - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-09-COL-F,2012-2022,PC-501CE,integer
+SA_02_TOT_INCOME_OTH_TOT,Other Income - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-10-COL-F,2012-2022,PC-501CE,integer;numeric
+SA_02_TOT_SUPPORT_TOT,Form990 Schedule APart II - Total support,PZ,SCHED-A-PART-02-SECTION-B-LINE-11-COL-F,2012-2022,PC-501CE,integer;numeric
+SA_03_PUB_ADD_L7AB_TOT,Subst And Dsqlfy Prsns Tot Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-07C-COL-F,2012-2022,PC-501CE,integer;numeric
+SA_03_PUB_AMT_CONTR_SBST_TOT,Amts From Subst Contributors - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-07B-COL-F,2012-2022,PC-501CE,integer
+SA_03_PUB_AMT_PERS_DSQ_TOT,Amounts Rcvd Dsqlfy Person Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-07A-COL-F,2012-2022,PC-501CE,integer;numeric
+SA_03_PUB_GIFT_GRANT_CONTR_TOT,Gifts Grants Contrib Received - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-01-COL-F,2012-2022,PC-501CE,integer
+SA_03_PUB_GRO_RCPT_ADM_TOT,Gross Receipts Admissions Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-02-COL-F,2012-2022,PC-501CE,integer
+SA_03_PUB_GRO_RCPT_NONUBIZ_TOT,Gross Receipts From Non UBI - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-03-COL-F,2012-2022,PC-501CE,integer
+SA_03_PUB_SUPPORT_TOT,Public support total,PZ,SCHED-A-PART-03-SECTION-A-LINE-08-COL-F,2012-2022,PC-501CE,integer
+SA_03_PUB_TAXREV_LEVIED_TOT,Tax Rev Levied For Org Benefit509 - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-04-COL-F,2012-2022,PC-501CE,integer
+SA_03_PUB_TOT_L1_5_TOT,Total - Total - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-06-COL-F,2012-2022,PC-501CE,integer
+SA_03_PUB_VALUE_SVC_GOVT_TOT,Govt Furn Srvc Fclts Vl509 Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-05-COL-F,2012-2022,PC-501CE,integer
+SA_03_TOT_ADD_L10AB_TOT,Investment Income And UBTI - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-10C-COL-F,2012-2022,PC-501CE,integer
+SA_03_TOT_AMT_L6_TOT,Amts From Line6 - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-09-COL-F,2012-2022,PC-501CE,integer
+SA_03_TOT_INCOME_GRO_TOT,Gross Investment Income - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-10A-COL-F,2012-2022,PC-501CE,integer
+SA_03_TOT_INCOME_NET_UBIZ_TOT,Net Income From Other UBI - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-11-COL-F,2012-2022,PC-501CE,integer
+SA_03_TOT_INCOME_OTH_TOT,Other Income - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-12-COL-F,2012-2022,PC-501CE,integer
+SA_03_TOT_INCOME_UBIZ_TOT,Post1975 UBTI - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-10B-COL-F,2012-2022,PC-501CE,integer
+SA_03_TOT_SUPPORT_TOT,Total Support Calendar Year Grp - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-13-COL-F,2012-2022,PC-501CE,integer
+SR_02_RLTD_ORG_PCSTAT,Public charity status (if 501(c)(3)),PC,SCHED-R-PART-02-COL-E,2012-2019,PC-501CE,character
+TAX_YEAR,Tax Year,NA,NA,2012-2022,PC-501CE,integer
+DUP_RTRN_X,Indicates duplicate return,NA,NA,1989-2022,PZ-501CE,integer
+EIN2,Reformatted EIN,NA,NA,1989-2022,PZ-501CE,character
+F9_00_EXEMPT_STAT_501C3_X,Indicates a 501(c)(3) organization,HD,"F990-EZ-PART-00-SECTION-J;
+F990-PC-PART-00-SECTION-I",1989-2019,PZ-501CE,integer;character
+F9_00_GROUP_EXEMPT_NUM,Group exemption number,HD,"F990-EZ-PART-00-SECTION-F;
+F990-PC-PART-00-SECTION-HC",1989-2013,PZ-501CE,integer
+F9_00_GRO_RCPT,Gross Receipts (Header),HD,"F990-EZ-PART-00-SECTION-L;
+F990-PC-PART-00-SECTION-G",1989-2019,PZ-501CE,integer64
+F9_00_ORG_ADDR_CITY,Address of Filing Organization (US City),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",1989-2019,PZ-501CE,character
+F9_00_ORG_ADDR_L1,Address of Filing Organization (US Line 1),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",1989-2019,PZ-501CE,character
+F9_00_ORG_ADDR_STATE,Address of Filing Organization (US State),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",1989-2019,PZ-501CE,character
+F9_00_ORG_ADDR_ZIP,Address of Filing Organization (US Zip Code),HD,"F990-EZ-PART-00-SECTION-C;
+F990-PC-PART-00-SECTION-C",1989-2019,PZ-501CE,character
+F9_00_ORG_EIN,Orgainization Employer Identification Number (EIN),HD,F990-PC-PART-00-SECTION-D,1989-2022,PZ-501CE,character
+F9_00_ORG_NAME_DBA_L1,Doing business as (line 1),HD,F990-PC-PART-00-SECTION-C,1989-2019,PZ-501CE,character
+F9_00_ORG_NAME_L1,Name of Filing Organization (line 1),HD,F990-PC-PART-00-SECTION-C,1989-2019,PZ-501CE,character
+F9_00_RETURN_TYPE,Return type,HD,F990-PC-PART-00-LINE-00,2000-2013,PZ-501CE,integer
+F9_00_TAX_PERIOD_BEGIN_DATE,Tax period begin date,HD,F990-PC-PART-00-SECTION-A,1989-2019,PZ-501CE,integer
+F9_00_TAX_PERIOD_END_DATE,Tax period end date,HD,F990-PC-PART-00-SECTION-A,1989-2022,PZ-501CE,integer
+F9_00_TAX_YEAR,Tax year,HD,F990-PC-PART-00-SECTION-A,1989-2019,PZ-501CE,integer
+F9_01_EXP_FUNDR_TOT_CY,Total fundraising expense - CY,PC,F990-PC-PART-01-LINE-16B,1998-2010,PZ-501CE,integer;numeric
+F9_01_EXP_REV_LESS_EXP_CY,Excess or deficit,PZ,"F990-EZ-PART-01-LINE-18;
+F990-PC-PART-01-LINE-19-CY",1995-2022,PZ-501CE,integer;integer64;numeric
+F9_01_EXP_TOT_CY,Total expenses - CY,PZ,"F990-EZ-PART-01-LINE-17;
+F990-PC-PART-01-LINE-18-CY",1989-1999; 2012-2022,PZ-501CE,integer;integer64;numeric
+F9_01_NAFB_TOT_EOY,Net assets EOY,PZ,"F990-EZ-PART-01-LINE-21;
+F990-PC-PART-01-LINE-22-EOY",1989-2022,PZ-501CE,integer64;numeric;integer
+F9_01_REV_CONTR_TOT_CY_2,Contributions; gifts; grants; and similar amounts received,PZ,F990-EZ-PART-01-LINE-01,2012-2022,PZ-501CE,integer;numeric
+F9_01_REV_INVEST_TOT_CY,Investment income - current year,PZ,"F990-EZ-PART-01-LINE-04;
+F990-PC-PART-01-LINE-10-CY",1989-1999; 2012-2022,PZ-501CE,integer
+F9_01_REV_OTH_CY,Other revenue - current year,PZ,F990-PC-PART-01-LINE-11-CY,1989-1999,PZ-501CE,integer
+F9_01_REV_PROG_TOT_CY,ProgramServiceRevenue,PZ,"F990-EZ-PART-01-LINE-02;
+F990-PC-PART-01-LINE-09-CY",1989-1999,PZ-501CE,integer;integer64
+F9_01_REV_TOT_CY,Total revenue - CY,PZ,"F990-EZ-PART-01-LINE-09;
+F990-PC-PART-01-LINE-12-CY",1991-1999; 2012-2022,PZ-501CE,integer;integer64;numeric
+F9_03_PROG_CODE,Activity2 - Activity code,PC,F990-PC-PART-03-LINE-04-ABCD,1989-2019,PZ-501CE,integer;character
+F9_04_AFS_CONSOL_X,Consolidated audited financial statement?,PC,F990-PC-PART-04-LINE-12B,2012-2022,PZ-501CE,character
+F9_04_AFS_IND_X,Independent audited financial statements?,PC,F990-PC-PART-04-LINE-12A,2012-2022,PZ-501CE,character
+F9_04_BIZ_TRANSAC_DTK_ENTITY_X,"Was the organization a party to a business transaction with one of the following parties: An entity of which a current or former officer, director, trustee, or key employee (or a family member thereof) was an officer, director, trustee, or direct, or indirect owner?",PC,F990-PC-PART-04-LINE-28C,2012-2022,PZ-501CE,character
+F9_04_BIZ_TRANSAC_DTK_FAM_X,"Was the organization a party to a business transaction with one of the following parties: A family member of a current or former officer, director, trustee, or key employee?",PC,F990-PC-PART-04-LINE-28B,2012-2022,PZ-501CE,character
+F9_04_BIZ_TRANSAC_DTK_X,"Was the organization a party to a business transaction with one of the following parties: A current former officer, director, trustee, or key employee?",PC,F990-PC-PART-04-LINE-28A,2012-2022,PZ-501CE,character
+F9_04_COLLEC_ART_X,Collections of art?,PC,F990-PC-PART-04-LINE-08,2012-2022,PZ-501CE,character
+F9_04_COMP_DTK_YES_X,"PartVII; Lines 3; 4; or 5 = ""Yes""?",PC,F990-PC-PART-04-LINE-23,2012-2022,PZ-501CE,character
+F9_04_CONSERV_EMT_X,Conservation easements?,PC,F990-PC-PART-04-LINE-07,2012-2022,PZ-501CE,character
+F9_04_CONTR_ART_HIST_X,"Did the organization receive contributions of art, historical treasures, or other similar assets, or qualified conservation contributions?",PC,F990-PC-PART-04-LINE-30,2012-2022,PZ-501CE,character
+F9_04_CONTR_NONCSH_MT_25K_X,"Did the organization receive more than $25,000 in non-cash contributions?",PC,F990-PC-PART-04-LINE-29,2012-2022,PZ-501CE,character
+F9_04_CREDIT_COUNS_X,Credit counseling?,PC,F990-PC-PART-04-LINE-09,2012-2022,PZ-501CE,character
+F9_04_DAF_X,,PZ,"F990-EZ-PART-05-LINE-44A;
+F990-PC-PART-04-LINE-06",2012-2022,PZ-501CE,character
+F9_04_DESC_IN_501C3_X,Described in 501(c)(3)?,PC,F990-PC-PART-04-LINE-01,2012-2022,PZ-501CE,character
+F9_04_DOA_X,Partial liquidation? (F990-PC-PART-04-LINE-31-32-COMBINED: F990-EZ-PART-05-LINE-36),PZ,F990-PC-PART-04-LINE-32,2012-2022,PZ-501CE,character
+F9_04_ENDOW_X,Term or permanent endowments?,PC,F990-PC-PART-04-LINE-10,2012-2022,PZ-501CE,character
+F9_04_ENTITY_CTRL_X,Did the organization have a controlled entity within the meaning of section 512(b)(13)?,PZ,"F990-EZ-PART-05-LINE-45A;
+F990-PC-PART-04-LINE-35A",2012-2022,PZ-501CE,character
+F9_04_ENTITY_DISREG_X,Did the organization own 100% of an entity disregarded as sperate from the organization under Regulations sections 301.7701.2 and 301.7701-3?,PC,F990-PC-PART-04-LINE-33,2012-2022,PZ-501CE,character
+F9_04_ENTITY_RLTD_X,Related entity?,PC,F990-PC-PART-04-LINE-34,2012-2022,PZ-501CE,character
+F9_04_FRGN_ACT_X,Foreign activities; etc?,"PC;
+PZ",F990-PC-PART-04-LINE-14B,2012-2022,PZ-501CE,character
+F9_04_FRGN_OFFICE_X,At any time during the calender year; did the organization maintain an office outside of the U.S.?,PZ,"F990-EZ-PART-05-LINE-42C;
+F990-PC-PART-04-LINE-14A",2012-2022,PZ-501CE,character
+F9_04_FUNDR_ACT_X,Fundraising activities?,PC,F990-PC-PART-04-LINE-18,2012-2022,PZ-501CE,character
+F9_04_GAMING_X,Special events Indicates revenue from gaming,PZ,"F990-EZ-PART-01-LINE-06;
+F990-PC-PART-04-LINE-19",2012-2022,PZ-501CE,character
+F9_04_GRANT_MT_5K_FRGN_INDIV_X,More than $5000 to individuals Part IX; line 3?,PC,F990-PC-PART-04-LINE-16,2012-2022,PZ-501CE,character
+F9_04_GRANT_MT_5K_FRGN_ORG_X,More than $5000 to organizations Part IX; line 3?,PC,F990-PC-PART-04-LINE-15,2012-2022,PZ-501CE,character
+F9_04_GRANT_MT_5K_US_INDIV_X,Grants to individuals?,PC,F990-PC-PART-04-LINE-22,2012-2022,PZ-501CE,character
+F9_04_GRANT_MT_5K_US_ORG_X,Grants to organizations?,PC,F990-PC-PART-04-LINE-21,2012-2022,PZ-501CE,character
+F9_04_GRANT_RLTD_PERS_X,Grant to related person?,PC,F990-PC-PART-04-LINE-27,2012-2022,PZ-501CE,character
+F9_04_HOSPITAL_AFS_X,Audited financial statements?,PC,F990-PC-PART-04-LINE-20B,2012-2022,PZ-501CE,character;integer
+F9_04_HOSPITAL_X,IRS990 - Hospital?,"PZ;
+PC","F990-EZ-PART-05-LINE-44B;
+F990-PC-PART-04-LINE-20A",2012-2022,PZ-501CE,character
+F9_04_LOAN_DTK_AMT,Did the organization file Form 1120-POL for this year?,EZ,F990-EZ-PART-05-LINE-38B,2012-2022,PZ-501CE,integer;numeric
+F9_04_LOAN_DTK_X,,PZ,"F990-EZ-PART-05-LINE-38A;
+F990-PC-PART-04-LINE-26",2012-2022,PZ-501CE,character
+F9_04_LOB_ACT_X,Lobbying activities?,PZ,"F990-EZ-PART-06-LINE-47;
+F990-PC-PART-04-LINE-04",1989-1999; 2012-2022,PZ-501CE,integer;character
+F9_04_LTD_DOA_X,Discontinued ops or disposed 25pct assets (F990-PC-PART-04-LINE-31-32-COMBINED: F990-EZ-PART-05-LINE-36),PZ,F990-EZ-PART-05-LINE-36,2012-2022,PZ-501CE,character
+F9_04_LTD_X,Form990 Part IV - Terminated? (F990-PC-PART-04-LINE-31-32-COMBINED: F990-EZ-PART-05-LINE-36),PZ,F990-PC-PART-04-LINE-31,2012-2022,PZ-501CE,character
+F9_04_POLI_ACT_X,Political activities?,PZ,"F990-EZ-PART-05-LINE-46;
+F990-PC-PART-04-LINE-03",2012-2022,PZ-501CE,character
+F9_04_PROF_FUNDR_X,Professional fundraising?,PC,F990-PC-PART-04-LINE-17,2012-2022,PZ-501CE,character
+F9_04_PROXY_TAX_X,Subject to proxy tax?,PZ,"F990-EZ-PART-05-LINE-35C;
+F990-PC-PART-04-LINE-05",2012-2022,PZ-501CE,character
+F9_04_PTR_ACT_X,Did the organization conduct more than 5% of its activities through an entity that is not a related organization and thatis treated as a partnership for federal income tax purposes?,PC,F990-PC-PART-04-LINE-37,2012-2022,PZ-501CE,character
+F9_04_REP_FOOTNOTE_FIN48_X,Balance sheet footnote for liability under FIN 48?,PC,F990-PC-PART-04-LINE-11F,2012-2022,PZ-501CE,character
+F9_04_REP_INVEST_OTH_SEC_X,Balance sheet investments - other securities amounts reported?,PC,F990-PC-PART-04-LINE-11B,2012-2022,PZ-501CE,character
+F9_04_REP_LAND_BLDG_EQUIP_X,Balance sheet land; buildings; equipment amounts reported?,PC,F990-PC-PART-04-LINE-11A,2012-2022,PZ-501CE,character
+F9_04_REP_OTH_ASSET_X,Balance sheet other assets amounts reported?,PC,F990-PC-PART-04-LINE-11D,2012-2022,PZ-501CE,character
+F9_04_REP_OTH_LIAB_X,Balance sheet other liabilities amounts reported?,PC,F990-PC-PART-04-LINE-11E,2012-2022,PZ-501CE,character
+F9_04_REP_PROG_RLTD_X,Balance sheet investments - program related amounts reported?,PC,F990-PC-PART-04-LINE-11C,2012-2022,PZ-501CE,character
+F9_04_SCHED_B_REQ_X,Indicates Schedule B is not required,PZ,"F990-EZ-PART-00-SECTION-H;
+F990-PC-PART-04-LINE-02",2012-2022,PZ-501CE,character
+F9_04_SCHED_O_REQ_X,"Did the organization complete Schedule O and provide explanatios in Schedule O for Part VI, lines 11b and 19?",PC,F990-PC-PART-04-LINE-38,2012-2022,PZ-501CE,character
+F9_04_SCHOOL_X,IRS990 - School?,PZ,"F990-EZ-PART-06-LINE-48;
+F990-PC-PART-04-LINE-13",2012-2022,PZ-501CE,character
+F9_04_TAX_EXEMPT_BOND_ESCROW_X,Escrow account?,PC,F990-PC-PART-04-LINE-24C,2012-2022,PZ-501CE,character
+F9_04_TAX_EXEMPT_BOND_INVEST_X,Investment income?,PC,F990-PC-PART-04-LINE-24B,2012-2022,PZ-501CE,character
+F9_04_TAX_EXEMPT_BOND_ISSUER_X,On behalf of issuer?,PC,"F990-PC-PART-04-LINE-24B;
+F990-PC-PART-04-LINE-24D",2012-2022,PZ-501CE,character
+F9_04_TAX_EXEMPT_BOND_X,Tax exempt bonds?,PC,F990-PC-PART-04-LINE-24A,2012-2022,PZ-501CE,character
+F9_04_TRANSAC_ENGAGED_X,501(c)(3) and 501(c)(4) orgs: Did the organization engage in any section 4958 excess benefit transaction,PZ,"F990-EZ-PART-05-LINE-40B;
+F990-PC-PART-04-LINE-25A",2012-2022,PZ-501CE,character
+F9_04_TRANSAC_PY_X,Prior excess benefit transaction?,"PZ;
+PC",F990-PC-PART-04-LINE-25B,2012-2022,PZ-501CE,character
+F9_04_TRANSFER_EXEMPT_ORG_X,Did the organization make any transfers to an exempt non-charitable related organization?,PZ,"F990-EZ-PART-06-LINE-49A;
+F990-PC-PART-04-LINE-36",2012-2022,PZ-501CE,character
+F9_05_170C_FORM_1098C_FILED_X,Form 1098-C filed?,PC,F990-PC-PART-05-LINE-07H,2012-2022,PZ-501CE,character
+F9_05_170C_FORM_8282_REQ_X,Form 8282 property disposed of?,PC,F990-PC-PART-05-LINE-07C,2012-2022,PZ-501CE,character
+F9_05_170C_FORM_8899_FILED_X,Form 8899 filed?,PC,F990-PC-PART-05-LINE-07G,2012-2022,PZ-501CE,character
+F9_05_170C_FUNDS_FOR_PREMIUM_X,Funds to pay premiums?,PC,F990-PC-PART-05-LINE-07E,2012-2022,PZ-501CE,character
+F9_05_170C_NUM_FORM_8282_FILED_X,Number of 8282s filed,PC,F990-PC-PART-05-LINE-07D,2012-2022,PZ-501CE,integer
+F9_05_170C_PREMIUM_PAID_X,Premiums paid?,PC,F990-PC-PART-05-LINE-07F,2012-2022,PZ-501CE,character
+F9_05_170C_QUID_PRO_QUO_CONTR_X,Quid pro quo contributions?,PC,F990-PC-PART-05-LINE-07A,2012-2022,PZ-501CE,character
+F9_05_170C_QUID_PRO_QUO_NOTIFY_X,Quid pro quo disclosure?,PC,F990-PC-PART-05-LINE-07B,2012-2022,PZ-501CE,character
+F9_05_4947_FORM_990_FILED_1041_X,Filed 990 in lieu of 1041?,PZ,"F990-EZ-PART-05-LINE-43;
+F990-PC-PART-05-LINE-12A",2012-2022,PZ-501CE,character
+F9_05_4947_TAX_EXEMPT_INT_AMT,Indicates section 4947(a)(1) nonexempt charitable trusts filing Form 990 in lieu of Form 1041,PZ,"F990-EZ-PART-05-LINE-43;
+F990-PC-PART-05-LINE-12B",2012-2022,PZ-501CE,integer
+F9_05_501C12_GRO_INCOME_MEMB,Gross income from members,PC,F990-PC-PART-05-LINE-11A,1989-2022,PZ-501CE,integer;integer64
+F9_05_501C12_GRO_INCOME_OTH,"Gross income, other sources",PC,F990-PC-PART-05-LINE-11B,1989-2022,PZ-501CE,integer;numeric;integer64
+F9_05_501C29_LIC_HEALTH_PLAN_X,Is the organization licensed to issue qualified health plans in more than one state?,PC,F990-PC-PART-05-LINE-13A,2012-2022,PZ-501CE,character
+F9_05_501C29_RESERVE_MAINT_AMT,Reserves maintained amount,PC,F990-PC-PART-05-LINE-13C,2012-2022,PZ-501CE,integer;numeric
+F9_05_501C29_STATE_RESERVE_AMT,State required reserves amount,PC,F990-PC-PART-05-LINE-13B,2012-2022,PZ-501CE,integer;numeric
+F9_05_501C7_GRO_RCPT_PUB_USE,"501(c)(7) orgs: Gross receipts, included on line 9, for public use of club facilities",PZ,"F990-EZ-PART-05-LINE-39B;
+F990-PC-PART-05-LINE-10B",1989-2022,PZ-501CE,integer;integer64;numeric
+F9_05_501C7_INITIATION_FEES,501(c)(7) orgs: Initiation fees and capital contributions included on line 9,PZ,"F990-EZ-PART-05-LINE-39A;
+F990-PC-PART-05-LINE-10A",1989-2022,PZ-501CE,integer;integer64;numeric
+F9_05_COMPLY_BACKUP_WITHHOLD_X,Compliance with backup witholding?,PC,F990-PC-PART-05-LINE-01C,2012-2022,PZ-501CE,character
+F9_05_DAF_DIST_DONOR_X,DAFs - Distribution to donor?,PC,F990-PC-PART-05-LINE-09B,2012-2022,PZ-501CE,character
+F9_05_DAF_EXCESS_BIZ_HOLDING_X,Donor advised fund have excess business holdings?,PC,F990-PC-PART-05-LINE-08,2012-2022,PZ-501CE,character
+F9_05_DAF_TAXABLE_DIST_X,DAFs - Taxable distributions?,PC,F990-PC-PART-05-LINE-09A,2012-2022,PZ-501CE,character
+F9_05_EMPL_TAX_RETURN_FILED_X,Employment tax returns filed?,PC,F990-PC-PART-05-LINE-02B,2012-2022,PZ-501CE,character
+F9_05_FRGN_FIN_ACC_X,Foreign financial account?,PZ,"F990-EZ-PART-05-LINE-42B;
+F990-PC-PART-05-LINE-04A",2012-2022,PZ-501CE,character
+F9_05_NONDEDUCT_CONTR_NOTIFY_X,Non-deduct. disclosure?,PC,F990-PC-PART-05-LINE-06B,2012-2022,PZ-501CE,character
+F9_05_NONDEDUCT_CONTR_X,Non-deductible contributions?,PC,F990-PC-PART-05-LINE-06A,2012-2022,PZ-501CE,character
+F9_05_NUM_EMPL,Number of employees,PC,F990-PC-PART-05-LINE-02A,2007-2009; 2012-2022,PZ-501CE,integer
+F9_05_NUM_FORM_1096_BOX_3,Number forms transmitted with 1096,PC,F990-PC-PART-05-LINE-01A,2012-2022,PZ-501CE,integer
+F9_05_NUM_FORM_W2G,Number W-2Gs included in 1a,PC,F990-PC-PART-05-LINE-01B,2012-2022,PZ-501CE,integer
+F9_05_PTST_FORM_8886T_FILED_X,Form 8886-T filed?,PC,F990-PC-PART-05-LINE-05C,2012-2022,PZ-501CE,character
+F9_05_PTST_PARTY_NOTIFY_X,Taxable party notification?,PC,F990-PC-PART-05-LINE-05B,2012-2022,PZ-501CE,character
+F9_05_PTST_X,Prohibited tax shelter transaction?,PZ,"F990-EZ-PART-05-LINE-40E;
+F990-PC-PART-05-LINE-05A",2012-2022,PZ-501CE,character
+F9_05_TANNING_FORM_720_FILED_X,Form 720 filed and taxes paid on indoor tanning services?,PZ,"F990-EZ-PART-05-LINE-44D;
+F990-PC-PART-05-LINE-14B",2012-2022,PZ-501CE,character
+F9_05_TANNING_SVC_PROV_X,Payments received for indoor tanning services?,PZ,"F990-EZ-PART-05-LINE-44C;
+F990-PC-PART-05-LINE-14A",2012-2022,PZ-501CE,character
+F9_05_UBIZ_FORM_990T_FILED_X,Form 990-T filed?,"PZ;
+PC","F990-EZ-PART-05-LINE-35B;
+F990-PC-PART-05-LINE-03B",2012-2022,PZ-501CE,character
+F9_05_UBIZ_IMCOME_OVER_LIMIT_X,Unrelated business income?,"PZ;
+PC","F990-EZ-PART-05-LINE-35A;
+F990-PC-PART-05-LINE-03A",1989-2022,PZ-501CE,character
+F9_06_ACT_NOT_PREVIOUSLY_REP_X,Did the organization engage in any activity not previously reported to the IRS?,EZ,F990-EZ-PART-05-LINE-33,2012-2022,PZ-501CE,character
+F9_06_GVRN_CHANGE_DOC_X,Were any changes made in the organizing or governing documents but not reported to the IRS?,PZ,"F990-EZ-PART-05-LINE-34;
+F990-PC-PART-06-SECTION-A-LINE-04",2012-2022,PZ-501CE,character
+F9_06_POLI_EXP,Direct or indirect political expenditures.,EZ,F990-EZ-PART-05-LINE-37A,1989-2010; 2012-2022,PZ-501CE,integer
+F9_06_POLI_FORM1120_POL_FILED_X,Did the organization file Form 1120-POL for this year?,EZ,F990-EZ-PART-05-LINE-37B,2012-2022,PZ-501CE,character
+F9_07_COMP_DTK_COMP_ORG_TOT,"Total, column D (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED)",PC,F990-PC-PART-07-SECTION-A-LINE-01D-COL-D,2012-2022,PZ-501CE,integer;numeric
+F9_07_COMP_DTK_COMP_OTH_TOT,"Total, column F (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED)",PC,F990-PC-PART-07-SECTION-A-LINE-01D-COL-F,2012-2022,PZ-501CE,integer;numeric
+F9_07_COMP_DTK_COMP_RLTD_TOT,"Total, column E (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED)",PC,F990-PC-PART-07-SECTION-A-LINE-01D-COL-E,2012-2022,PZ-501CE,integer;numeric
+F9_07_COMP_DTK_NUM_GT_100K,Number individuals greater than $100K (F990-PC-PART-07-SECTION-A: F990-EZ-PART-04-PART-06-LINE-50-CONBINED),PC,F990-PC-PART-07-SECTION-A-LINE-02,2012-2022,PZ-501CE,integer
+F9_07_COMP_KONTR_NUM_GT_100K,Total number of independent contractors who received 100K+ from org,PZ,"F990-EZ-PART-06-LINE-51D;
+F990-PC-PART-07-SECTION-B-LINE-02",2012-2022,PZ-501CE,integer
+F9_08_REV_CONTR_MEMBSHIP_DUE,Membership Dues,PZ,"F990-EZ-PART-01-LINE-03;
+F990-PC-PART-08-LINE-01B",1989-2010; 2012-2022,PZ-501CE,integer;numeric
+F9_08_REV_CONTR_TOT,Total contributions,PC,F990-PC-PART-08-LINE-01H-COL-A,1989-2022,PZ-501CE,integer;integer64;numeric
+F9_08_REV_MISC_BIZCODE,Other Revenue Misc - Business code,PC,F990-PC-PART-08-LINE-11-ABC-COL-BIZCODE,2012-2022,PZ-501CE,integer
+F9_08_REV_MISC_OTH_TOT,Miscellaneous Revenue - Total revenue,PC,F990-PC-PART-08-LINE-11D-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_08_REV_MISC_TOT,Other Revenue Misc - Total revenue,PC,F990-PC-PART-08-LINE-11-ABC-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_08_REV_MISC_TOT_TOT,Other revenue - current year,PZ,"F990-EZ-PART-01-LINE-08;
+F990-PC-PART-08-LINE-11E-COL-A",1998-2022,PZ-501CE,integer;integer64;numeric
+F9_08_REV_OTH_EVNT_DIRECT_EXP,Special events direct expenses (F990-PC-PART-08-LINE-08B-09B-COMBINED: F990-EZ-PART-01-LINE-06C),PZ,F990-EZ-PART-01-LINE-06C,1989-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_EVNT_NET_TOT,Special events net income (or loss) (F990-PC-PART-08-LINE-08C-09C-COL-A-COMBINED: F990-EZ-PART-01-LINE-06D),PZ,F990-EZ-PART-01-LINE-06D,1989-2019,PZ-501CE,integer;numeric
+F9_08_REV_OTH_FUNDR_DIRECT_EXP,Direct expenses,PZ,F990-PC-PART-08-LINE-08B,2009-2022,PZ-501CE,integer
+F9_08_REV_OTH_FUNDR_EVNT_1,IRS990 - 8a-1,PZ,"F990-EZ-PART-01-LINE-06B-1;
+F990-PC-PART-08-LINE-08A-1",2009-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_FUNDR_NET_TOT,Net Income From Fundraising Events - Total revenue,PZ,F990-PC-PART-08-LINE-08C-COL-A,2009-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_GAMING,Gross income from gaming activities,PZ,"F990-EZ-PART-01-LINE-06A;
+F990-PC-PART-08-LINE-09A",1995-2022,PZ-501CE,integer;integer64;numeric
+F9_08_REV_OTH_GAMING_DIRECT_EXP,Direct expenses,PZ,F990-PC-PART-08-LINE-09B,2009-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_GAMING_NET_TOT,Net Income From Gaming - Total revenue,PZ,F990-PC-PART-08-LINE-09C-COL-A,2009-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_INVEST_BOND_TOT,Income From Invest Bond Proceeds - Total revenue,PC,F990-PC-PART-08-LINE-04-COL-A,2009-2022,PZ-501CE,integer
+F9_08_REV_OTH_INVEST_INCOME_TOT,Invest income,PZ,"F990-EZ-PART-01-LINE-04;
+F990-PC-PART-08-LINE-03-COL-A",1998-2022,PZ-501CE,integer;integer64;numeric
+F9_08_REV_OTH_INV_COST_GOODS,Less: cost of goods sold,PZ,"F990-EZ-PART-01-LINE-07B;
+F990-PC-PART-08-LINE-10B",1989-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_INV_GRO_SALE,gross sales of inventory,PZ,"F990-EZ-PART-01-LINE-07A;
+F990-PC-PART-08-LINE-10A",1995-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_INV_NET_TOT,Gross profit (or loss) from sales of inventory,PZ,"F990-EZ-PART-01-LINE-07C;
+F990-PC-PART-08-LINE-10C-COL-A",1989-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_RENT_GRO_PERS,Gross Rents - Amount,PC,F990-PC-PART-08-LINE-06A-COL-ii,2009-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_RENT_GRO_REAL,Gross Rents - Real amount,PC,F990-PC-PART-08-LINE-06A-COL-i,2009-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_RENT_INCOME_PERS,Rental Income Or Loss - Amount,PC,F990-PC-PART-08-LINE-06C-COL-ii,2009-2022,PZ-501CE,integer;integer64
+F9_08_REV_OTH_RENT_INCOME_REAL,Rental Income Or Loss - Real amount,PC,F990-PC-PART-08-LINE-06C-COL-i,2009-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_RENT_LESS_EXP_PERS,Less Rental Expenses - Amount,PC,F990-PC-PART-08-LINE-06B-COL-ii,2009-2022,PZ-501CE,integer
+F9_08_REV_OTH_RENT_LESS_EXP_REAL,Less Rental Expenses - Real amount,PC,F990-PC-PART-08-LINE-06B-COL-i,2009-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_RENT_NET_TOT,Net Rental Income Or Loss - Total revenue,PC,F990-PC-PART-08-LINE-06D-COL-A,1998-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_ROY_TOT,Royalties Revenue - Total revenue,PC,F990-PC-PART-08-LINE-05-COL-A,2009-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_SALE_ASSET,Gross amount from sale of assets other than inventory (F990-PC-PART-08-LINE-07A-COL-i-ii-COMBINED: F990-EZ-PART-01-LINE-05A),PZ,F990-EZ-PART-01-LINE-05A,1995-1999; 2012-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_SALE_ASSET_OTH,Gross Amount Sales Assets - Other amount,PZ,F990-PC-PART-08-LINE-07A-COL-ii,1998-2022,PZ-501CE,integer;integer64;numeric
+F9_08_REV_OTH_SALE_ASSET_SEC,Securities amount,"PC;
+PZ",F990-PC-PART-08-LINE-07A-COL-i,1989-2022,PZ-501CE,integer64;numeric
+F9_08_REV_OTH_SALE_GAIN_NET_TOT,Gain or (loss) from sale of assets other than inventory,PZ,"F990-EZ-PART-01-LINE-05C;
+F990-PC-PART-08-LINE-07D-COL-A",1995-1999; 2009-2022,PZ-501CE,integer;integer64;numeric
+F9_08_REV_OTH_SALE_GAIN_OTH,Gain Or Loss - Other amount,PC,F990-PC-PART-08-LINE-07C-COL-ii,1998-2022,PZ-501CE,integer;numeric
+F9_08_REV_OTH_SALE_GAIN_SEC,Securities amount,PC,F990-PC-PART-08-LINE-07C-COL-i,1995-2022,PZ-501CE,integer;integer64;numeric
+F9_08_REV_OTH_SALE_LESS_COST,Cost or other basis and sales expenses (F990-PC-PART-08-LINE-07B-COL-i-ii-COMBINED: F990-EZ-PART-01-LINE-05B),PZ,F990-EZ-PART-01-LINE-05B,1989-1999; 2012-2022,PZ-501CE,integer64;integer
+F9_08_REV_OTH_SALE_LESS_COST_OTH,Less Cost Oth Basis Sales Expenses - Other amount,PZ,F990-PC-PART-08-LINE-07B-COL-ii,1998-2022,PZ-501CE,integer;integer64;numeric
+F9_08_REV_OTH_SALE_LESS_COST_SEC,Securities amount,PZ,F990-PC-PART-08-LINE-07B-COL-i,1989-2022,PZ-501CE,integer64;numeric
+F9_08_REV_PROG_BIZCODE,Program Service Revenue - Business code,PC,F990-PC-PART-08-LINE-02-ABCDE-COL-BIZCODE,2012-2022,PZ-501CE,integer
+F9_08_REV_PROG_OTH_TOT,Total Oth Program Service Revenue - Total revenue,PC,F990-PC-PART-08-LINE-02F-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_08_REV_PROG_TOT,Program Service Revenue - Total revenue,PC,F990-PC-PART-08-LINE-02-ABCDE-COL-A,2012-2022,PZ-501CE,integer;integer64
+F9_08_REV_PROG_TOT_TOT,Program service revenue total,PC,F990-PC-PART-08-LINE-02G-COL-A,1998-2022,PZ-501CE,integer;integer64;numeric
+F9_08_REV_TOT_TOT,Total Revenue - Total revenue,PC,F990-PC-PART-08-LINE-12-COL-A,1998-2022,PZ-501CE,integer;integer64;numeric
+F9_09_EXP_AD_PROMO_TOT,Advertising and promotion - total expense,PC,F990-PC-PART-09-LINE-12-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_BEN_PAID_MEMB_TOT,Benefits Paid to or for Members - Total Expense,PZ,F990-PC-PART-09-LINE-04-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_COMP_DSQ_PERS_TOT,"Compensation not included above, or to disqualified persons - Total Expense",PC,F990-PC-PART-09-LINE-06-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_COMP_DTK_TOT,"Compensation for Current Officers, Directors, Trustees and Key Employees - Total Expense",PC,F990-PC-PART-09-LINE-05-COL-A,1989-2022,PZ-501CE,integer;integer64;numeric
+F9_09_EXP_CONF_MEETING_TOT,"Conferences, conventions, and meetings- total expense",PC,F990-PC-PART-09-LINE-19-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_DEPREC_TOT,"Depreciation, depletion, and amortization",PC,F990-PC-PART-09-LINE-22-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_FEE_SVC_ACC_TOT,Fees for Services - Accounting - Total Expense,PC,F990-PC-PART-09-LINE-11C-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_FEE_SVC_FUNDR_TOT,Fees for Professional Fundraising Services - Total Expense,PC,F990-PC-PART-09-LINE-11E-COL-A,1989-2022,PZ-501CE,integer;integer64;numeric
+F9_09_EXP_FEE_SVC_INVEST_TOT,Investment Management Fees - Total Expense,PC,F990-PC-PART-09-LINE-11F-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_FEE_SVC_LEGAL_TOT,Fees for Services - Legal - Total Expense,PC,F990-PC-PART-09-LINE-11B-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_FEE_SVC_LOB_TOT,Fees for Services - Lobbying - Total Expense,PC,F990-PC-PART-09-LINE-11D-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_FEE_SVC_MGMT_TOT,Fees for Services - Management - Total Expense,PC,F990-PC-PART-09-LINE-11A-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_FEE_SVC_OTH_TOT,Fees for Services - Other - Total Expense,PC,F990-PC-PART-09-LINE-11G-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_GRANT_FRGN_TOT,total Grants to Foreign Orgs and Governments - Total Expense,PC,F990-PC-PART-09-LINE-03-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_GRANT_US_INDIV_TOT,Grants To Domestic Individuals - Total,PC,F990-PC-PART-09-LINE-02-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_GRANT_US_ORG_TOT,Grants To Domestic Orgs - Total,PZ,F990-PC-PART-09-LINE-01-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_INFO_TECH_TOT,Information Technology - Total,PC,F990-PC-PART-09-LINE-14-COL-A,2012-2022,PZ-501CE,integer
+F9_09_EXP_INSURANCE_TOT,Insurance - Total,PC,F990-PC-PART-09-LINE-23-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_INT_TOT,Interest - Total,PC,F990-PC-PART-09-LINE-20-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_OCCUPANCY_TOT,Occupancy; rent; utilities; and maintenance,PZ,"F990-EZ-PART-01-LINE-14;
+F990-PC-PART-09-LINE-16-COL-A",2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_OFFICE_TOT,Office Expenses - Total,PZ,F990-PC-PART-09-LINE-13-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_OTH_EMPL_BEN_TOT,Other Employee Benefits - Total,PC,F990-PC-PART-09-LINE-09-COL-A,2012-2022,PZ-501CE,integer
+F9_09_EXP_OTH_OTH_TOT,Other expenses - total expense,PC,F990-PC-PART-09-LINE-24E-COL-A,2012-2022,PZ-501CE,integer
+F9_09_EXP_OTH_SAL_WAGE_TOT,Other Salaries And Wages - Total,PC,F990-PC-PART-09-LINE-07-COL-A,1995-2022,PZ-501CE,integer;integer64;numeric
+F9_09_EXP_OTH_TOT,Other Expenses - Total,PC,F990-PC-PART-09-LINE-24-ABCD-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_PAYROLL_TAX_TOT,Payroll Taxes - Total,PC,F990-PC-PART-09-LINE-10-COL-A,1995-2022,PZ-501CE,integer;numeric
+F9_09_EXP_PAY_AFFIL_TOT,Payments To Affiliates - Total,PC,F990-PC-PART-09-LINE-21-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_PENSION_CONTR_TOT,Pension Plan Contributions - Total,PC,F990-PC-PART-09-LINE-08-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_ROY_TOT,Royalties - Total,PC,F990-PC-PART-09-LINE-15-COL-A,2012-2022,PZ-501CE,integer;numeric
+F9_09_EXP_TOT_FUNDR,Total Functional Expenses - Fundraising,PC,F990-PC-PART-09-LINE-25-COL-D,1989-1999,PZ-501CE,integer;integer64
+F9_09_EXP_TOT_TOT,Total Functional Expenses - Total,PC,F990-PC-PART-09-LINE-25-COL-A,1998-2022,PZ-501CE,integer;integer64;numeric
+F9_09_EXP_TRAVEL_ENTMT_TOT,Travel Entrtnmnt Public Officials - Total,PC,F990-PC-PART-09-LINE-18-COL-A,2012-2022,PZ-501CE,integer
+F9_09_EXP_TRAVEL_TOT,Travel - Total,PC,F990-PC-PART-09-LINE-17-COL-A,2012-2022,PZ-501CE,integer
+F9_10_ASSET_ACC_NET_EOY,"Net accounts receivable, end of year",PC,F990-PC-PART-10-LINE-04-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_ASSET_CASH_EOY,"Cash, non-interest-bearing, end of year",PZ,F990-PC-PART-10-LINE-01-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_ASSET_EXP_PREPAID_EOY,Ending of year,PC,F990-PC-PART-10-LINE-09-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_ASSET_INTANGIBLE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-14-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_ASSET_INVEST_PROG_RLTD_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-13-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_ASSET_INVEST_SEC_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-11-EOY,1998-2010; 2012-2022,PZ-501CE,integer;integer64;numeric
+F9_10_ASSET_INVEST_SEC_OTH_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-12-EOY,1998-2010; 2012-2022,PZ-501CE,integer;numeric
+F9_10_ASSET_INV_SALE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-08-EOY,2012-2022,PZ-501CE,integer
+F9_10_ASSET_LAND_BLDG_DEPREC,Less: accumulated depreciation,PC,F990-PC-PART-10-LINE-10B,2012-2022,PZ-501CE,integer;numeric
+F9_10_ASSET_LOAN_DSQ_PERS_EOY,Ending of year,PC,F990-PC-PART-10-LINE-06-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_ASSET_LOAN_OFF_EOY,Ending of year,PC,F990-PC-PART-10-LINE-05-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_ASSET_NOTE_LOAN_NET_EOY,Ending of year,PC,F990-PC-PART-10-LINE-07-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_ASSET_OTH_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-15-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_ASSET_PLEDGE_NET_EOY,Ending of year,PC,F990-PC-PART-10-LINE-03-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_ASSET_SAVING_EOY,Ending of year,PZ,F990-PC-PART-10-LINE-02-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_ASSET_TOT_BOY,"Total assets, beginning of year",PZ,"F990-EZ-PART-02-LINE-25-BOY;
+F990-PC-PART-10-LINE-16-BOY",1989-2019,PZ-501CE,integer64
+F9_10_ASSET_TOT_EOY,"Total assets, end of year",PZ,"F990-EZ-PART-02-LINE-25-EOY;
+F990-PC-PART-10-LINE-16-EOY",1989-2022,PZ-501CE,integer64;numeric
+F9_10_LIAB_ACC_PAYABLE_EOY,"Accounts payable and accrued expenses, end of year",PC,F990-PC-PART-10-LINE-17-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_LIAB_ESCROW_ACC_EOY,"Escrow or custodial account liability, end of year",PC,F990-PC-PART-10-LINE-21-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_LIAB_GRANT_PAYABLE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-18-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_LIAB_LOAN_OFF_EOY,Ending of year,PC,F990-PC-PART-10-LINE-22-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_LIAB_MTG_NOTE_BOY,Beginnning of year,PC,F990-PC-PART-10-LINE-23-BOY,1995-2019,PZ-501CE,integer;integer64
+F9_10_LIAB_MTG_NOTE_EOY,Ending of year,PC,F990-PC-PART-10-LINE-23-EOY,1995-2022,PZ-501CE,integer;integer64;numeric
+F9_10_LIAB_NOTE_UNSEC_EOY,Ending of year,PC,F990-PC-PART-10-LINE-24-EOY,2009-2022,PZ-501CE,integer;integer64;numeric
+F9_10_LIAB_OTH_EOY,Ending of year,PC,F990-PC-PART-10-LINE-25-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_LIAB_REV_DEFERRED_EOY,"Deferred revenue, end of year",PC,F990-PC-PART-10-LINE-19-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_LIAB_TAX_EXEMPT_BOND_BOY,Beginnning of year,PC,F990-PC-PART-10-LINE-20-BOY,1995-2019,PZ-501CE,integer;integer64
+F9_10_LIAB_TAX_EXEMPT_BOND_EOY,Ending of year,PC,F990-PC-PART-10-LINE-20-EOY,1995-2022,PZ-501CE,integer;numeric
+F9_10_LIAB_TOT_BOY,"Total liabilities, beginning of year",PZ,"F990-EZ-PART-02-LINE-26-BOY;
+F990-PC-PART-10-LINE-26-BOY",1989-2019,PZ-501CE,integer64
+F9_10_LIAB_TOT_EOY,"Total liabilities, end of year",PZ,"F990-EZ-PART-02-LINE-26-EOY;
+F990-PC-PART-10-LINE-26-EOY",1989-2022,PZ-501CE,integer64;numeric
+F9_10_NAFB_CAP_STCK_EOY,"Capital stock or trust principal, or current funds, end of year",PC,F990-PC-PART-10-LINE-30-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_NAFB_CAP_SURPLUS_EOY,Ending of year,PC,F990-PC-PART-10-LINE-31-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_NAFB_EARNING_RETAINED_BOY,Beginnning of year,PC,F990-PC-PART-10-LINE-32-BOY,1998-2019,PZ-501CE,integer;integer64
+F9_10_NAFB_EARNING_RETAINED_EOY,Ending of year,PC,F990-PC-PART-10-LINE-32-EOY,1989-2022,PZ-501CE,integer;integer64;numeric
+F9_10_NAFB_RESTRICT_PERM_EOY,Ending of year,PC,F990-PC-PART-10-LINE-29-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_NAFB_RESTRICT_TEMP_EOY,Ending of year,PC,F990-PC-PART-10-LINE-28-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_NAFB_TOT_BOY,"Net assets or fund balances, beginning of year",PZ,"F990-EZ-PART-02-LINE-27-BOY;
+F990-PC-PART-10-LINE-33-BOY",1995-2019,PZ-501CE,integer;integer64
+F9_10_NAFB_TOT_EOY,"Net assets or fund balances, end of year",PZ,"F990-EZ-PART-02-LINE-27-EOY;
+F990-PC-PART-10-LINE-33-EOY",2012-2022,PZ-501CE,numeric;integer;integer64
+F9_10_NAFB_TOT_LIAB_NAFB_EOY,Ending of year,PC,F990-PC-PART-10-LINE-34-EOY,2012-2022,PZ-501CE,integer;numeric
+F9_10_NAFB_UNRESTRICT_EOY,Ending of year,PC,F990-PC-PART-10-LINE-27-EOY,2012-2022,PZ-501CE,integer;numeric;integer64
+F9_11_RECO_OTH_CHANGE_NAFB,Other changes in net assets,PZ,"F990-EZ-PART-01-LINE-20;
+F990-PC-PART-11-LINE-09",1995-2022,PZ-501CE,integer;integer64;numeric
+GEO_ZIP5,5-digit Zip Code,NA,NA,1989-2019,PZ-501CE,character;integer
+MISSION_NTEE,NTEE Codes,NA,NA,1989-2019,PZ-501CE,character
+SA_01_PCSTAT_ORG_AMT_SUPPORT,Amount of support,PZ,SCHED-A-PART-01-LINE-12G-COL-v,2012-2022,PZ-501CE,integer;numeric
+SA_01_PCSTAT_SUPPORT_ORG_NUM,Number of supported organizations,PZ,SCHED-A-PART-01-LINE-12F,2012-2022,PZ-501CE,integer
+SA_02_PUB_CONTR_SBST_TOT,Amounts from substantial contributors total,PZ,SCHED-A-PART-02-SECTION-A-LINE-05-COL-F,2012-2022,PZ-501CE,integer
+SA_02_PUB_GIFT_GRANT_CONTR_CY,Current tax year,PZ,SCHED-A-PART-02-SECTION-A-LINE-01-COL-E,1998-2010,PZ-501CE,integer;integer64
+SA_02_PUB_GIFT_GRANT_CONTR_TOT,Gifts Grants Contri Rcvd170 Grp - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-01-COL-F,2009-2022,PZ-501CE,integer;numeric
+SA_02_PUB_SUPPORT_TOT,Public Support Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-06-COL-F,2012-2022,PZ-501CE,integer;numeric
+SA_02_PUB_TAXREV_LEVIED_TOT,Tax Rev Levied For Org Benefit170 - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-02-COL-F,2009-2022,PZ-501CE,integer;numeric
+SA_02_PUB_TOT_L123_TOT,Total - Total - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-04-COL-F,2012-2022,PZ-501CE,integer;numeric
+SA_02_PUB_VALUE_SVC_GOVT_TOT,Govt Furn Srvc Fclts Vl170 Grp - Total,PZ,SCHED-A-PART-02-SECTION-A-LINE-03-COL-F,1998-2022,PZ-501CE,integer
+SA_02_TOT_AMT_L4_CY_TOT,Amounts From Line4 - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-07-COL-F,2012-2022,PZ-501CE,integer;numeric
+SA_02_TOT_GRO_RCPT_RLTD_ACTS,Gross receipts from admissions; merchandise sold or services performed; or furnishing of facilities in any activity that is related to the organization's tax-exempt purpose,PZ,SCHED-A-PART-02-SECTION-B-LINE-12,1998-2022,PZ-501CE,integer;integer64
+SA_02_TOT_INCOME_GRO_TOT,Gross Investment Income - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-08-COL-F,2009-2022,PZ-501CE,integer
+SA_02_TOT_INCOME_NET_UBIZ_TOT,Net UBI - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-09-COL-F,2012-2022,PZ-501CE,integer
+SA_02_TOT_INCOME_OTH_TOT,Other Income - Total,PZ,SCHED-A-PART-02-SECTION-B-LINE-10-COL-F,1995-1999; 2012-2022,PZ-501CE,integer;numeric
+SA_02_TOT_SUPPORT_TOT,Form990 Schedule APart II - Total support,PZ,SCHED-A-PART-02-SECTION-B-LINE-11-COL-F,1995-1999; 2012-2022,PZ-501CE,integer;numeric
+SA_03_PUB_ADD_L7AB_TOT,Subst And Dsqlfy Prsns Tot Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-07C-COL-F,2012-2022,PZ-501CE,integer
+SA_03_PUB_AMT_CONTR_SBST_TOT,Amts From Subst Contributors - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-07B-COL-F,2012-2022,PZ-501CE,integer
+SA_03_PUB_AMT_PERS_DSQ_TOT,Amounts Rcvd Dsqlfy Person Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-07A-COL-F,2012-2022,PZ-501CE,integer
+SA_03_PUB_GIFT_GRANT_CONTR_TOT,Gifts Grants Contrib Received - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-01-COL-F,1998-2022,PZ-501CE,integer;numeric
+SA_03_PUB_GRO_RCPT_ADM_TOT,Gross Receipts Admissions Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-02-COL-F,2009-2022,PZ-501CE,integer;numeric
+SA_03_PUB_GRO_RCPT_NONUBIZ_TOT,Gross Receipts From Non UBI - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-03-COL-F,1995-1999; 2012-2022,PZ-501CE,integer
+SA_03_PUB_SUPPORT_TOT,Public support total,PZ,SCHED-A-PART-03-SECTION-A-LINE-08-COL-F,2012-2022,PZ-501CE,integer;numeric
+SA_03_PUB_TAXREV_LEVIED_TOT,Tax Rev Levied For Org Benefit509 - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-04-COL-F,2009-2022,PZ-501CE,integer
+SA_03_PUB_TOT_L1_5_TOT,Total - Total - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-06-COL-F,2012-2022,PZ-501CE,integer;numeric
+SA_03_PUB_VALUE_SVC_GOVT_TOT,Govt Furn Srvc Fclts Vl509 Grp - Total,PZ,SCHED-A-PART-03-SECTION-A-LINE-05-COL-F,2009-2022,PZ-501CE,integer
+SA_03_TOT_ADD_L10AB_TOT,Investment Income And UBTI - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-10C-COL-F,2009-2022,PZ-501CE,integer
+SA_03_TOT_AMT_L6_TOT,Amts From Line6 - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-09-COL-F,2012-2022,PZ-501CE,integer;numeric
+SA_03_TOT_INCOME_GRO_TOT,Gross Investment Income - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-10A-COL-F,1998-2010; 2012-2022,PZ-501CE,integer
+SA_03_TOT_INCOME_NET_UBIZ_TOT,Net Income From Other UBI - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-11-COL-F,2012-2022,PZ-501CE,integer
+SA_03_TOT_INCOME_OTH_TOT,Other Income - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-12-COL-F,2012-2022,PZ-501CE,integer
+SA_03_TOT_INCOME_UBIZ_TOT,Post1975 UBTI - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-10B-COL-F,2012-2022,PZ-501CE,integer
+SA_03_TOT_SUPPORT_TOT,Total Support Calendar Year Grp - Total,PZ,SCHED-A-PART-03-SECTION-B-LINE-13-COL-F,1998-2022,PZ-501CE,integer;integer64
+SC_02_AVE_EXP_GRASS_LOB_TOT,Grassroots Lobbying Expenditures - Total,PZ,SCHED-C-PART-02-A-LINE-02F-COL-E,1989-1999,PZ-501CE,integer
+SC_02_AVE_EXP_GRASS_NONTAX_CY,Grassroots Nontaxable Amount2 - Current year,PZ,SCHED-C-PART-02-A-LINE-02D-COL-D,1995-1999,PZ-501CE,integer
+SC_02_EXP_DIRECT_LOB_FILEORG,Total Direct Lobbying Expenditures - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01B-COL-A,1989-2010,PZ-501CE,integer
+SC_02_EXP_GRASS_LOB_FILEORG,Total Grassroots Lobbying Expenditures - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01A-COL-A,1998-2010,PZ-501CE,integer
+SC_02_EXP_GRASS_M_NONTAX_FILEORG,Total Grassroot Lobbying Minus Nontaxable - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01H-COL-A,1989-2010,PZ-501CE,integer
+SC_02_EXP_GRASS_NONTAX_FILEORG,Grassroots Nontaxable Amount - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01G-COL-A,1998-2010,PZ-501CE,integer
+SC_02_EXP_LOB_M_NONTAX_AFFGROUP,Total Lobbying Minus Nontaxable - Affiliated Group Totals,PZ,SCHED-C-PART-02-A-LINE-01I-COL-B,1989-1999,PZ-501CE,integer
+SC_02_EXP_LOB_M_NONTAX_FILEORG,Total Lobbying Minus Nontaxable - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01I-COL-A,1998-2010,PZ-501CE,integer
+SC_02_EXP_LOB_NONTAX_FILEORG,Lobbying Nontaxable Amount - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01F-COL-A,1995-2010,PZ-501CE,integer
+SC_02_EXP_OTH_EXEMPT_FILEORG,Other exempt purpose expenditures - Filing Organization's Totals,PZ,SCHED-C-PART-02-A-LINE-01D-COL-A,1995-2010,PZ-501CE,integer
+SC_02_EXP_TOT_LOB_FILEORG,Total lobbying expenditures - Filing organization's totals,PZ,SCHED-C-PART-02-A-LINE-01C-COL-A,2004-2010,PZ-501CE,integer
+SC_02_LOB_ACT_CONTACT_LEGIS_AMT,Direct contact with legislators; their staffs; government officials; or a legislative body (only for section 501(c)(3))(Amount),PZ,SCHED-C-PART-02-B-LINE-01G-COL-B,1998-2010,PZ-501CE,integer
+SR_02_RLTD_ORG_PCSTAT,Public charity status (if 501(c)(3)),PC,SCHED-R-PART-02-COL-E,1989-2019,PZ-501CE,character
+TAX_YEAR,Tax Year,NA,NA,1989-2022,PZ-501CE,integer
