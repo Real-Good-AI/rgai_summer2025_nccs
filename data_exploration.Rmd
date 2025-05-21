@@ -1,0 +1,93 @@
+---
+title: "NCCS Data Exploration"
+author: "Mayleen"
+date: "2025-05-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning=FALSE}
+library(tidyverse)
+```
+
+# Loading Data 
+## CORE Data Dictionary
+```{r}
+data_dict <- read.csv("DATA_DICTS/CORE-HRMN_dd.csv")
+head(data_dict)
+#glimpse(data_dict)
+#summarise(data_dict)
+```
+
+## CORE Data
+Year: 2022
+Type: CHARITIES
+Scope: 990 + 990EZ filers
+```{r}
+core_data_2022 <- read_csv("CORE/CORE-2022-501C3-CHARITIES-PZ-HRMN.csv")
+head(core_data_2022)
+#glimpse(core_data_2022)
+#summarise(core_data_2022)
+```
+Year: 1989
+Type: CHARITIES
+Scope: 990 + 990EZ filers
+```{r}
+core_data_1989 <- read_csv("CORE/CORE-1989-501C3-CHARITIES-PZ-HRMN.csv")
+head(core_data_1989)
+#glimpse(core_data_1989)
+#summarise(core_data_1989)
+#unique(core_data_1989$MISSION_NTEE)
+```
+Year: 2014
+Type: CHARITIES
+Scope: 990 + 990EZ filers
+```{r}
+core_data_2014 <- read_csv("CORE/CORE-2014-501C3-CHARITIES-PZ-HRMN.csv")
+head(core_data_1989)
+#glimpse(core_data_1989)
+#summarise(core_data_1989)
+#unique(core_data_1989$MISSION_NTEE)
+```
+
+
+## Unified BMF Data
+```{r}
+unified_bmf <- read_csv("CORE/BMF_UNIFIED_V1.1.csv")
+head(unified_bmf)
+#glimpse(unified_bmf)
+#summarise(unified_bmf)
+```
+# Merging Unified BMF to CORE
+## Handling duplicate EINs
+- in bmf, how many of those duplicates have the same organization name? 
+- in bmf duplicates, what are the patterns in which columns they differ in value?
+- figure out if we care about that info--if its not info we care about, then we can keep one of the two without worry?
+- do I need to merge right now? How important is the info in BMF file to current task?
+
+```{r}
+unified_bmf |>
+    count(EIN2) |>
+    filter(n > 1)
+```
+```{r}
+unified_bmf |>
+    filter(EIN2 == "EIN-00-0000000")
+```
+
+
+```{r}
+core_data_2022 |>
+    count(EIN2) |>
+    filter(n > 1)
+```
+
+```{r}
+core_data_1989 |>
+    count(EIN2) |>
+    filter(n > 1)
+```
+
