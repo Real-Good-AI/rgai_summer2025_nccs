@@ -62,17 +62,18 @@ head(unified_bmf)
 #summarise(unified_bmf)
 ```
 # Merging Unified BMF to CORE
-## Handling duplicate EINs
+## Checking for duplicates
 - in bmf, how many of those duplicates have the same organization name? 
 - in bmf duplicates, what are the patterns in which columns they differ in value?
 - figure out if we care about that info--if its not info we care about, then we can keep one of the two without worry?
 - do I need to merge right now? How important is the info in BMF file to current task?
 
 ```{r}
-unified_bmf |>
+test <- unified_bmf |>
     count(EIN2) |>
-    filter(n > 1)
+    filter(n > 2)
 ```
+
 ```{r}
 unified_bmf |>
     filter(EIN2 == "EIN-00-0000000")
@@ -80,14 +81,133 @@ unified_bmf |>
 
 
 ```{r}
+# which EIN2 have more than one entry?
 core_data_2022 |>
     count(EIN2) |>
     filter(n > 1)
 ```
 
+
 ```{r}
-core_data_1989 |>
+test <- core_data_1989 |>
     count(EIN2) |>
-    filter(n > 1)
+    filter(n > 2)
+
+#head(test)
+#typeof(test)
+#test$EIN2
 ```
 
+## Exploring duplicates
+Goal: Script to check what kinds of columns are different in duplicate rows
+
+Return a data frame with the following variables:
+     - col_name : variable name from data file
+     - instances : number of times that a duplicate row differs in this column
+
+```{r}
+library(tidyverse)
+library(data.table)
+library(cchsflow)
+
+core_data_2022 <- read_csv("CORE/CORE-2022-501C3-CHARITIES-PZ-HRMN.csv")
+
+# Get list of EIN2 to check
+duplicate_EIN2 <- core_data_2022 |>
+    count(EIN2) |>
+    filter(n > 1)
+
+# Subset of CORE data with only duplicated EIN2 rows
+core_duplicates <- core_data_2022 |>
+    filter(EIN2 %in% duplicate_EIN2$EIN2)
+
+# Instantiate list of counts; entry i is number of times there was a mismatch in the i-th column
+count_list <- rep(0, ncol(core_data_2022))
+count_list_NA <- rep(0, ncol(core_data_2022))
+
+# For each EIN2 in list, compare the corresponding rows
+for (idx in 1:nrow(duplicate_EIN2)) {
+    print(paste(idx, duplicate_EIN2$EIN2[idx], duplicate_EIN2$n[idx]), sep=", ")
+    ein <- duplicate_EIN2$EIN2[idx]
+    subset <- core_duplicates |> filter(EIN2 == ein)
+    if (nrow(subset) == 2){
+        diff_cols <- is_equal(subset[1,], subset[2,])
+        diff_cols_NA <- (subset[1,] == subset[2,])
+    } else if (nrow(subset) == 3) {
+        diff_cols <- (is_equal(subset[1,], subset[2,]) & is_equal(subset[1,],subset[3,]) & is_equal(subset[2,],subset[3,]))
+        diff_cols_NA <- ((subset[1,] == subset[2,]) & (subset[2,] == subset[3,]) & (subset[1,] == subset[3,]))
+    } else {
+        print(paste("EIN", ein, "occurs", nrow(subset), "times, skipped", sep = " "))
+        next
+    }
+    # indices of columns where there was a mismatch
+    indices <- which(!diff_cols)
+    indices_NA <- which(is.na(diff_cols_NA))
+    
+    # increment where there was a mismatch
+    count_list[indices] <- count_list[indices] + 1
+    count_list_NA[indices_NA] <- count_list_NA[indices_NA] + 1
+}
+# If the two rows are equal in Column "A", do nothing
+# If the two rows differ in Column "A", increase instances for that column name by 1
+#count_list_idx <- which(count_list != 0)
+#count_list_idx
+#colnames(core_data_2022)[count_list_idx]
+
+duplicates_info <- data.table(variable_name = colnames(core_data_2022), num_differences = count_list, num_NA = count_list_NA)
+head(duplicates_info)
+```
+
+```{r}
+library(tibble)
+data_dict <- read.csv("DATA_DICTS/CORE-HRMN_dd.csv")
+data_dict <- data_dict |> 
+    column_to_rownames('variable_name')
+
+# which EIN2 have more than one entry?
+test_table <- core_data_2022 |>
+    count(EIN2) |>
+    filter(n > 1)
+
+#head(test_table$EIN2)
+
+# get subset of data table only containing duplicated EIN2 rows
+core_data_2022 |>
+    filter(EIN2 %in% test_table$EIN2)
+
+ein <- "EIN-47-4469864"
+# get the duplicated rows -- note that maybe there are times when its more than 2?
+subset <- core_data_2022 |> filter(EIN2 == ein)
+# returns array of true/false telling you if rows matched on column
+bools <- (subset[1,] == subset[2,]) 
+bools
+
+
+bools <- (is_equal(subset[1,], subset[2,]) & is_equal(subset[1,],subset[3,]) & is_equal(subset[2,],subset[3,]))
+bools
+
+# indices of columns where there was a mismatch
+indices <- which(!bools)
+
+count_list <- rep(0, ncol(core_data_1989))
+
+count_list[indices] <- count_list[indices] + 1
+
+counts_table <- data.table(variable_name = colnames(core_data_2022), counts = count_list)
+counts_table
+
+typeof(indices)
+
+# column names of columns with mismatch
+colnames(subset[,indices])
+
+# differences in logical comparison operators
+test1 <- c(NA, TRUE, FALSE, TRUE, FALSE, TRUE)
+test2 <- c(NA, NA, NA, TRUE, FALSE, FALSE)
+test3 <- c(NA, NA, NA, TRUE, FALSE, FALSE)
+test_compare2 <- test1 == test2
+test_compare3 <- ((test1 == test2) & (test1 == test3) & (test2 == test3))
+
+test_compare2_is <- is_equal(test1, test2)
+test_compare3_is <- (is_equal(test1, test2) & is_equal(test1, test3) & is_equal(test2,test3))
+```
