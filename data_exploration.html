@@ -463,67 +463,7 @@ head(data_dict)</code></pre>
 ## #   F9_00_GROUP_EXEMPT_NUM &lt;dbl&gt;, F9_08_REV_OTH_INV_COST_GOODS &lt;dbl&gt;, …</code></pre>
 <pre class="r"><code>#glimpse(core_data_1989)
 #summarise(core_data_1989)
-unique(core_data_1989$MISSION_NTEE)</code></pre>
-<pre><code>##   [1] &quot;A69&quot; &quot;E22&quot; &quot;B99&quot; &quot;N31&quot; &quot;O55&quot; &quot;G41&quot; &quot;A65&quot; &quot;E11&quot; &quot;U50&quot; &quot;A80&quot; &quot;T70&quot; &quot;E19&quot;
-##  [13] &quot;E92&quot; &quot;F22&quot; &quot;B50&quot; &quot;P27&quot; &quot;O41&quot; &quot;B70&quot; &quot;B25&quot; &quot;P70&quot; &quot;P75&quot; &quot;H20&quot; &quot;E91&quot; &quot;E99&quot;
-##  [25] &quot;G45&quot; &quot;N20&quot; &quot;B21&quot; &quot;O21&quot; &quot;E90&quot; &quot;O43&quot; &quot;E20&quot; &quot;P30&quot; &quot;B42&quot; &quot;B28&quot; &quot;D20&quot; &quot;E03&quot;
-##  [37] &quot;S81&quot; &quot;X22&quot; &quot;C50&quot; &quot;L22&quot; &quot;B84&quot; &quot;B30&quot; &quot;C30&quot; &quot;E21&quot; &quot;X20&quot; &quot;B20&quot; &quot;B43&quot; &quot;S41&quot;
-##  [49] &quot;A54&quot; &quot;G50&quot; &quot;B03&quot; &quot;C60&quot; &quot;G51&quot; &quot;G20&quot; &quot;S20&quot; &quot;B24&quot; &quot;P82&quot; &quot;B11&quot; &quot;A25&quot; &quot;B80&quot;
-##  [61] &quot;F80&quot; &quot;O42&quot; &quot;L99&quot; &quot;O11&quot; &quot;A50&quot; &quot;E50&quot; &quot;P28&quot; &quot;X21&quot; &quot;O53&quot; &quot;T99&quot; &quot;D32&quot; &quot;E62&quot;
-##  [73] &quot;W20&quot; &quot;A6E&quot; &quot;I80&quot; &quot;Z99&quot; &quot;S80&quot; &quot;J30&quot; &quot;S30&quot; &quot;F30&quot; &quot;A51&quot; &quot;J32&quot; &quot;P29&quot; &quot;P73&quot;
-##  [85] &quot;E30&quot; &quot;J40&quot; &quot;F32&quot; &quot;P46&quot; &quot;P20&quot; &quot;P99&quot; &quot;O99&quot; &quot;F99&quot; &quot;P81&quot; &quot;E40&quot; &quot;E42&quot; &quot;B83&quot;
-##  [97] &quot;P80&quot; &quot;Y50&quot; &quot;F20&quot; &quot;P51&quot; &quot;L21&quot; &quot;P33&quot; &quot;N11&quot; &quot;B90&quot; &quot;J20&quot; &quot;S99&quot; &quot;L82&quot; &quot;G80&quot;
-## [109] &quot;A70&quot; &quot;N68&quot; &quot;P52&quot; &quot;F42&quot; &quot;O23&quot; &quot;A84&quot; &quot;K31&quot; &quot;J99&quot; &quot;P74&quot; &quot;A61&quot; &quot;P31&quot; &quot;I60&quot;
-## [121] &quot;K28&quot; &quot;S03&quot; &quot;C32&quot; &quot;A60&quot; &quot;H30&quot; &quot;I83&quot; &quot;A52&quot; &quot;P43&quot; &quot;E60&quot; &quot;L80&quot; &quot;A19&quot; &quot;X99&quot;
-## [133] &quot;E32&quot; &quot;N72&quot; &quot;J22&quot; &quot;E70&quot; &quot;J33&quot; &quot;A30&quot; &quot;W30&quot; &quot;N52&quot; &quot;A32&quot; &quot;D34&quot; &quot;P72&quot; &quot;F01&quot;
-## [145] &quot;I72&quot; &quot;P58&quot; &quot;U02&quot; &quot;M23&quot; &quot;A68&quot; &quot;L20&quot; &quot;G54&quot; &quot;R60&quot; &quot;P44&quot; &quot;N50&quot; &quot;T22&quot; &quot;M24&quot;
-## [157] &quot;F33&quot; &quot;C02&quot; &quot;C34&quot; &quot;A33&quot; &quot;W19&quot; &quot;E24&quot; &quot;S50&quot; &quot;C05&quot; &quot;S31&quot; &quot;P84&quot; &quot;G48&quot; &quot;I05&quot;
-## [169] &quot;T90&quot; &quot;B82&quot; &quot;T31&quot; &quot;E86&quot; &quot;Q70&quot; &quot;K40&quot; &quot;E31&quot; &quot;D50&quot; &quot;L41&quot; &quot;G30&quot; &quot;G81&quot; &quot;A63&quot;
-## [181] &quot;Q20&quot; &quot;G02&quot; &quot;A11&quot; &quot;A40&quot; &quot;U12&quot; &quot;F60&quot; &quot;S32&quot; &quot;U99&quot; &quot;W70&quot; &quot;K30&quot; &quot;N70&quot; &quot;A20&quot;
-## [193] &quot;N99&quot; &quot;S33&quot; &quot;S24&quot; &quot;G90&quot; &quot;N32&quot; &quot;P60&quot; &quot;H99&quot; &quot;E80&quot; &quot;O52&quot; &quot;B60&quot; &quot;M20&quot; &quot;X11&quot;
-## [205] &quot;W03&quot; &quot;O20&quot; &quot;W60&quot; &quot;A6C&quot; &quot;K20&quot; &quot;C36&quot; &quot;T23&quot; &quot;P11&quot; &quot;U05&quot; &quot;P02&quot; &quot;B12&quot; &quot;A03&quot;
-## [217] &quot;Q19&quot; &quot;N30&quot; &quot;A99&quot; &quot;T03&quot; &quot;S12&quot; &quot;F31&quot; &quot;I99&quot; &quot;G99&quot; &quot;N19&quot; &quot;A12&quot; &quot;P40&quot; &quot;O30&quot;
-## [229] &quot;A26&quot; &quot;I23&quot; &quot;A34&quot; &quot;N64&quot; &quot;X30&quot; &quot;R23&quot; &quot;K36&quot; &quot;R62&quot; &quot;U34&quot; &quot;N65&quot; &quot;P62&quot; &quot;R19&quot;
-## [241] &quot;O31&quot; &quot;N03&quot; &quot;G11&quot; &quot;N63&quot; &quot;A90&quot; &quot;C42&quot; &quot;I21&quot; &quot;I51&quot; &quot;B19&quot; &quot;K34&quot; &quot;C19&quot; &quot;O22&quot;
-## [253] &quot;Q30&quot; &quot;C20&quot; &quot;C26&quot; &quot;F21&quot; &quot;E46&quot; &quot;F11&quot; &quot;X03&quot; &quot;B02&quot; &quot;D60&quot; &quot;J21&quot; &quot;W80&quot; &quot;N60&quot;
-## [265] &quot;W99&quot; &quot;Q22&quot; &quot;B94&quot; &quot;N66&quot; &quot;A6A&quot; &quot;A6B&quot; &quot;N40&quot; &quot;I11&quot; &quot;A82&quot; &quot;Q41&quot; &quot;G9B&quot; &quot;S21&quot;
-## [277] &quot;N6A&quot; &quot;B41&quot; &quot;G96&quot; &quot;C01&quot; &quot;Q01&quot; &quot;L50&quot; &quot;V35&quot; &quot;A62&quot; &quot;K03&quot; &quot;P50&quot; &quot;P53&quot; &quot;P32&quot;
-## [289] &quot;P19&quot; &quot;E05&quot; &quot;I30&quot; &quot;F05&quot; &quot;I50&quot; &quot;C99&quot; &quot;I44&quot; &quot;I40&quot; &quot;W02&quot; &quot;Q40&quot; &quot;P03&quot; &quot;P01&quot;
-## [301] &quot;L25&quot; &quot;C03&quot; &quot;Y20&quot; &quot;C35&quot; &quot;R20&quot; &quot;E02&quot; &quot;C27&quot; &quot;W50&quot; &quot;Y99&quot; &quot;Q11&quot; &quot;V03&quot; &quot;B92&quot;
-## [313] &quot;A31&quot; &quot;N69&quot; &quot;S82&quot; &quot;M03&quot; &quot;K26&quot; &quot;L40&quot; &quot;S22&quot; &quot;N67&quot; &quot;V30&quot; &quot;D19&quot; &quot;U30&quot; &quot;O40&quot;
-## [325] &quot;U03&quot; &quot;O12&quot; &quot;M40&quot; &quot;Y40&quot; &quot;B01&quot; &quot;P61&quot; &quot;Q05&quot; &quot;U21&quot; &quot;A56&quot; &quot;V22&quot; &quot;C41&quot; &quot;P22&quot;
-## [337] &quot;H90&quot; &quot;W40&quot; &quot;V20&quot; &quot;Q33&quot; &quot;T20&quot; &quot;U40&quot; &quot;W05&quot; &quot;G03&quot; &quot;P34&quot; &quot;A57&quot; &quot;H41&quot; &quot;G44&quot;
-## [349] &quot;U20&quot; &quot;G43&quot; &quot;I31&quot; &quot;I12&quot; &quot;A23&quot; &quot;S02&quot; &quot;D40&quot; &quot;R22&quot; &quot;H92&quot; &quot;J12&quot; &quot;P85&quot; &quot;G98&quot;
-## [361] &quot;X19&quot; &quot;F40&quot; &quot;L11&quot; &quot;L30&quot; &quot;K99&quot; &quot;A02&quot; &quot;R30&quot; &quot;U51&quot; &quot;C40&quot; &quot;U11&quot; &quot;H96&quot; &quot;X90&quot;
-## [373] &quot;E12&quot; &quot;D33&quot; &quot;B40&quot; &quot;O50&quot; &quot;J02&quot; &quot;G60&quot; &quot;L81&quot; &quot;R26&quot; &quot;W90&quot; &quot;K01&quot; &quot;S43&quot; &quot;I20&quot;
-## [385] &quot;V05&quot; &quot;S40&quot; &quot;R25&quot; &quot;E00&quot; &quot;V19&quot; &quot;Q21&quot; &quot;R99&quot; &quot;V23&quot; &quot;G40&quot; &quot;Q99&quot; &quot;A05&quot; &quot;W00&quot;
-## [397] &quot;N62&quot; &quot;C11&quot; &quot;U19&quot; &quot;R24&quot; &quot;G83&quot; &quot;T21&quot; &quot;P12&quot; &quot;X01&quot; &quot;W25&quot; &quot;J11&quot; &quot;S46&quot; &quot;I03&quot;
-## [409] &quot;H12&quot; &quot;D12&quot; &quot;X50&quot; &quot;G42&quot; &quot;G84&quot; &quot;L02&quot; &quot;X40&quot; &quot;H43&quot; &quot;F52&quot; &quot;V99&quot; &quot;R03&quot; &quot;S47&quot;
-## [421] &quot;S19&quot; &quot;H01&quot; &quot;U41&quot; &quot;N80&quot; &quot;I43&quot; &quot;V36&quot; &quot;G12&quot; &quot;H05&quot; &quot;U00&quot; &quot;A01&quot; &quot;Q23&quot; &quot;S05&quot;
-## [433] &quot;K12&quot; &quot;W01&quot; &quot;L12&quot; &quot;J19&quot; &quot;X12&quot; &quot;H03&quot; &quot;Q71&quot; &quot;P42&quot; &quot;A76&quot; &quot;X02&quot; &quot;E41&quot; &quot;U33&quot;
-## [445] &quot;I19&quot; &quot;C12&quot; &quot;Y11&quot; &quot;W61&quot; &quot;D11&quot; &quot;F19&quot; &quot;T50&quot; &quot;Q42&quot; &quot;N12&quot; &quot;S11&quot; &quot;H11&quot; &quot;W22&quot;
-## [457] &quot;Q12&quot; &quot;I71&quot; &quot;V02&quot; &quot;P45&quot; &quot;T60&quot; &quot;P86&quot; &quot;B71&quot; &quot;T11&quot; &quot;U36&quot; &quot;E65&quot; &quot;L03&quot; &quot;T40&quot;
-## [469] &quot;G23&quot; &quot;F70&quot; &quot;B05&quot; &quot;J05&quot; &quot;M42&quot; &quot;G00&quot; &quot;D61&quot; &quot;M01&quot; &quot;U31&quot; &quot;X05&quot; &quot;F03&quot; &quot;J03&quot;
-## [481] &quot;D31&quot; &quot;O51&quot; &quot;V21&quot; &quot;F02&quot; &quot;T00&quot; &quot;F53&quot; &quot;K25&quot; &quot;H98&quot; &quot;N61&quot; &quot;Y21&quot; &quot;G19&quot; &quot;G01&quot;
-## [493] &quot;G94&quot; &quot;I73&quot; &quot;F12&quot; &quot;X70&quot; &quot;A85&quot; &quot;A72&quot; &quot;T30&quot; &quot;V32&quot; &quot;X23&quot; &quot;W12&quot; &quot;H40&quot; &quot;r22&quot;
-## [505] &quot;J01&quot; &quot;A75&quot; &quot;N71&quot; &quot;V24&quot; &quot;U42&quot; &quot;T19&quot; &quot;Y33&quot; &quot;Y30&quot; &quot;O03&quot; &quot;V25&quot; &quot;E01&quot; &quot;H80&quot;
-## [517] &quot;H42&quot; &quot;E61&quot; &quot;Q31&quot; &quot;R11&quot; &quot;W11&quot; &quot;Q32&quot; &quot;Q03&quot; &quot;I01&quot; &quot;Q02&quot; &quot;R61&quot; &quot;M12&quot; &quot;P24&quot;
-## [529] &quot;D99&quot; &quot;P05&quot; &quot;M41&quot; &quot;G25&quot; &quot;H70&quot; &quot;O19&quot; &quot;F54&quot; &quot;D30&quot; &quot;V11&quot; &quot;R40&quot; &quot;H50&quot; &quot;K02&quot;
-## [541] &quot;A24&quot; &quot;V33&quot; &quot;P26&quot; &quot;P36&quot; &quot;R63&quot; &quot;A59&quot; &quot;V26&quot; &quot;L52&quot; &quot;E71&quot; &quot;S01&quot; &quot;B95&quot; &quot;H81&quot;
-## [553] &quot;A91&quot; &quot;K05&quot; &quot;H21&quot; &quot;B22&quot; &quot;N02&quot; &quot;B58&quot; &quot;R00&quot; &quot;G70&quot; &quot;R12&quot; &quot;K24&quot; &quot;Y03&quot; &quot;Y22&quot;
-## [565] &quot;M19&quot; &quot;N41&quot; &quot;P54&quot; &quot;O54&quot; &quot;D03&quot; &quot;M99&quot; &quot;I70&quot; &quot;U32&quot; &quot;E63&quot; &quot;L01&quot; &quot;T12&quot; &quot;E72&quot;
-## [577] &quot;Q43&quot; &quot;T02&quot; &quot;D21&quot; &quot;M05&quot; &quot;L19&quot; &quot;W24&quot; &quot;R02&quot; &quot;M11&quot; &quot;B64&quot; &quot;B54&quot; &quot;Y34&quot; &quot;K19&quot;
-## [589] &quot;H83&quot; &quot;P83&quot; &quot;K35&quot; &quot;G86&quot; &quot;C00&quot; &quot;E82&quot; &quot;A41&quot; &quot;B32&quot; &quot;S25&quot; &quot;P21&quot; &quot;P37&quot; &quot;V34&quot;
-## [601] &quot;H9B&quot; &quot;Y05&quot; &quot;H51&quot; &quot;G91&quot; &quot;H48&quot; &quot;B00&quot; &quot;H19&quot; &quot;G97&quot; &quot;N00&quot; &quot;E39&quot; &quot;H85&quot; &quot;G92&quot;
-## [613] &quot;N05&quot; &quot;Y19&quot; &quot;G05&quot; &quot;G9D&quot; &quot;X84&quot; &quot;F41&quot; &quot;U01&quot; &quot;H44&quot; &quot;G82&quot; &quot;Y42&quot; &quot;F50&quot; &quot;D05&quot;
-## [625] &quot;A6G&quot; &quot;H94&quot; &quot;V31&quot; &quot;B26&quot; &quot;Y24&quot; &quot;G85&quot; &quot;A45&quot; &quot;C21&quot; &quot;A67&quot; &quot;G89&quot; &quot;X82&quot; &quot;E34&quot;
-## [637] &quot;K11&quot; &quot;R01&quot; &quot;I02&quot; &quot;B55&quot; &quot;Y02&quot; &quot;I24&quot; &quot;H60&quot; &quot;M02&quot; &quot;O32&quot; &quot;X83&quot; &quot;B91&quot; &quot;O01&quot;
-## [649] &quot;H45&quot; &quot;X80&quot; &quot;A53&quot; &quot;V12&quot; &quot;V37&quot; &quot;B61&quot; &quot;A6D&quot; &quot;B5A&quot; &quot;Y52&quot; &quot;L53&quot; &quot;O02&quot; &quot;X00&quot;
-## [661] &quot;B27&quot; &quot;Y00&quot; &quot;R68&quot; &quot;F72&quot; &quot;K50&quot; &quot;N01&quot; &quot;G53&quot; &quot;A44&quot; &quot;Y35&quot; &quot;S00&quot; &quot;Y01&quot; &quot;E35&quot;
-## [673] &quot;P87&quot; &quot;H22&quot; &quot;A74&quot; &quot;E38&quot; &quot;R05&quot; &quot;O05&quot; &quot;V40&quot; &quot;T05&quot; &quot;V01&quot; &quot;L05&quot; &quot;A55&quot; &quot;P35&quot;
-## [685] &quot;E56&quot; &quot;P00&quot; &quot;A00&quot; &quot;P41&quot; &quot;G22&quot; &quot;H9A&quot; &quot;F34&quot; &quot;A83&quot; &quot;H82&quot; &quot;E81&quot; &quot;Q00&quot; &quot;A6F&quot;
-## [697] &quot;B63&quot; &quot;E73&quot; &quot;I82&quot; &quot;W52&quot; &quot;L51&quot; &quot;O00&quot; &quot;I81&quot; &quot;D62&quot; &quot;W21&quot; &quot;D01&quot; &quot;C24&quot; &quot;D02&quot;
-## [709] &quot;X60&quot; &quot;T01&quot; &quot;B53&quot; &quot;U35&quot; &quot;P71&quot;</code></pre>
+#unique(core_data_1989$MISSION_NTEE)</code></pre>
 <p>Year: 2014 Type: CHARITIES Scope: 990 + 990EZ filers</p>
 <pre class="r"><code>core_data_2014 &lt;- read_csv(&quot;CORE/CORE-2014-501C3-CHARITIES-PZ-HRMN.csv&quot;)</code></pre>
 <pre><code>## Warning: One or more parsing issues, call `problems()` on your data frame for details,
@@ -539,70 +479,26 @@ unique(core_data_1989$MISSION_NTEE)</code></pre>
 ## 
 ## ℹ Use `spec()` to retrieve the full column specification for this data.
 ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
-<pre class="r"><code>#head(core_data_1989)
-#glimpse(core_data_1989)
+<pre class="r"><code>head(core_data_1989)</code></pre>
+<pre><code>## # A tibble: 6 × 55
+##   F9_00_ORG_ADDR_L1  F9_10_ASSET_TOT_BOY F9_10_ASSET_TOT_EOY F9_00_ORG_ADDR_CITY
+##   &lt;chr&gt;                            &lt;dbl&gt;               &lt;dbl&gt; &lt;chr&gt;              
+## 1 PO BOX 1441                     256700              297477 BANGOR             
+## 2 S HIGH ST                      5867159             5374950 BRIDGETON          
+## 3 309 BLACK POINT R…              122304              143839 PROUTS NECK        
+## 4 50 CONGRESS ST                  677232              670662 RUMFORD            
+## 5 PO BOX 417                     6121132             6271322 BOOTHBAY HARBOR    
+## 6 PO BOX 287                    14435587            15074348 BELFAST            
+## # ℹ 51 more variables: F9_09_EXP_COMP_DTK_TOT &lt;dbl&gt;, F9_08_REV_CONTR_TOT &lt;dbl&gt;,
+## #   F9_08_REV_CONTR_MEMBSHIP_DUE &lt;dbl&gt;, F9_00_ORG_EIN &lt;dbl&gt;,
+## #   SC_02_EXP_GRASS_M_NONTAX_FILEORG &lt;dbl&gt;,
+## #   SC_02_EXP_LOB_M_NONTAX_FILEORG &lt;dbl&gt;, F9_09_EXP_TOT_TOT &lt;dbl&gt;,
+## #   F9_00_TAX_YEAR &lt;dbl&gt;, F9_01_NAFB_TOT_EOY &lt;dbl&gt;,
+## #   F9_09_EXP_FEE_SVC_FUNDR_TOT &lt;dbl&gt;, F9_08_REV_OTH_EVNT_NET_TOT &lt;dbl&gt;,
+## #   F9_00_GROUP_EXEMPT_NUM &lt;dbl&gt;, F9_08_REV_OTH_INV_COST_GOODS &lt;dbl&gt;, …</code></pre>
+<pre class="r"><code>#glimpse(core_data_1989)
 #summarise(core_data_1989)
-unique(core_data_1989$MISSION_NTEE)</code></pre>
-<pre><code>##   [1] &quot;A69&quot; &quot;E22&quot; &quot;B99&quot; &quot;N31&quot; &quot;O55&quot; &quot;G41&quot; &quot;A65&quot; &quot;E11&quot; &quot;U50&quot; &quot;A80&quot; &quot;T70&quot; &quot;E19&quot;
-##  [13] &quot;E92&quot; &quot;F22&quot; &quot;B50&quot; &quot;P27&quot; &quot;O41&quot; &quot;B70&quot; &quot;B25&quot; &quot;P70&quot; &quot;P75&quot; &quot;H20&quot; &quot;E91&quot; &quot;E99&quot;
-##  [25] &quot;G45&quot; &quot;N20&quot; &quot;B21&quot; &quot;O21&quot; &quot;E90&quot; &quot;O43&quot; &quot;E20&quot; &quot;P30&quot; &quot;B42&quot; &quot;B28&quot; &quot;D20&quot; &quot;E03&quot;
-##  [37] &quot;S81&quot; &quot;X22&quot; &quot;C50&quot; &quot;L22&quot; &quot;B84&quot; &quot;B30&quot; &quot;C30&quot; &quot;E21&quot; &quot;X20&quot; &quot;B20&quot; &quot;B43&quot; &quot;S41&quot;
-##  [49] &quot;A54&quot; &quot;G50&quot; &quot;B03&quot; &quot;C60&quot; &quot;G51&quot; &quot;G20&quot; &quot;S20&quot; &quot;B24&quot; &quot;P82&quot; &quot;B11&quot; &quot;A25&quot; &quot;B80&quot;
-##  [61] &quot;F80&quot; &quot;O42&quot; &quot;L99&quot; &quot;O11&quot; &quot;A50&quot; &quot;E50&quot; &quot;P28&quot; &quot;X21&quot; &quot;O53&quot; &quot;T99&quot; &quot;D32&quot; &quot;E62&quot;
-##  [73] &quot;W20&quot; &quot;A6E&quot; &quot;I80&quot; &quot;Z99&quot; &quot;S80&quot; &quot;J30&quot; &quot;S30&quot; &quot;F30&quot; &quot;A51&quot; &quot;J32&quot; &quot;P29&quot; &quot;P73&quot;
-##  [85] &quot;E30&quot; &quot;J40&quot; &quot;F32&quot; &quot;P46&quot; &quot;P20&quot; &quot;P99&quot; &quot;O99&quot; &quot;F99&quot; &quot;P81&quot; &quot;E40&quot; &quot;E42&quot; &quot;B83&quot;
-##  [97] &quot;P80&quot; &quot;Y50&quot; &quot;F20&quot; &quot;P51&quot; &quot;L21&quot; &quot;P33&quot; &quot;N11&quot; &quot;B90&quot; &quot;J20&quot; &quot;S99&quot; &quot;L82&quot; &quot;G80&quot;
-## [109] &quot;A70&quot; &quot;N68&quot; &quot;P52&quot; &quot;F42&quot; &quot;O23&quot; &quot;A84&quot; &quot;K31&quot; &quot;J99&quot; &quot;P74&quot; &quot;A61&quot; &quot;P31&quot; &quot;I60&quot;
-## [121] &quot;K28&quot; &quot;S03&quot; &quot;C32&quot; &quot;A60&quot; &quot;H30&quot; &quot;I83&quot; &quot;A52&quot; &quot;P43&quot; &quot;E60&quot; &quot;L80&quot; &quot;A19&quot; &quot;X99&quot;
-## [133] &quot;E32&quot; &quot;N72&quot; &quot;J22&quot; &quot;E70&quot; &quot;J33&quot; &quot;A30&quot; &quot;W30&quot; &quot;N52&quot; &quot;A32&quot; &quot;D34&quot; &quot;P72&quot; &quot;F01&quot;
-## [145] &quot;I72&quot; &quot;P58&quot; &quot;U02&quot; &quot;M23&quot; &quot;A68&quot; &quot;L20&quot; &quot;G54&quot; &quot;R60&quot; &quot;P44&quot; &quot;N50&quot; &quot;T22&quot; &quot;M24&quot;
-## [157] &quot;F33&quot; &quot;C02&quot; &quot;C34&quot; &quot;A33&quot; &quot;W19&quot; &quot;E24&quot; &quot;S50&quot; &quot;C05&quot; &quot;S31&quot; &quot;P84&quot; &quot;G48&quot; &quot;I05&quot;
-## [169] &quot;T90&quot; &quot;B82&quot; &quot;T31&quot; &quot;E86&quot; &quot;Q70&quot; &quot;K40&quot; &quot;E31&quot; &quot;D50&quot; &quot;L41&quot; &quot;G30&quot; &quot;G81&quot; &quot;A63&quot;
-## [181] &quot;Q20&quot; &quot;G02&quot; &quot;A11&quot; &quot;A40&quot; &quot;U12&quot; &quot;F60&quot; &quot;S32&quot; &quot;U99&quot; &quot;W70&quot; &quot;K30&quot; &quot;N70&quot; &quot;A20&quot;
-## [193] &quot;N99&quot; &quot;S33&quot; &quot;S24&quot; &quot;G90&quot; &quot;N32&quot; &quot;P60&quot; &quot;H99&quot; &quot;E80&quot; &quot;O52&quot; &quot;B60&quot; &quot;M20&quot; &quot;X11&quot;
-## [205] &quot;W03&quot; &quot;O20&quot; &quot;W60&quot; &quot;A6C&quot; &quot;K20&quot; &quot;C36&quot; &quot;T23&quot; &quot;P11&quot; &quot;U05&quot; &quot;P02&quot; &quot;B12&quot; &quot;A03&quot;
-## [217] &quot;Q19&quot; &quot;N30&quot; &quot;A99&quot; &quot;T03&quot; &quot;S12&quot; &quot;F31&quot; &quot;I99&quot; &quot;G99&quot; &quot;N19&quot; &quot;A12&quot; &quot;P40&quot; &quot;O30&quot;
-## [229] &quot;A26&quot; &quot;I23&quot; &quot;A34&quot; &quot;N64&quot; &quot;X30&quot; &quot;R23&quot; &quot;K36&quot; &quot;R62&quot; &quot;U34&quot; &quot;N65&quot; &quot;P62&quot; &quot;R19&quot;
-## [241] &quot;O31&quot; &quot;N03&quot; &quot;G11&quot; &quot;N63&quot; &quot;A90&quot; &quot;C42&quot; &quot;I21&quot; &quot;I51&quot; &quot;B19&quot; &quot;K34&quot; &quot;C19&quot; &quot;O22&quot;
-## [253] &quot;Q30&quot; &quot;C20&quot; &quot;C26&quot; &quot;F21&quot; &quot;E46&quot; &quot;F11&quot; &quot;X03&quot; &quot;B02&quot; &quot;D60&quot; &quot;J21&quot; &quot;W80&quot; &quot;N60&quot;
-## [265] &quot;W99&quot; &quot;Q22&quot; &quot;B94&quot; &quot;N66&quot; &quot;A6A&quot; &quot;A6B&quot; &quot;N40&quot; &quot;I11&quot; &quot;A82&quot; &quot;Q41&quot; &quot;G9B&quot; &quot;S21&quot;
-## [277] &quot;N6A&quot; &quot;B41&quot; &quot;G96&quot; &quot;C01&quot; &quot;Q01&quot; &quot;L50&quot; &quot;V35&quot; &quot;A62&quot; &quot;K03&quot; &quot;P50&quot; &quot;P53&quot; &quot;P32&quot;
-## [289] &quot;P19&quot; &quot;E05&quot; &quot;I30&quot; &quot;F05&quot; &quot;I50&quot; &quot;C99&quot; &quot;I44&quot; &quot;I40&quot; &quot;W02&quot; &quot;Q40&quot; &quot;P03&quot; &quot;P01&quot;
-## [301] &quot;L25&quot; &quot;C03&quot; &quot;Y20&quot; &quot;C35&quot; &quot;R20&quot; &quot;E02&quot; &quot;C27&quot; &quot;W50&quot; &quot;Y99&quot; &quot;Q11&quot; &quot;V03&quot; &quot;B92&quot;
-## [313] &quot;A31&quot; &quot;N69&quot; &quot;S82&quot; &quot;M03&quot; &quot;K26&quot; &quot;L40&quot; &quot;S22&quot; &quot;N67&quot; &quot;V30&quot; &quot;D19&quot; &quot;U30&quot; &quot;O40&quot;
-## [325] &quot;U03&quot; &quot;O12&quot; &quot;M40&quot; &quot;Y40&quot; &quot;B01&quot; &quot;P61&quot; &quot;Q05&quot; &quot;U21&quot; &quot;A56&quot; &quot;V22&quot; &quot;C41&quot; &quot;P22&quot;
-## [337] &quot;H90&quot; &quot;W40&quot; &quot;V20&quot; &quot;Q33&quot; &quot;T20&quot; &quot;U40&quot; &quot;W05&quot; &quot;G03&quot; &quot;P34&quot; &quot;A57&quot; &quot;H41&quot; &quot;G44&quot;
-## [349] &quot;U20&quot; &quot;G43&quot; &quot;I31&quot; &quot;I12&quot; &quot;A23&quot; &quot;S02&quot; &quot;D40&quot; &quot;R22&quot; &quot;H92&quot; &quot;J12&quot; &quot;P85&quot; &quot;G98&quot;
-## [361] &quot;X19&quot; &quot;F40&quot; &quot;L11&quot; &quot;L30&quot; &quot;K99&quot; &quot;A02&quot; &quot;R30&quot; &quot;U51&quot; &quot;C40&quot; &quot;U11&quot; &quot;H96&quot; &quot;X90&quot;
-## [373] &quot;E12&quot; &quot;D33&quot; &quot;B40&quot; &quot;O50&quot; &quot;J02&quot; &quot;G60&quot; &quot;L81&quot; &quot;R26&quot; &quot;W90&quot; &quot;K01&quot; &quot;S43&quot; &quot;I20&quot;
-## [385] &quot;V05&quot; &quot;S40&quot; &quot;R25&quot; &quot;E00&quot; &quot;V19&quot; &quot;Q21&quot; &quot;R99&quot; &quot;V23&quot; &quot;G40&quot; &quot;Q99&quot; &quot;A05&quot; &quot;W00&quot;
-## [397] &quot;N62&quot; &quot;C11&quot; &quot;U19&quot; &quot;R24&quot; &quot;G83&quot; &quot;T21&quot; &quot;P12&quot; &quot;X01&quot; &quot;W25&quot; &quot;J11&quot; &quot;S46&quot; &quot;I03&quot;
-## [409] &quot;H12&quot; &quot;D12&quot; &quot;X50&quot; &quot;G42&quot; &quot;G84&quot; &quot;L02&quot; &quot;X40&quot; &quot;H43&quot; &quot;F52&quot; &quot;V99&quot; &quot;R03&quot; &quot;S47&quot;
-## [421] &quot;S19&quot; &quot;H01&quot; &quot;U41&quot; &quot;N80&quot; &quot;I43&quot; &quot;V36&quot; &quot;G12&quot; &quot;H05&quot; &quot;U00&quot; &quot;A01&quot; &quot;Q23&quot; &quot;S05&quot;
-## [433] &quot;K12&quot; &quot;W01&quot; &quot;L12&quot; &quot;J19&quot; &quot;X12&quot; &quot;H03&quot; &quot;Q71&quot; &quot;P42&quot; &quot;A76&quot; &quot;X02&quot; &quot;E41&quot; &quot;U33&quot;
-## [445] &quot;I19&quot; &quot;C12&quot; &quot;Y11&quot; &quot;W61&quot; &quot;D11&quot; &quot;F19&quot; &quot;T50&quot; &quot;Q42&quot; &quot;N12&quot; &quot;S11&quot; &quot;H11&quot; &quot;W22&quot;
-## [457] &quot;Q12&quot; &quot;I71&quot; &quot;V02&quot; &quot;P45&quot; &quot;T60&quot; &quot;P86&quot; &quot;B71&quot; &quot;T11&quot; &quot;U36&quot; &quot;E65&quot; &quot;L03&quot; &quot;T40&quot;
-## [469] &quot;G23&quot; &quot;F70&quot; &quot;B05&quot; &quot;J05&quot; &quot;M42&quot; &quot;G00&quot; &quot;D61&quot; &quot;M01&quot; &quot;U31&quot; &quot;X05&quot; &quot;F03&quot; &quot;J03&quot;
-## [481] &quot;D31&quot; &quot;O51&quot; &quot;V21&quot; &quot;F02&quot; &quot;T00&quot; &quot;F53&quot; &quot;K25&quot; &quot;H98&quot; &quot;N61&quot; &quot;Y21&quot; &quot;G19&quot; &quot;G01&quot;
-## [493] &quot;G94&quot; &quot;I73&quot; &quot;F12&quot; &quot;X70&quot; &quot;A85&quot; &quot;A72&quot; &quot;T30&quot; &quot;V32&quot; &quot;X23&quot; &quot;W12&quot; &quot;H40&quot; &quot;r22&quot;
-## [505] &quot;J01&quot; &quot;A75&quot; &quot;N71&quot; &quot;V24&quot; &quot;U42&quot; &quot;T19&quot; &quot;Y33&quot; &quot;Y30&quot; &quot;O03&quot; &quot;V25&quot; &quot;E01&quot; &quot;H80&quot;
-## [517] &quot;H42&quot; &quot;E61&quot; &quot;Q31&quot; &quot;R11&quot; &quot;W11&quot; &quot;Q32&quot; &quot;Q03&quot; &quot;I01&quot; &quot;Q02&quot; &quot;R61&quot; &quot;M12&quot; &quot;P24&quot;
-## [529] &quot;D99&quot; &quot;P05&quot; &quot;M41&quot; &quot;G25&quot; &quot;H70&quot; &quot;O19&quot; &quot;F54&quot; &quot;D30&quot; &quot;V11&quot; &quot;R40&quot; &quot;H50&quot; &quot;K02&quot;
-## [541] &quot;A24&quot; &quot;V33&quot; &quot;P26&quot; &quot;P36&quot; &quot;R63&quot; &quot;A59&quot; &quot;V26&quot; &quot;L52&quot; &quot;E71&quot; &quot;S01&quot; &quot;B95&quot; &quot;H81&quot;
-## [553] &quot;A91&quot; &quot;K05&quot; &quot;H21&quot; &quot;B22&quot; &quot;N02&quot; &quot;B58&quot; &quot;R00&quot; &quot;G70&quot; &quot;R12&quot; &quot;K24&quot; &quot;Y03&quot; &quot;Y22&quot;
-## [565] &quot;M19&quot; &quot;N41&quot; &quot;P54&quot; &quot;O54&quot; &quot;D03&quot; &quot;M99&quot; &quot;I70&quot; &quot;U32&quot; &quot;E63&quot; &quot;L01&quot; &quot;T12&quot; &quot;E72&quot;
-## [577] &quot;Q43&quot; &quot;T02&quot; &quot;D21&quot; &quot;M05&quot; &quot;L19&quot; &quot;W24&quot; &quot;R02&quot; &quot;M11&quot; &quot;B64&quot; &quot;B54&quot; &quot;Y34&quot; &quot;K19&quot;
-## [589] &quot;H83&quot; &quot;P83&quot; &quot;K35&quot; &quot;G86&quot; &quot;C00&quot; &quot;E82&quot; &quot;A41&quot; &quot;B32&quot; &quot;S25&quot; &quot;P21&quot; &quot;P37&quot; &quot;V34&quot;
-## [601] &quot;H9B&quot; &quot;Y05&quot; &quot;H51&quot; &quot;G91&quot; &quot;H48&quot; &quot;B00&quot; &quot;H19&quot; &quot;G97&quot; &quot;N00&quot; &quot;E39&quot; &quot;H85&quot; &quot;G92&quot;
-## [613] &quot;N05&quot; &quot;Y19&quot; &quot;G05&quot; &quot;G9D&quot; &quot;X84&quot; &quot;F41&quot; &quot;U01&quot; &quot;H44&quot; &quot;G82&quot; &quot;Y42&quot; &quot;F50&quot; &quot;D05&quot;
-## [625] &quot;A6G&quot; &quot;H94&quot; &quot;V31&quot; &quot;B26&quot; &quot;Y24&quot; &quot;G85&quot; &quot;A45&quot; &quot;C21&quot; &quot;A67&quot; &quot;G89&quot; &quot;X82&quot; &quot;E34&quot;
-## [637] &quot;K11&quot; &quot;R01&quot; &quot;I02&quot; &quot;B55&quot; &quot;Y02&quot; &quot;I24&quot; &quot;H60&quot; &quot;M02&quot; &quot;O32&quot; &quot;X83&quot; &quot;B91&quot; &quot;O01&quot;
-## [649] &quot;H45&quot; &quot;X80&quot; &quot;A53&quot; &quot;V12&quot; &quot;V37&quot; &quot;B61&quot; &quot;A6D&quot; &quot;B5A&quot; &quot;Y52&quot; &quot;L53&quot; &quot;O02&quot; &quot;X00&quot;
-## [661] &quot;B27&quot; &quot;Y00&quot; &quot;R68&quot; &quot;F72&quot; &quot;K50&quot; &quot;N01&quot; &quot;G53&quot; &quot;A44&quot; &quot;Y35&quot; &quot;S00&quot; &quot;Y01&quot; &quot;E35&quot;
-## [673] &quot;P87&quot; &quot;H22&quot; &quot;A74&quot; &quot;E38&quot; &quot;R05&quot; &quot;O05&quot; &quot;V40&quot; &quot;T05&quot; &quot;V01&quot; &quot;L05&quot; &quot;A55&quot; &quot;P35&quot;
-## [685] &quot;E56&quot; &quot;P00&quot; &quot;A00&quot; &quot;P41&quot; &quot;G22&quot; &quot;H9A&quot; &quot;F34&quot; &quot;A83&quot; &quot;H82&quot; &quot;E81&quot; &quot;Q00&quot; &quot;A6F&quot;
-## [697] &quot;B63&quot; &quot;E73&quot; &quot;I82&quot; &quot;W52&quot; &quot;L51&quot; &quot;O00&quot; &quot;I81&quot; &quot;D62&quot; &quot;W21&quot; &quot;D01&quot; &quot;C24&quot; &quot;D02&quot;
-## [709] &quot;X60&quot; &quot;T01&quot; &quot;B53&quot; &quot;U35&quot; &quot;P71&quot;</code></pre>
+#unique(core_data_1989$MISSION_NTEE)</code></pre>
 </div>
 <div id="unified-bmf-data" class="section level2">
 <h2>Unified BMF Data</h2>
@@ -638,8 +534,8 @@ unique(core_data_1989$MISSION_NTEE)</code></pre>
 </div>
 <div id="merging-unified-bmf-to-core" class="section level1">
 <h1>Merging Unified BMF to CORE</h1>
-<div id="handling-duplicate-eins" class="section level2">
-<h2>Handling duplicate EINs</h2>
+<div id="checking-for-duplicates" class="section level2">
+<h2>Checking for duplicates</h2>
 <ul>
 <li>in bmf, how many of those duplicates have the same organization
 name?</li>
@@ -650,23 +546,9 @@ then we can keep one of the two without worry?</li>
 <li>do I need to merge right now? How important is the info in BMF file
 to current task?</li>
 </ul>
-<pre class="r"><code>unified_bmf |&gt;
+<pre class="r"><code>test &lt;- unified_bmf |&gt;
     count(EIN2) |&gt;
-    filter(n &gt; 1)</code></pre>
-<pre><code>## # A tibble: 25,243 × 2
-##    EIN2               n
-##    &lt;chr&gt;          &lt;int&gt;
-##  1 EIN-00-0000000    16
-##  2 EIN-00-0035708     2
-##  3 EIN-00-0035808     2
-##  4 EIN-00-0039208     2
-##  5 EIN-00-2636246     2
-##  6 EIN-01-0119280     2
-##  7 EIN-01-0131766     2
-##  8 EIN-01-0282768     2
-##  9 EIN-01-0288982     2
-## 10 EIN-01-0315162     2
-## # ℹ 25,233 more rows</code></pre>
+    filter(n &gt; 2)</code></pre>
 <pre class="r"><code>unified_bmf |&gt;
     filter(EIN2 == &quot;EIN-00-0000000&quot;)</code></pre>
 <pre><code>## # A tibble: 16 × 49
@@ -695,7 +577,8 @@ to current task?</li>
 ## #   CENSUS_CBSA_FIPS &lt;dbl&gt;, CENSUS_CBSA_NAME &lt;chr&gt;, CENSUS_BLOCK_FIPS &lt;dbl&gt;,
 ## #   CENSUS_URBAN_AREA &lt;chr&gt;, CENSUS_STATE_ABBR &lt;chr&gt;, CENSUS_COUNTY_NAME &lt;chr&gt;,
 ## #   ORG_ADDR_FULL &lt;chr&gt;, ORG_ADDR_MATCH &lt;chr&gt;, LATITUDE &lt;dbl&gt;, …</code></pre>
-<pre class="r"><code>core_data_2022 |&gt;
+<pre class="r"><code># which EIN2 have more than one entry?
+core_data_2022 |&gt;
     count(EIN2) |&gt;
     filter(n &gt; 1)</code></pre>
 <pre><code>## # A tibble: 6 × 2
@@ -707,23 +590,82 @@ to current task?</li>
 ## 4 EIN-85-0306835     2
 ## 5 EIN-85-0772092     2
 ## 6 EIN-86-3470829     2</code></pre>
-<pre class="r"><code>core_data_1989 |&gt;
+<pre class="r"><code>test &lt;- core_data_1989 |&gt;
     count(EIN2) |&gt;
-    filter(n &gt; 1)</code></pre>
-<pre><code>## # A tibble: 15,163 × 2
-##    EIN2               n
-##    &lt;chr&gt;          &lt;int&gt;
-##  1 EIN-01-0211503     2
-##  2 EIN-01-0211505     2
-##  3 EIN-01-0211516     2
-##  4 EIN-01-0211517     2
-##  5 EIN-01-0211534     2
-##  6 EIN-01-0211548     2
-##  7 EIN-01-0211803     2
-##  8 EIN-01-0212542     2
-##  9 EIN-01-0215919     2
-## 10 EIN-01-0222738     2
-## # ℹ 15,153 more rows</code></pre>
+    filter(n &gt; 2)
+
+#head(test)
+#typeof(test)
+#test$EIN2</code></pre>
+</div>
+<div id="exploring-duplicates-bmf" class="section level2">
+<h2>Exploring duplicates: BMF</h2>
+<p>Goal: Script to check what kinds of columns are different in
+duplicate rows</p>
+<p>Return a data frame with the following variables: - col_name :
+variable name from data file - instances : number of times that a
+duplicate row differs in this column</p>
+<p>SEE FILE: reviewing_duplicate_EIN.R for this script</p>
+<pre class="r"><code>library(cchsflow) # gives is_equal function
+
+# differences in logical comparison operators
+test1 &lt;- c(NA, TRUE, FALSE, TRUE, FALSE, TRUE)
+test2 &lt;- c(NA, NA, NA, TRUE, FALSE, FALSE)
+test3 &lt;- c(NA, NA, NA, TRUE, FALSE, FALSE)
+test_compare2 &lt;- test1 == test2
+test_compare3 &lt;- ((test1 == test2) &amp; (test1 == test3) &amp; (test2 == test3))
+
+test_compare2_is &lt;- is_equal(test1, test2)
+test_compare3_is &lt;- (is_equal(test1, test2) &amp; is_equal(test1, test3) &amp; is_equal(test2,test3))</code></pre>
+<pre class="r"><code>library(tidyverse)
+library(data.table)
+library(dplyr)
+source(&quot;reviewing_duplicate_EIN.R&quot;)
+
+unified_bmf &lt;- read.csv(&quot;CORE/BMF_UNIFIED_V1.1.csv&quot;)
+  
+vars_to_keep &lt;- c(&quot;EIN2&quot;, &quot;NTEE_NCCS&quot;, &quot;NTEEV2&quot;, &quot;NCCS_LEVEL_1&quot;) # &quot;NTEE_IRS&quot;, &quot;NCCS_LEVEL_2&quot;, &quot;NCCS_LEVEL_3&quot;, &quot;ORG_NAME_SEC&quot;, &quot;ORG_NAME_CURRENT&quot;, &quot;ORG_YEAR_FIRST&quot;, &quot;ORG_YEAR_LAST&quot;, &quot;ORG_YEAR_COUNT&quot;
+
+# Replace any empty strings &#39;&#39; with NA values
+unified_bmf &lt;- unified_bmf |&gt; mutate_if(is.character, ~na_if(.,&#39;&#39;))
+info_unified_bmf &lt;- duplicateEIN2_info(unified_bmf)
+head(info_unified_bmf)
+
+bmf_subset &lt;- unified_bmf[vars_to_keep]
+head(bmf_subset)</code></pre>
+<pre class="r"><code># drop rows with EIN = 00-0000000 
+bmf_subset &lt;- bmf_subset[!(bmf_subset$EIN2 %in% &quot;EIN-00-0000000&quot;),]
+n_before_removing_dupes &lt;- nrow(bmf_subset)
+
+# get list of EIN2 that are repeated
+dupe_list &lt;- bmf_subset |&gt;
+  count(EIN2) |&gt;
+  filter(n &gt; 1)
+
+n_dupes &lt;- nrow(dupe_list)
+
+# info on repeated EINs before dropping duplicated rows
+# bmf_dupe_info_before_rem_dup &lt;- duplicateEIN2_info(bmf_subset)
+# head(bmf_dupe_info_before_rem_dup, 10)
+
+# remove any rows that are exactly duplicated
+bmf_sub_table &lt;- data.table(bmf_subset)
+setkeyv(bmf_sub_table, &quot;EIN2&quot;)
+uniq_bmf_subset &lt;- subset(unique(bmf_sub_table))
+n_after_removing_dupes &lt;- nrow(uniq_bmf_subset)
+
+# info on repeated EINs after dropping duplicated rows
+bmf_dupe_info &lt;- duplicateEIN2_info(uniq_bmf_subset)
+head(bmf_dupe_info, 10)</code></pre>
+<pre class="r"><code>library(dplyr)
+
+# Find duplicates and only keep rows with duplicate EIN2
+ein2_dups &lt;- uniq_bmf_subset %&gt;%
+  group_by(EIN2) %&gt;%
+  filter(n() &gt; 1)</code></pre>
+</div>
+<div id="exploring-duplicates-core" class="section level2">
+<h2>Exploring duplicates: CORE</h2>
 </div>
 </div>
 
