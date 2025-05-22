@@ -51,6 +51,6 @@ duplicateEIN2_info <- function(data_file){
     return(duplicates_info)
 }
 
-
-core_data_2022 <- read_csv("CORE/CORE-2022-501C3-CHARITIES-PZ-HRMN.csv")
-dupe2022_info <- duplicateEIN2_info(core_data_2022)
+# Example Usage:
+# core_data_2022 <- read_csv("CORE/CORE-2022-501C3-CHARITIES-PZ-HRMN.csv")
+# dupe2022_info <- duplicateEIN2_info(core_data_2022)
