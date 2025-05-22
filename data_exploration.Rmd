@@ -159,48 +159,6 @@ head(duplicates_info)
 ```
 
 ```{r}
-library(tibble)
-data_dict <- read.csv("DATA_DICTS/CORE-HRMN_dd.csv")
-data_dict <- data_dict |> 
-    column_to_rownames('variable_name')
-
-# which EIN2 have more than one entry?
-test_table <- core_data_2022 |>
-    count(EIN2) |>
-    filter(n > 1)
-
-#head(test_table$EIN2)
-
-# get subset of data table only containing duplicated EIN2 rows
-core_data_2022 |>
-    filter(EIN2 %in% test_table$EIN2)
-
-ein <- "EIN-47-4469864"
-# get the duplicated rows -- note that maybe there are times when its more than 2?
-subset <- core_data_2022 |> filter(EIN2 == ein)
-# returns array of true/false telling you if rows matched on column
-bools <- (subset[1,] == subset[2,]) 
-bools
-
-
-bools <- (is_equal(subset[1,], subset[2,]) & is_equal(subset[1,],subset[3,]) & is_equal(subset[2,],subset[3,]))
-bools
-
-# indices of columns where there was a mismatch
-indices <- which(!bools)
-
-count_list <- rep(0, ncol(core_data_1989))
-
-count_list[indices] <- count_list[indices] + 1
-
-counts_table <- data.table(variable_name = colnames(core_data_2022), counts = count_list)
-counts_table
-
-typeof(indices)
-
-# column names of columns with mismatch
-colnames(subset[,indices])
-
 # differences in logical comparison operators
 test1 <- c(NA, TRUE, FALSE, TRUE, FALSE, TRUE)
 test2 <- c(NA, NA, NA, TRUE, FALSE, FALSE)
@@ -211,3 +169,9 @@ test_compare3 <- ((test1 == test2) & (test1 == test3) & (test2 == test3))
 test_compare2_is <- is_equal(test1, test2)
 test_compare3_is <- (is_equal(test1, test2) & is_equal(test1, test3) & is_equal(test2,test3))
 ```
+
+## BMF Duplicates
+```{r}
+vars_to_keep <- c("ORG_YEAR_FIRST", "ORG_YEAR_LAST", "ORG_YEAR_COUNT", "NTEE_IRS", "NTEE_NCCS", "NTEEV2", "NCCS_LEVEL_1", "NCCS_LEVEL_2", "NCCS_LEVEL_3")
+```
+
