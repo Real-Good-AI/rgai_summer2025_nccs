@@ -47,8 +47,8 @@ duplicateEIN2_info <- function(data_file){
     }
     
     # Create a table with the info we just gathered
-    duplicates_info <- data.table(variable_name = colnames(data_file), num_differences = count_list, num_NA = count_list_NA)
-    return(duplicates_info)
+    duplicates_info <- data.table(variable_name = colnames(data_file), num_differences = count_list, num_NA = count_list_NA, dtype = sapply(core_data_1989, class))
+    return(list(info = duplicates_info, dupes = duplicate_EIN2))
 }
 
 # Example Usage:
