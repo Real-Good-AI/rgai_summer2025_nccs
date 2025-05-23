@@ -4,19 +4,7 @@ library(cchsflow) # for is_equal(), which will return TRUE for NA==NA
 
 # function that takes in data_file and returns a data table with information about which
 # columns differ when a set of rows have the same EIN
-duplicateEIN2_info <- function(data_file){
-    # Get list of EIN2 to check; all EIN2 that appear more than once in the data file
-    duplicate_EIN2 <- data_file |>
-        count(EIN2) |>
-        filter(n > 1)
-    
-    # Subset of data file but only rows corresponding to EIN2 that appear more than once
-    core_duplicates <- data_file |>
-        filter(EIN2 %in% duplicate_EIN2$EIN2)
-    
-    # Split the data by EIN2 to loop over groups
-    duplicate_groups <- split(core_duplicates, core_duplicates$EIN2)
-    
+duplicateEIN2_info <- function(data_file, duplicate_groups){
     # Initialize counters, one for counting differences and one for counting differences that may be due to missing value
     count_list <- rep(0, ncol(data_file))
     count_list_NA <- rep(0, ncol(data_file))
@@ -43,14 +31,31 @@ duplicateEIN2_info <- function(data_file){
         count_list_NA[indices_NA] <- count_list_NA[indices_NA] + 1
     }
     
-    # Create a table with the info we just gathered
+    # Create and return a table with the info we just gathered
     duplicates_info <- data.table(variable_name = colnames(data_file), num_differences = count_list, num_NA = count_list_NA, dtype = sapply(data_file, class))
-    return(list(info = duplicates_info, dupes = duplicate_EIN2))
+    return(duplicates_info)
+}
+
+dupes <- function(data_file){
+    # Get list of EIN2 to check; all EIN2 that appear more than once in the data file
+    duplicate_EIN2 <- data_file |>
+      count(EIN2) |>
+      filter(n > 1)
+    
+    # Subset of data file but only rows corresponding to EIN2 that appear more than once
+    core_duplicates <- data_file |>
+      filter(EIN2 %in% duplicate_EIN2$EIN2)
+    
+    # Split the data by EIN2 to loop over groups
+    duplicate_groups <- split(core_duplicates, core_duplicates$EIN2)
+    
+    return(list(dupes = duplicate_EIN2, dupes_groups = duplicate_groups))
 }
 
 # Example Usage (from another file):
 # source("reviewing_duplicate_EIN.R")
 # core_data_2022 <- read_csv("CORE/CORE-2022-501C3-CHARITIES-PZ-HRMN.csv")
-# dupe2022_info <- duplicateEIN2_info(core_data_2022)
-# dupe2022_info_tab <- dupe2022_info$info
-# dupe2022_info_EIN_list <- dupe2022_info$dupes 
+# dupes2022 <- dupes(core_data_2022)
+# dupes2022_list <- dupes2022$dupes
+# dupes2022_groups <- <- dupes2022$dupes_groups
+# dupe2022_info <- duplicateEIN2_info(core_data_2022, dupes2022_groups)
