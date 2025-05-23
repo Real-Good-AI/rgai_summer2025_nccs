@@ -2,7 +2,9 @@
 title: "NCCS Data Exploration"
 author: "Mayleen"
 date: "2025-05-20"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -61,7 +63,7 @@ head(unified_bmf)
 #glimpse(unified_bmf)
 #summarise(unified_bmf)
 ```
-# Merging Unified BMF to CORE
+# Pre-processing
 ## Checking for duplicates
 - in bmf, how many of those duplicates have the same organization name? 
 - in bmf duplicates, what are the patterns in which columns they differ in value?
@@ -98,67 +100,18 @@ test <- core_data_1989 |>
 #test$EIN2
 ```
 
-## Exploring duplicates
+## Exploring duplicates: BMF
 Goal: Script to check what kinds of columns are different in duplicate rows
 
 Return a data frame with the following variables:
      - col_name : variable name from data file
      - instances : number of times that a duplicate row differs in this column
 
-```{r}
-library(tidyverse)
-library(data.table)
-library(cchsflow)
+SEE FILE: reviewing_duplicate_EIN.R for this script
 
-core_data_2022 <- read_csv("CORE/CORE-2022-501C3-CHARITIES-PZ-HRMN.csv")
+```{r, eval = FALSE}
+library(cchsflow) # gives is_equal function
 
-# Get list of EIN2 to check
-duplicate_EIN2 <- core_data_2022 |>
-    count(EIN2) |>
-    filter(n > 1)
-
-# Subset of CORE data with only duplicated EIN2 rows
-core_duplicates <- core_data_2022 |>
-    filter(EIN2 %in% duplicate_EIN2$EIN2)
-
-# Instantiate list of counts; entry i is number of times there was a mismatch in the i-th column
-count_list <- rep(0, ncol(core_data_2022))
-count_list_NA <- rep(0, ncol(core_data_2022))
-
-# For each EIN2 in list, compare the corresponding rows
-for (idx in 1:nrow(duplicate_EIN2)) {
-    print(paste(idx, duplicate_EIN2$EIN2[idx], duplicate_EIN2$n[idx]), sep=", ")
-    ein <- duplicate_EIN2$EIN2[idx]
-    subset <- core_duplicates |> filter(EIN2 == ein)
-    if (nrow(subset) == 2){
-        diff_cols <- is_equal(subset[1,], subset[2,])
-        diff_cols_NA <- (subset[1,] == subset[2,])
-    } else if (nrow(subset) == 3) {
-        diff_cols <- (is_equal(subset[1,], subset[2,]) & is_equal(subset[1,],subset[3,]) & is_equal(subset[2,],subset[3,]))
-        diff_cols_NA <- ((subset[1,] == subset[2,]) & (subset[2,] == subset[3,]) & (subset[1,] == subset[3,]))
-    } else {
-        print(paste("EIN", ein, "occurs", nrow(subset), "times, skipped", sep = " "))
-        next
-    }
-    # indices of columns where there was a mismatch
-    indices <- which(!diff_cols)
-    indices_NA <- which(is.na(diff_cols_NA))
-    
-    # increment where there was a mismatch
-    count_list[indices] <- count_list[indices] + 1
-    count_list_NA[indices_NA] <- count_list_NA[indices_NA] + 1
-}
-# If the two rows are equal in Column "A", do nothing
-# If the two rows differ in Column "A", increase instances for that column name by 1
-#count_list_idx <- which(count_list != 0)
-#count_list_idx
-#colnames(core_data_2022)[count_list_idx]
-
-duplicates_info <- data.table(variable_name = colnames(core_data_2022), num_differences = count_list, num_NA = count_list_NA)
-head(duplicates_info)
-```
-
-```{r}
 # differences in logical comparison operators
 test1 <- c(NA, TRUE, FALSE, TRUE, FALSE, TRUE)
 test2 <- c(NA, NA, NA, TRUE, FALSE, FALSE)
@@ -170,8 +123,232 @@ test_compare2_is <- is_equal(test1, test2)
 test_compare3_is <- (is_equal(test1, test2) & is_equal(test1, test3) & is_equal(test2,test3))
 ```
 
-## BMF Duplicates
+
+```{r, eval = FALSE}
+library(tidyverse)
+library(data.table)
+library(dplyr)
+source("reviewing_duplicate_EIN.R")
+
+unified_bmf <- read.csv("CORE/BMF_UNIFIED_V1.1.csv")
+  
+vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_REVENUE_RECENT", "F990_TOTAL_INCOME_RECENT", "F990_TOTAL_ASSETS_RECENT", "CENSUS_STATE_ABBR", "CENSUS_COUNTY_NAME", "ORG_YEAR_FIRST", "ORG_YEAR_LAST") # "NTEE_IRS", "NCCS_LEVEL_2", "NCCS_LEVEL_3", "ORG_NAME_SEC", "ORG_NAME_CURRENT", "ORG_YEAR_FIRST", "ORG_YEAR_LAST", "ORG_YEAR_COUNT"
+
+# Replace any empty strings '' with NA values
+unified_bmf <- unified_bmf |> mutate_if(is.character, ~na_if(.,''))
+
+# Remove any records corresponding to "EIN-00-0000000" since that's an impossible EIN
+unified_bmf <- unified_bmf[!(unified_bmf$EIN2 %in% "EIN-00-0000000"),]
+
+# Information about the repeated EIN2 values
+info_unified_bmf <- duplicateEIN2_info(unified_bmf)
+info_unified_bmf_tab <- info_unified_bmf$info
+head(info_unified_bmf_tab)
+
+bmf_subset <- unified_bmf[vars_to_keep]
+bmf_subset$NTEEV2 <- substr(bmf_subset$NTEEV2, 1, 3)
+
+```
+
+
+```{r, eval = FALSE}
+# drop rows with EIN = 00-0000000 
+bmf_subset <- bmf_subset[!(bmf_subset$EIN2 %in% "EIN-00-0000000"),]
+n_before_removing_dupes <- nrow(bmf_subset)
+
+# get list of EIN2 that are repeated
+dupe_list <- bmf_subset |>
+  count(EIN2) |>
+  filter(n > 1)
+
+n_dupes <- nrow(dupe_list)
+
+# info on repeated EINs before dropping duplicated rows
+# bmf_dupe_info_before_rem_dup <- duplicateEIN2_info(bmf_subset)
+# head(bmf_dupe_info_before_rem_dup, 10)
+
+# remove any rows that are exactly duplicated
+bmf_sub_table <- data.table(bmf_subset)
+setkeyv(bmf_sub_table, "EIN2")
+uniq_bmf_subset <- subset(unique(bmf_sub_table))
+n_after_removing_dupes <- nrow(uniq_bmf_subset)
+
+# info on repeated EINs after dropping duplicated rows
+bmf_dupe_info <- duplicateEIN2_info(uniq_bmf_subset)
+head(bmf_dupe_info, 10)
+```
+
+```{r, eval = FALSE}
+library(dplyr)
+
+# Find duplicates and only keep rows with duplicate EIN2
+ein2_dups <- uniq_bmf_subset %>%
+  group_by(EIN2) %>%
+  filter(n() > 1)
+```
+
+## Exploring duplicates: CORE
+
+```{r, eval = FALSE}
+library(tidyverse)
+library(data.table)
+library(dplyr)
+source("reviewing_duplicate_EIN.R")
+
+core_data_1989 <- read_csv("CORE/CORE-1989-501C3-CHARITIES-PZ-HRMN.csv")
+core_data_2014 <- read_csv("CORE/CORE-2014-501C3-CHARITIES-PZ-HRMN.csv")
+core_data_2022 <- read_csv("CORE/CORE-2022-501C3-CHARITIES-PZ-HRMN.csv")
+
+# Replace any empty strings '' with NA values
+core_data_1989 <- core_data_1989 |> mutate_if(is.character, ~na_if(.,''))
+info_core_data_1989 <- duplicateEIN2_info(core_data_1989)
+head(info_core_data_1989$info)
+
+core_data_2014 <- core_data_2014 |> mutate_if(is.character, ~na_if(.,''))
+info_core_data_2014 <- duplicateEIN2_info(core_data_2014)
+head(info_core_data_2014$info)
+
+core_data_2022 <- core_data_2022 |> mutate_if(is.character, ~na_if(.,''))
+info_core_data_2022 <- duplicateEIN2_info(core_data_2022)
+head(info_core_data_2022$info)
+```
+
 ```{r}
-vars_to_keep <- c("ORG_YEAR_FIRST", "ORG_YEAR_LAST", "ORG_YEAR_COUNT", "NTEE_IRS", "NTEE_NCCS", "NTEEV2", "NCCS_LEVEL_1", "NCCS_LEVEL_2", "NCCS_LEVEL_3")
+info1989 <- info_core_data_1989$info |> filter(num_differences != 0)
+info2014 <- info_core_data_2014$info |> filter(num_differences != 0)
+info2022 <- info_core_data_2022$info |> filter(num_differences != 0)
+```
+
+```{r}
+library(tidyverse)
+library(data.table)
+library(cchsflow)
+
+data_file <- read_csv("CORE/CORE-2022-501C3-CHARITIES-PZ-HRMN.csv")
+
+for (subset in duplicate_groups){print(subset[1,1])}
+```
+# Cleaning: BMF
+
+1. If comparing rows and one has more NA than the others, choose the one with less NA values (if it exists)
+
+```{r}
+library(tidyverse)
+library(data.table)
+library(dplyr)
+library(tibble)
+source("reviewing_duplicate_EIN.R")
+
+unified_bmf <- as.data.frame(read.csv("CORE/BMF_UNIFIED_V1.1.csv"))
+
+# Replace any empty strings '' with NA values (so later when checking for missing values is easier)
+unified_bmf <- unified_bmf |> mutate_if(is.character, ~na_if(.,''))
+
+# Remove any records corresponding to "EIN-00-0000000" since that's an impossible EIN
+unified_bmf <- unified_bmf[!(unified_bmf$EIN2 %in% "EIN-00-0000000"),]
+
+# Keep only variables we care about
+vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_REVENUE_RECENT", "F990_TOTAL_INCOME_RECENT", "F990_TOTAL_ASSETS_RECENT", "CENSUS_STATE_ABBR", "CENSUS_COUNTY_NAME", "ORG_YEAR_FIRST", "ORG_YEAR_LAST")
+bmf_subset <- unified_bmf[vars_to_keep]
+bmf_subset$NTEEV2 <- substr(bmf_subset$NTEEV2, 1, 3)
+bmf_subset <- bmf_subset |> distinct() # remove any duplicate rows
+
+# For any repeated EIN2 rows, keep row with fewest NA values
+# When there are ties, it keeps the first one: this means we are somewhat arbitrarily choosing an NTEEV2  industry group when the records differ
+cleanBMF <- bmf_subset %>%
+  arrange(rowSums(is.na(.))) %>%        # sort rows by number of NAs
+  distinct(EIN2, .keep_all = TRUE)   # keep first row per EIN2 only
+
+# How much of the data am I dropping by dropping missing values?
+n <- nrow(cleanBMF)
+na_count <- sapply(cleanBMF, function(y) sum(length(which(is.na(y))))) # get na_counts per column
+na_count <- data.frame(na_cnt = na_count)
+na_count <- na_count |>
+  mutate(percent = na_cnt/n)
+na_count <- tibble::rownames_to_column(na_count, "var_name")
+write_csv(na_count, "CLEAN/cleanBMF_NA_counts.csv")
+
+# drop records with missing values
+cleanBMF <- cleanBMF |> drop_na()
+write_csv(cleanBMF, "CLEAN/cleanBMF.csv")
+```
+
+# Testing
+
+```{r}
+# Keep only variables we care about
+vars_to_keep <- c("EIN2", "NTEE_NCCS", "NTEEV2")
+bmf_subset <- unified_bmf[vars_to_keep]
+bmf_subset$NTEEV2 <- substr(bmf_subset$NTEEV2, 1, 3)
+bmf_subset <- bmf_subset |> distinct() # remove any duplicate rows
+
+table(rowSums(is.na(bmf_subset)))
+
+cleanBMF_TEST <- bmf_subset %>%
+  arrange(rowSums(is.na(.))) %>%        # sort rows by number of NAs
+  distinct(EIN2, .keep_all = TRUE)   # keep first row per User_ID only
+
+table(rowSums(is.na(cleanBMF_TEST)))
+```
+```{r}
+vars_to_keep <- c("EIN2", "NTEE_IRS", "NTEE_NCCS", "NTEEV2")
+bmf_subset <- unified_bmf[vars_to_keep]
+bmf_subset$NTEEV2 <- substr(bmf_subset$NTEEV2, 1, 3)
+bmf_subset <- bmf_subset |> distinct() # remove any duplicate rows
+
+table(rowSums(is.na(bmf_subset)))
+```
+
+```{r}
+sum(is.na(cleanBMF$NTEEV2))
+sum(is.na(bmf_subset$NTEE_NCCS))
+sum(is.na(bmf_subset$NTEEV2))
+```
+
+```{r}
+val <- bmf_subset %>% mutate(num_na = rowSums(is.na(.))) %>% arrange(rowSums(is.na(.)))
+
+```
+
+```{r}
+User_Table <- data.frame(User_ID =rep(c("UserA","UserB","UserC"),each=3),
+                     VariableA= as.numeric(rep(c(1,NA,2),each=3)),
+                     VariableB = rep(c("TypeA","TypeB",NA),each=3),
+                     VariableC = as.numeric(rep(c(NA,2,3),each=3)))
+
+User_Table[c(1,2,4,5,6,7),3] <- NA
+
+User_Table
+```
+
+```{r}
+User_Table[nrow(User_Table) + 1,] = c("UserD",3, "TypeB", 1)
+User_Table[nrow(User_Table) + 1,] = c("UserE",3, "TypeB", NA)
+User_Table[8:9,3] = c("TypeC", "TypeD")
+User_Table
+```
+
+```{r}
+User_Table %>%
+  mutate(na_count = rowSums(is.na(.))) %>% 
+  arrange(rowSums(is.na(.))) %>%        # sort rows by number of NAs
+  distinct(User_ID, .keep_all = TRUE)   # keep first row per User_ID only
+```
+```{r}
+User_Table |>
+  mutate(across(VariableA, coalesce, 0)) |>
+  mutate(across(VariableB, coalesce, "")) |>
+  mutate(across(VariableC, coalesce, -1))
+
+User_Table[1,3] = "TypeB"
+
+tied_rows_with_differences <- User_Table %>%
+  mutate(na_count = rowSums(is.na(.))) %>%
+  group_by(User_ID, na_count) %>%
+  filter(n() > 1) %>%             # Step 2: keep ties in EIN2 + NA count
+  filter(any(duplicated(across(everything())) == FALSE)) %>%  # Step 3: keep groups with differences
+  ungroup()
+
+tied_rows_with_differences
 ```
 
