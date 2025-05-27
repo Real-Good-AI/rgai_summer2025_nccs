@@ -9,6 +9,10 @@ download_CORE <- function(tscope_values, fscope_values, year_values){
   dir.create("CORE")
   setwd("CORE")
   
+  dir.create("pz")
+  dir.create("pc")
+  dir.create("pf")
+  
   keys <- c("501c3-pz", "501c3-pc", "501ce-pz", "501ce-pc", "501c3-pf")
   values <- c("-501C3-CHARITIES-PZ-HRMN.csv", "-501C3-CHARITIES-PC-HRMN.csv", "-501CE-NONPROFIT-PZ-HRMN.csv", "-501CE-NONPROFIT-PC-HRMN.csv", "-501C3-PRIVFOUND-PF-HRMN-V0.csv")
   filename_dict <- hash(keys, values) # dictionary returning the file name convention determined by tscope and fscope
@@ -29,13 +33,17 @@ download_CORE <- function(tscope_values, fscope_values, year_values){
               } else {
                   full_url <- paste(base_url, t_and_f_scope, "/marts/", filename, sep = "")
               }
-          download.file( url=full_url, destfile=filename, method="curl" )
+          dest_path <- paste(substrRight(fscope, 2), "/", filename, sep="")
+          download.file( url=full_url, destfile=dest_path, method="curl" )
           print(paste("Downloaded", filename, sep = " "))
           }
       }    
   }
 }
 
+substrRight <- function(x, n){
+  substr(x, nchar(x)-n+1, nchar(x))
+}
 ###########################################################################################################################
 # Step 1(b): Download data dictionaries and Unified BMF file
 ###########################################################################################################################
