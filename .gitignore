@@ -5,3 +5,9 @@ DATA_DICTS/~$harmonized_data_dictionary.xlsx
 data_exploration.Rmd
 .Rhistory
 .RData
+core_explore_5-27_morning.RData
+CORE/CORE/pf-*.csv
+CORE/CORE/pz-*.csv
+CORE/CORE/pc-*.csv
+*.RData
+*.Rhistory
