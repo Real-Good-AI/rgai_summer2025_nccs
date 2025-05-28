@@ -1,0 +1,36 @@
+PZ
+----------------------------------------------------------------------------------
+[1] "Year: 2018 , Num dupes: 18532 , Total num: 415948 , Prop: 0.044553646128843"
+[1] "Year: 2019 , Num dupes: 978 , Total num: 400912 , Prop: 0.00243943808117492"
+[1] "Year: 2020 , Num dupes: 704 , Total num: 392967 , Prop: 0.00179149903172531"
+[1] "Year: 2021 , Num dupes: 361 , Total num: 375492 , Prop: 0.00096140530290925"
+[1] "Year: 2022 , Num dupes: 6 , Total num: 50844 , Prop: 0.000118008024545669"
+
+(over 50% missing values)
+[1] "The following outcome variables are going to be dropped:  F9_10_ASSET_TOT_BOY"
+[2] "The following outcome variables are going to be dropped:  F9_01_REV_TOT_CY"   
+[3] "The following outcome variables are going to be dropped:  F9_01_EXP_TOT_CY"  
+
+After dropping columns with many missing values and removing exact duplicates
+
+[1] "Year: 2018 , Num dupes: 751 , Total num: 398161 , Prop: 0.00188617167427247"
+[1] "Year: 2019 , Num dupes: 880 , Total num: 400814 , Prop: 0.00219553209219239"
+[1] "Year: 2020 , Num dupes: 704 , Total num: 392967 , Prop: 0.00179149903172531"
+[1] "Year: 2021 , Num dupes: 361 , Total num: 375492 , Prop: 0.00096140530290925"
+[1] "Year: 2022 , Num dupes: 6 , Total num: 50844 , Prop: 0.000118008024545669"
+
+PC
+----------------------------------------------------------------------------------
+[1] "Year: 2019 , Num dupes: 611 , Total num: 239866 , Prop: 0.00254725555101598"
+[1] "Year: 2020 , Num dupes: 468 , Total num: 236770 , Prop: 0.00197660176542636"
+[1] "Year: 2021 , Num dupes: 276 , Total num: 237057 , Prop: 0.00116427694605095"
+[1] "Year: 2022 , Num dupes: 3 , Total num: 27459 , Prop: 0.000109253796569431"
+
+(over 55% missing values)
+[1] "The following outcome variables are going to be dropped:  ""
+
+After dropping columns with many missing values and removing exact duplicates
+[1] "Year: 2019 , Num dupes: 611 , Total num: 239866 , Prop: 0.00254725555101598"
+[1] "Year: 2020 , Num dupes: 468 , Total num: 236770 , Prop: 0.00197660176542636"
+[1] "Year: 2021 , Num dupes: 276 , Total num: 237057 , Prop: 0.00116427694605095"
+[1] "Year: 2022 , Num dupes: 3 , Total num: 27459 , Prop: 0.000109253796569431"
