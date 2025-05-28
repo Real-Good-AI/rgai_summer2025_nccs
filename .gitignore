@@ -11,3 +11,4 @@ CORE/pz/CORE-*.csv
 CORE/pc/CORE-*.csv
 *.RData
 *.Rhistory
+CLEAN/*.csv
