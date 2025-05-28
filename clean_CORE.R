@@ -11,7 +11,7 @@ clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, 
       varname <- paste("core", i, sep = "")
       
       # load data into environment and replace empty strings with NAs
-      dat <-  as.data.frame(read_csv(filename, show_col_types = FALSE)) |> mutate_if(is.character, ~na_if(.,''))
+      dat <-  as.data.frame(read_csv(filename, show_col_types = FALSE)) %>% mutate_if(is.character, ~na_if(.,''))
       
       # drop columns that are not relevant to current task and remove any rows that are exact duplicates of each other
       dat <- dat[, names(dat) %in% all_relevant_vars] |> distinct()
@@ -21,6 +21,7 @@ clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, 
       }
       
       # get list of duplicate EIN plus data frame grouped by each EIN dupe
+      cat("\nAny duplicate EIN in orginal files?")
       for (i in year_values){
             varname_load <- paste("core", i, sep = "")
             varname <- paste("dupes", i, sep = "")
@@ -46,7 +47,6 @@ clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, 
       for (i in year_values){
             varname <- paste("core", i, sep = "")
             dat <- get(varname)
-            print(varname)
       
             has_col1 <- "F9_01_REV_TOT_CY" %in% names(dat)
             has_col2 <- "F9_08_REV_TOT_TOT" %in% names(dat)
@@ -69,6 +69,7 @@ clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, 
       
       # How much data is missing and where?
       cols_to_drop <- c()
+      cat("\n")
       print(paste("Any columns with data missing in over", prop_NA*100, "% of the rows?"))
       for (i in year_values){
             varname_load <- paste("core", i, sep = "")
@@ -87,8 +88,9 @@ clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, 
             dat <- get(varname)
       
             if ("F9_00_EXEMPT_STAT_501C3_X" %in% names(dat)) {
-                  dat <- dat |> rename(ORG_TYPE = F9_00_EXEMPT_STAT_501C3_X)
-            } else { dat <- dat |> mutate(ORG_TYPE = NA_integer_) }
+                  dat <- dat |> rename(ORG_TYPE = `F9_00_EXEMPT_STAT_501C3_X`)
+                  dat$ORG_TYPE <- as.numeric(dat$ORG_TYPE)
+            } else { dat <- dat |> mutate(ORG_TYPE = -1) }
             
             # save data into variable
             assign(varname, dat)
@@ -96,8 +98,9 @@ clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, 
       
       # Get the column names that are common to all data frames and only keep those columns and save to .csv
       common_cols <- Reduce(intersect, lapply(mget(paste("core", year_values, sep="")), names))
-      cat(paste("The following variable names will not be in the dataset:\n", paste(setdiff(all_relevant_vars, common_cols), collapse = "\n"), sep = ""))
+      cat(paste("\nThe following variable names will not be in the dataset:\n", paste(setdiff(all_relevant_vars, common_cols), collapse = "\n"), sep = ""))
       
+      cat("\nSaving CORE files...")
       for (i in year_values){
             varname <- paste("core", i, sep = "")
             dat <- get(varname) 
@@ -109,7 +112,7 @@ clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, 
       }
       
       # stack the rows from each data frame on top of each other (to keep in long format)
-      long_core <- as.data.table(bind_rows(long_core))
+      long_core <- as.data.table(bind_rows(mget(paste("core", year_values, sep=""))))
       
       # Merge with metadata from Business Master File (BMF)
       bmf <- as.data.table(read_csv("CLEAN/cleanBMF.csv", show_col_types = FALSE))
