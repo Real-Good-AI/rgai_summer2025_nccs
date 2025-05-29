@@ -4,9 +4,6 @@ library(dplyr)
 library(tibble)
 source("reviewing_duplicate_EIN.R")
 
-vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_ASSETS_RECENT", "CENSUS_STATE_ABBR", "CENSUS_COUNTY_NAME", "ORG_YEAR_FIRST", "ORG_YEAR_LAST", "LATITUDE", "LONGITUDE", "CENSUS_CBSA_FIPS")
-thresh <- 0.5*length(vars_to_keep)
-
 clean_BMF <- function(vars_to_keep, thresh){
     unified_bmf <- as.data.frame(read.csv("CORE/BMF_UNIFIED_V1.1.csv"))
     # Replace any empty strings '' with NA values (so later when checking for missing values is easier)
