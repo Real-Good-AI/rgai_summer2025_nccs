@@ -13,7 +13,7 @@ unified_bmf <- unified_bmf |> mutate_if(is.character, ~na_if(.,''))
 unified_bmf <- unified_bmf[!(unified_bmf$EIN2 %in% "EIN-00-0000000"),]
 
 # Keep only variables we care about
-vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_REVENUE_RECENT", "F990_TOTAL_INCOME_RECENT", "F990_TOTAL_ASSETS_RECENT", "CENSUS_STATE_ABBR", "CENSUS_COUNTY_NAME", "ORG_YEAR_FIRST", "ORG_YEAR_LAST")
+vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_ASSETS_RECENT", "CENSUS_STATE_ABBR", "CENSUS_COUNTY_NAME", "ORG_YEAR_FIRST", "ORG_YEAR_LAST")
 bmf_subset <- unified_bmf[vars_to_keep]
 bmf_subset$NTEEV2 <- substr(bmf_subset$NTEEV2, 1, 3)
 bmf_subset <- bmf_subset |> distinct() # remove any duplicate rows
