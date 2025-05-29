@@ -7,17 +7,17 @@ source("clean_helper.R")
 
 clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, save_dir, prop_NA){
       for (i in year_values){
-      filename <- paste(file_dir, i, file_name_tag, sep = "")
-      varname <- paste("core", i, sep = "")
-      
-      # load data into environment and replace empty strings with NAs
-      dat <-  as.data.frame(read_csv(filename, show_col_types = FALSE)) %>% mutate_if(is.character, ~na_if(.,''))
-      
-      # drop columns that are not relevant to current task and remove any rows that are exact duplicates of each other
-      dat <- dat[, names(dat) %in% all_relevant_vars] |> distinct()
-      
-      # save the data into a variable
-      assign(varname, dat)
+        filename <- paste(file_dir, i, file_name_tag, sep = "")
+        varname <- paste("core", i, sep = "")
+        
+        # load data into environment and replace empty strings with NAs
+        dat <-  as.data.frame(read_csv(filename, show_col_types = FALSE)) %>% mutate_if(is.character, ~na_if(.,''))
+        
+        # drop columns that are not relevant to current task and remove any rows that are exact duplicates of each other
+        dat <- dat[, names(dat) %in% all_relevant_vars] |> distinct()
+        
+        # save the data into a variable
+        assign(varname, dat)
       }
       
       # get list of duplicate EIN plus data frame grouped by each EIN dupe
@@ -117,6 +117,22 @@ clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, 
       # Merge with metadata from Business Master File (BMF)
       bmf <- as.data.table(read_csv("CLEAN/cleanBMF.csv", show_col_types = FALSE))
       long_core <- long_core |> left_join(bmf, join_by(EIN2))
+      
+      # If the organization type is -1 or 0, replace with NA (because must be mistake)
+      long_core$ORG_TYPE <- na_if(long_core$ORG_TYPE, -1)
+      long_core$ORG_TYPE <- na_if(long_core$ORG_TYPE, 0)
+      
+      # In any numeric columns except LAT and LONG, convert negative values to NA and rename F990_TOTAL_ASSETS_RECENT to SIZE
+      long_core <- long_core |> 
+        mutate(across(
+          .cols = where(is.numeric) & !any_of(c("LATITUDE", "LONGITUDE")),
+          .fns = ~ replace(., . < 0, NA))) |>
+        rename(SIZE = `F990_TOTAL_ASSETS_RECENT`)
+      
+      # Convert SIZE to categorical by range of values
+      # Levels: [0,100000) [100000,500000) [500000,1000000) [1000000,5000000) [5000000,10000000) [10000000,7.02e+10)
+      breaks_vec = c(0,100000,500000,1000000,5000000,10000000,max(long_core$SIZE, na.rm = TRUE)+1)
+      long_core$SIZE <- long_core$SIZE |> cut(breaks = breaks_vec, right = FALSE, labels = FALSE)
       
       # Save
       filename <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[length(year_values)], ".csv", sep="")
