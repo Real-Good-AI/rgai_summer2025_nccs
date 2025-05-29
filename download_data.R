@@ -48,17 +48,19 @@ substrRight <- function(x, n){
 # Step 1(b): Download data dictionaries and Unified BMF file
 ###########################################################################################################################
 download_dicts <- function(){
+  dir.create("DATA_DICTS")
+  
   # CORE Data dictionary as a .csv file
   core_dd_url <- "https://nccsdata.s3.amazonaws.com/harmonized/core/CORE-HRMN_dd.csv"
-  download.file(url=core_dd_url, destfile="CORE/CORE-HRMN_dd.csv", method=curl)
+  download.file(url=core_dd_url, destfile="DATA_DICTS/CORE-HRMN_dd.csv", method=curl)
   
   # Excel spreadsheet containing data dictionary for core data, BMF, and some other info
   harmonized_dd_url <- "https://nccsdata.s3.amazonaws.com/harmonized/harmonized_data_dictionary.xlsx"
-  download.file(url=harmonized_dd_url, destfile="CORE/CORE-HRMN_dd.csv", method=curl)
+  download.file(url=harmonized_dd_url, destfile="DATA_DICTS/harmonized_data_dictionary.xlsx", method=curl)
   
   # Unified BMF file (contains organizational attributes like 501c type and NTEE code, which are not included in CORE data by default)
   unified_bmf_url <- "https://nccsdata.s3.amazonaws.com/harmonized/bmf/unified/BMF_UNIFIED_V1.1.csv"
-  download.file(url=unified_bmf_url, destfile="CORE/CORE-HRMN_dd.csv", method=curl)
+  download.file(url=unified_bmf_url, destfile="CORE/BMF_UNIFIED_V1.1.csv", method=curl)
 }
 
 ###########################################################################################################################
