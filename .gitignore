@@ -15,3 +15,4 @@ CLEAN/*.csv
 CLEAN/pc/*.csv
 CLEAN/pz/*.csv
 CLEAN/pf/*.csv
+CLEAN/cleanBMF.csv
