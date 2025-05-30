@@ -1,0 +1,167 @@
+---
+title: "Demo"
+author: "Mayleen"
+date: "2025-05-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+# Load Libraries
+```{r, echo=FALSE}
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+source("SCRIPTS/clean_CORE.R")
+source("SCRIPTS/clean_helper.R")
+source("SCRIPTS/download_data.R")
+source("SCRIPTS/clean_BMF.R")
+```
+
+Make sure you are in the home directory "rgai_summer2025."
+
+# Download data
+If you already downloaded the data you want to work with, you can skip this part!
+
+```{r, eval=FALSE}
+tscope_values <- c("501c3") # Download files from Tax Exempt Types in this list; possible values: "501c3", "501ce" 
+fscope_values <- c("-pz") # Download files from IRS 990 Form Scope in this list; possible values: "-pz", "-pc", "-pf"
+year_values <- seq(from = 1989, to = 2022, by = 1) # Download files from years in this list
+
+download_CORE(tscope_values, fscope_values, year_values) # this function from download_data.R will download the data for you onto your local computer
+download_dicts() # this function from download_data.R will download the data dictionaries and Business Master File (BMF) for you onto your local computer
+```
+
+# Clean Business Master File (BMF)
+If you already cleaned the BMF file, you can skip this part.
+```{r, eval=FALSE}
+vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_ASSETS_RECENT", "CENSUS_STATE_ABBR", "CENSUS_COUNTY_NAME", "ORG_YEAR_FIRST", "ORG_YEAR_LAST", "LATITUDE", "LONGITUDE", "CENSUS_CBSA_FIPS") # variables in BMF we wil keep (the rest will be dropped)
+thresh <- 0.5*length(vars_to_keep) # Any rows with more NA values than this threshold will be dropped
+
+dir.create("CLEAN")
+clean_BMF(vars_to_keep, thresh) # this function from clean_BMF.R cleans the BMF file for you and saves to your computer in CLEAN folder
+```
+
+# Clean CORE Data and merge with BMF
+If you already cleaned the CORE files and created the resulting merged dataset, you can skip this part.
+```{r, eval=FALSE}
+outcome_vars <- c("F9_10_ASSET_TOT_BOY", "F9_10_ASSET_TOT_EOY", "F9_01_REV_TOT_CY", "F9_08_REV_TOT_TOT")
+predictor_vars <- c("F9_00_EXEMPT_STAT_501C3_X", "TAX_YEAR")
+all_relevant_vars <- c(outcome_vars, predictor_vars, "EIN2", "F9_00_TAX_PERIOD_END_DATE")
+
+prop_NA <- 0.5 # If a column has more than this fraction of missing values, warning message prints
+file_name_tag <- "-501C3-CHARITIES-PZ-HRMN.csv" 
+file_dir <- "CORE/pz/CORE-"
+save_dir <- "CLEAN/pz/"
+
+dir.create(c("CLEAN/pz", "CLEAN/pf", "CLEAN/pc"))
+clean_CORE(all_relevant_vars, year_values, file_name_tag, file_dir, save_dir, prop_NA) # this function from clean_CORE.R cleans the CORE files, merges with cleaned BMF file, and saves resulting data frame
+```
+
+# Load the (cleaned/merged) data frame into the environment
+```{r}
+save_dir <- "CLEAN/pz/"
+year_values <- seq(from = 1989, to = 2022, by = 1)
+
+filename <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[length(year_values)], ".csv", sep="")
+df <- as.data.table(read_csv(filename, show_col_types = FALSE))
+
+head(df |> select(EIN2, TOT_REV, TAX_YEAR, NTEEV2, SIZE))
+```
+
+# Visualizations
+
+## Histograms
+```{r}
+ggplot(data = df, mapping = aes(x = log(TOT_REV))) +
+  geom_histogram() +
+      labs(x = "LOG(TOTAL REVENUE) in USD", title = "Histogram of log(total revenue)")
+```
+
+## Line Plots
+Total revenue across all nonprofits over time
+```{r}
+df |>
+  group_by(TAX_YEAR) |>
+  summarise(sum_TOT_REV = sum(TOT_REV, na.rm = TRUE)) |>
+  ggplot(aes(x = TAX_YEAR, y = sum_TOT_REV)) +
+  geom_point() +
+  geom_line() +
+  labs(x = "Year", y = "Dollars", title = "Total Revenues, 1989-2022")
+```
+
+Total revenue across all nonprofits, grouped by size (total assets), over time
+```{r}
+size_labs <- c("Under $100,000", "$100,000 - $499,999", "$500,000 - $999,999", "$1 Million - $4.99 Million", "$5 Million - $9.99 Million", "Above $10 Million")
+size_palette <- c("#1796D2", "#D2D2D2", "#000000", "#FDC010", "#ED028B", "#55B748")
+
+df |>
+  mutate(SIZE = factor(SIZE)) |>
+  group_by(SIZE, TAX_YEAR) |>
+  summarise(sum_TOT_REV = sum(TOT_REV, na.rm = TRUE)) |>
+  ggplot(aes(x = TAX_YEAR, y = sum_TOT_REV, color = SIZE)) +
+  geom_point() +
+  geom_line() +
+  scale_color_manual(values = size_palette, labels = size_labs, na.translate = FALSE) +
+  labs(x = "Year", y = "Dollars", title = "Total Revenues, 1989-2022")
+```
+
+Total revenue across all nonprofts, grouped by NTEE code, over time
+```{r}
+ntee_labs <- c("Arts, Culture, and Humanities", "Education (minus Universities)", "Environment and Animals", "Health (minus Hospitals)", "Human Services", "Hospitals", "International, Foreign Affairs", "Mutual/Membership Benefit", "Public, Societal Benefit", "Religion Related", "Universities", "Other")
+
+ntee_palette <- c("#1796D2", "#8DBCD2", "#989898", "#131313", "#F99C28", "#8A6908", "#EF2174", "#A7546C", "#5A7254", "#8A4846", "#DC2B28", "#55AE49")
+
+df |>
+  mutate(NTEEV2 = factor(NTEEV2)) |>
+  group_by(NTEEV2, TAX_YEAR) |>
+  summarise(sum_TOT_REV = sum(TOT_REV, na.rm = TRUE)) |>
+  ggplot(aes(x = TAX_YEAR, y = sum_TOT_REV, color = NTEEV2)) +
+  geom_point() +
+  geom_line() +
+  scale_color_manual(values = ntee_palette, labels = ntee_labs, na.translate = FALSE) +
+  labs(x = "Year", y = "Dollars", title = "Total Revenues, 1989-2022")
+```
+
+Total revenue for each individual organization over time
+```{r}
+df |>
+  ggplot(aes(x = TAX_YEAR, y = TOT_REV, color = EIN2)) +
+  geom_line() +
+  scale_color_discrete(na.translate = FALSE) +
+  labs(x = "Year", y = "Dollars", title = "Total Revenues, 1989-2022") +
+  theme(legend.position = "none")
+```
+
+Total revenue for individual organizations, but each plot is a different NTEE code group
+```{r}
+ntee_codes <- c("ART", "EDU", "ENV", "HEL", "HMS", "HOS", "IFA", "MMB", "PSB", "REL", "UNI", "UNU")
+
+for (i in seq(1,length(ntee_codes),1)){
+  my_plot <- df |>
+  filter(NTEEV2 == ntee_codes[i]) |>
+  ggplot(aes(x = TAX_YEAR, y = TOT_REV, color = EIN2)) +
+  geom_line() +
+  scale_color_discrete(na.translate = FALSE) +
+  labs(x = "Year", y = "Dollars", title = paste("Total Revenues (", ntee_labs[i], "), 1989-2022", sep="")) +
+  theme(legend.position = "none")
+  print(my_plot)
+}
+```
+
+Total revenue for individual organizations, but each plot is a different size (total assets)
+```{r}
+for (i in seq(1,length(size_labs),1)){
+  my_plot <- df |>
+  filter(SIZE == i) |>
+  ggplot(aes(x = TAX_YEAR, y = TOT_REV, color = EIN2)) +
+  geom_line() +
+  scale_color_discrete(na.translate = FALSE) +
+  labs(x = "Year", y = "Dollars", title = paste("Total Revenues, 1989-2022, SIZE: ", size_labs[i], sep="")) +
+  theme(legend.position = "none")
+  print(my_plot)
+}
+```
+
