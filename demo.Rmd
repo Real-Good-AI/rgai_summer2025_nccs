@@ -75,7 +75,7 @@ head(df |> select(EIN2, TOT_REV, TAX_YEAR, NTEEV2, SIZE))
 
 ## Histograms
 ```{r}
-ggplot(data = df, mapping = aes(x = log(TOT_REV))) +
+ggplot(data = df, mapping = aes(x = log(TOT_REV + 1))) +
   geom_histogram() +
       labs(x = "LOG(TOTAL REVENUE) in USD", title = "Histogram of log(total revenue)")
 ```
