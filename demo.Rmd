@@ -20,7 +20,7 @@ source("SCRIPTS/download_data.R")
 source("SCRIPTS/clean_BMF.R")
 ```
 
-Make sure you are in the home directory "rgai_summer2025."
+Make sure you are in the home directory "rgai_summer2025_nccs"
 
 # Download data
 If you already downloaded the data you want to work with, you can skip this part!
