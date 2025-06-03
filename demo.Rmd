@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 ```
 # Load Libraries
-```{r, echo=FALSE}
+```{r, message=FALSE}
 library(readr)
 library(tidyverse, warn.conflicts = FALSE)
 library(data.table)
@@ -74,7 +74,7 @@ head(df |> select(EIN2, TOT_REV, TAX_YEAR, NTEEV2, SIZE))
 # Visualizations: Overall
 
 ## Histograms
-```{r}
+```{r, eval=FALSE}
 ggplot(data = df, mapping = aes(x = log(TOT_REV + 1))) +
   geom_histogram() +
       labs(x = "LOG(TOTAL REVENUE) in USD", title = "Histogram of log(total revenue)")
@@ -82,7 +82,7 @@ ggplot(data = df, mapping = aes(x = log(TOT_REV + 1))) +
 
 ## Line Plots
 Total revenue across all nonprofits over time
-```{r}
+```{r, fig.align="center", fig.width = 14, eval=FALSE}
 df |>
   group_by(TAX_YEAR) |>
   summarise(sum_TOT_REV = sum(TOT_REV, na.rm = TRUE)) |>
@@ -93,7 +93,7 @@ df |>
 ```
 
 Total revenue across all nonprofits, grouped by size (total assets), over time
-```{r}
+```{r, fig.align="center", fig.width = 14, eval=FALSE}
 size_labs <- c("Under $100,000", "$100,000 - $499,999", "$500,000 - $999,999", "$1 Million - $4.99 Million", "$5 Million - $9.99 Million", "Above $10 Million")
 size_palette <- c("#1796D2", "#D2D2D2", "#000000", "#FDC010", "#ED028B", "#55B748")
 
@@ -109,7 +109,7 @@ df |>
 ```
 
 Total revenue across all nonprofts, grouped by NTEE code, over time
-```{r}
+```{r, fig.align="center", fig.width = 14, eval=FALSE}
 ntee_labs <- c("Arts, Culture, and Humanities", "Education (minus Universities)", "Environment and Animals", "Health (minus Hospitals)", "Human Services", "Hospitals", "International, Foreign Affairs", "Mutual/Membership Benefit", "Public, Societal Benefit", "Religion Related", "Universities", "Other")
 
 ntee_palette <- c("#1796D2", "#8DBCD2", "#989898", "#131313", "#F99C28", "#8A6908", "#EF2174", "#A7546C", "#5A7254", "#8A4846", "#DC2B28", "#55AE49")
@@ -126,7 +126,7 @@ df |>
 ```
 
 Average and median log total revenue
-```{r}
+```{r, fig.align="center", fig.width = 14}
 library(cowplot)
 
 mean_plot <- df |>
@@ -145,8 +145,12 @@ med_plot <- df |>
 
 plot_grid(mean_plot, med_plot, labels = "AUTO")
 ```
+
 Average and median log of total revenue, grouped by size
-```{r}
+```{r, fig.align="center", fig.width = 14}
+size_labs <- c("Under $100,000", "$100,000 - $499,999", "$500,000 - $999,999", "$1 Million - $4.99 Million", "$5 Million - $9.99 Million", "Above $10 Million")
+size_palette <- c("#1796D2", "#D2D2D2", "#000000", "#FDC010", "#ED028B", "#55B748")
+
 mean_plot <- df |>
   mutate(SIZE = factor(SIZE)) |>
   group_by(TAX_YEAR, SIZE) |>
@@ -169,8 +173,12 @@ prow <- plot_grid(mean_plot + theme(legend.position="none"), med_plot + theme(le
 leg <- get_legend(mean_plot + theme(legend.position = "bottom"))
 plot_grid(prow, leg, ncol = 1, rel_heights = c(1, .1))
 ```
+
 Average and median log of total revenue, grouped by NTEE
-```{r}
+```{r, fig.align="center", fig.width = 14}
+ntee_labs <- c("Arts, Culture, and Humanities", "Education (minus Universities)", "Environment and Animals", "Health (minus Hospitals)", "Human Services", "Hospitals", "International, Foreign Affairs", "Mutual/Membership Benefit", "Public, Societal Benefit", "Religion Related", "Universities", "Other")
+ntee_palette <- c("#1796D2", "#8DBCD2", "#989898", "#131313", "#F99C28", "#8A6908", "#EF2174", "#A7546C", "#5A7254", "#8A4846", "#DC2B28", "#55AE49")
+
 mean_plot <- df |>
   mutate(NTEEV2 = factor(NTEEV2)) |>
   group_by(TAX_YEAR, NTEEV2) |>
@@ -196,7 +204,7 @@ plot_grid(prow, leg, ncol = 1, rel_heights = c(1, .3))
 
 # Visualizations: per organization
 Total revenue for each individual organization over time
-```{r}
+```{r, eval=FALSE}
 df |>
   ggplot(aes(x = TAX_YEAR, y = TOT_REV, color = EIN2)) +
   geom_line() +
@@ -206,7 +214,7 @@ df |>
 ```
 
 Total revenue for individual organizations, but each plot is a different NTEE code group
-```{r}
+```{r, eval=FALSE}
 ntee_codes <- c("ART", "EDU", "ENV", "HEL", "HMS", "HOS", "IFA", "MMB", "PSB", "REL", "UNI", "UNU")
 
 for (i in seq(1,length(ntee_codes),1)){
@@ -222,7 +230,7 @@ for (i in seq(1,length(ntee_codes),1)){
 ```
 
 Total revenue for individual organizations, but each plot is a different size (total assets)
-```{r}
+```{r, eval=FALSE}
 for (i in seq(1,length(size_labs),1)){
   my_plot <- df |>
   filter(SIZE == i) |>
@@ -234,4 +242,3 @@ for (i in seq(1,length(size_labs),1)){
   print(my_plot)
 }
 ```
-
