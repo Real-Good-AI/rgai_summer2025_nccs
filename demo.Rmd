@@ -71,7 +71,7 @@ df <- as.data.table(read_csv(filename, show_col_types = FALSE)) |> filter(TAX_YE
 head(df |> select(EIN2, TOT_REV, TAX_YEAR, NTEEV2, SIZE))
 ```
 
-# Visualizations
+# Visualizations: Overall
 
 ## Histograms
 ```{r}
@@ -125,6 +125,76 @@ df |>
   labs(x = "Year", y = "Dollars", title = "Total Revenues, 1989-2021")
 ```
 
+Average and median log total revenue
+```{r}
+library(cowplot)
+
+mean_plot <- df |>
+  group_by(TAX_YEAR) |>
+  summarise(mean_log_rev = mean(log(TOT_REV + 1), na.rm = TRUE)) |>
+  ggplot(aes(x = TAX_YEAR, y = mean_log_rev)) +
+  geom_line() +
+  labs(x = "Year", y = "LOG(Dollars)", title = "Mean Log Revenues, 1989-2021")
+
+med_plot <- df |>
+  group_by(TAX_YEAR) |>
+  summarise(med_log_rev = median(log(TOT_REV + 1), na.rm = TRUE)) |>
+  ggplot(aes(x = TAX_YEAR, y = med_log_rev)) +
+  geom_line() +
+  labs(x = "Year", y = "LOG(Dollars)", title = "Median Log Revenues, 1989-2021")
+
+plot_grid(mean_plot, med_plot, labels = "AUTO")
+```
+Average and median log of total revenue, grouped by size
+```{r}
+mean_plot <- df |>
+  mutate(SIZE = factor(SIZE)) |>
+  group_by(TAX_YEAR, SIZE) |>
+  summarise(mean_log_rev = mean(log(TOT_REV + 1), na.rm = TRUE)) |>
+  ggplot(aes(x = TAX_YEAR, y = mean_log_rev, color=SIZE)) +
+  geom_line() +
+  scale_color_manual(values = size_palette, labels = size_labs, na.translate = FALSE) +
+  labs(x = "Year", y = "LOG(Dollars)", title = "Mean Log Revenues, 1989-2021")
+
+med_plot <- df |>
+  mutate(SIZE = factor(SIZE)) |>
+  group_by(TAX_YEAR, SIZE) |>
+  summarise(med_log_rev = median(log(TOT_REV + 1), na.rm = TRUE)) |>
+  ggplot(aes(x = TAX_YEAR, y = med_log_rev, color=SIZE)) +
+  geom_line() +
+  scale_color_manual(values = size_palette, labels = size_labs, na.translate = FALSE) +
+  labs(x = "Year", y = "LOG(Dollars)", title = "Median Log Revenues, 1989-2021")
+
+prow <- plot_grid(mean_plot + theme(legend.position="none"), med_plot + theme(legend.position="none"), labels = "AUTO", hjust = -1, nrow = 1)
+leg <- get_legend(mean_plot + theme(legend.position = "bottom"))
+plot_grid(prow, leg, ncol = 1, rel_heights = c(1, .1))
+```
+Average and median log of total revenue, grouped by NTEE
+```{r}
+mean_plot <- df |>
+  mutate(NTEEV2 = factor(NTEEV2)) |>
+  group_by(TAX_YEAR, NTEEV2) |>
+  summarise(mean_log_rev = mean(log(TOT_REV + 1), na.rm = TRUE)) |>
+  ggplot(aes(x = TAX_YEAR, y = mean_log_rev, color=NTEEV2)) +
+  geom_line() +
+  scale_color_manual(values = ntee_palette, labels = ntee_labs, na.translate = FALSE) +
+  labs(x = "Year", y = "LOG(Dollars)", title = "Mean Log Revenues, 1989-2021")
+
+med_plot <- df |>
+  mutate(NTEEV2 = factor(NTEEV2)) |>
+  group_by(TAX_YEAR, NTEEV2) |>
+  summarise(med_log_rev = median(log(TOT_REV + 1), na.rm = TRUE)) |>
+  ggplot(aes(x = TAX_YEAR, y = med_log_rev, color=NTEEV2)) +
+  geom_line() +
+  scale_color_manual(values = ntee_palette, labels = ntee_labs, na.translate = FALSE) +
+  labs(x = "Year", y = "LOG(Dollars)", title = "Median Log Revenues, 1989-2021")
+
+prow <- plot_grid(mean_plot + theme(legend.position="none"), med_plot + theme(legend.position="none"), labels = "AUTO", hjust = -1, nrow = 1)
+leg <- get_legend(mean_plot + theme(legend.position = "bottom"))
+plot_grid(prow, leg, ncol = 1, rel_heights = c(1, .3))
+```
+
+# Visualizations: per organization
 Total revenue for each individual organization over time
 ```{r}
 df |>
