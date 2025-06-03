@@ -89,7 +89,7 @@ df |>
   ggplot(aes(x = TAX_YEAR, y = sum_TOT_REV)) +
   geom_point() +
   geom_line() +
-  labs(x = "Year", y = "Dollars", title = "Total Revenues, 1989-2022")
+  labs(x = "Year", y = "Dollars", title = "Total Revenues, 1989-2021")
 ```
 
 Total revenue across all nonprofits, grouped by size (total assets), over time
@@ -105,7 +105,7 @@ df |>
   geom_point() +
   geom_line() +
   scale_color_manual(values = size_palette, labels = size_labs, na.translate = FALSE) +
-  labs(x = "Year", y = "Dollars", title = "Total Revenues, 1989-2022")
+  labs(x = "Year", y = "Dollars", title = "Total Revenues, 1989-2021")
 ```
 
 Total revenue across all nonprofts, grouped by NTEE code, over time
@@ -122,7 +122,7 @@ df |>
   geom_point() +
   geom_line() +
   scale_color_manual(values = ntee_palette, labels = ntee_labs, na.translate = FALSE) +
-  labs(x = "Year", y = "Dollars", title = "Total Revenues, 1989-2022")
+  labs(x = "Year", y = "Dollars", title = "Total Revenues, 1989-2021")
 ```
 
 Total revenue for each individual organization over time
@@ -131,7 +131,7 @@ df |>
   ggplot(aes(x = TAX_YEAR, y = TOT_REV, color = EIN2)) +
   geom_line() +
   scale_color_discrete(na.translate = FALSE) +
-  labs(x = "Year", y = "Dollars", title = "Total Revenues, 1989-2022") +
+  labs(x = "Year", y = "Dollars", title = "Revenues, 1989-2021") +
   theme(legend.position = "none")
 ```
 
@@ -145,7 +145,7 @@ for (i in seq(1,length(ntee_codes),1)){
   ggplot(aes(x = TAX_YEAR, y = TOT_REV, color = EIN2)) +
   geom_line() +
   scale_color_discrete(na.translate = FALSE) +
-  labs(x = "Year", y = "Dollars", title = paste("Total Revenues (", ntee_labs[i], "), 1989-2022", sep="")) +
+  labs(x = "Year", y = "Dollars", title = paste("Revenues (", ntee_labs[i], "), 1989-2021", sep="")) +
   theme(legend.position = "none")
   print(my_plot)
 }
@@ -159,7 +159,7 @@ for (i in seq(1,length(size_labs),1)){
   ggplot(aes(x = TAX_YEAR, y = TOT_REV, color = EIN2)) +
   geom_line() +
   scale_color_discrete(na.translate = FALSE) +
-  labs(x = "Year", y = "Dollars", title = paste("Total Revenues, 1989-2022, SIZE: ", size_labs[i], sep="")) +
+  labs(x = "Year", y = "Dollars", title = paste("Revenues, 1989-2021, SIZE: ", size_labs[i], sep="")) +
   theme(legend.position = "none")
   print(my_plot)
 }
