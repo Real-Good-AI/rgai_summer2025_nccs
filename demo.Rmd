@@ -66,7 +66,7 @@ save_dir <- "CLEAN/pz/"
 year_values <- seq(from = 1989, to = 2022, by = 1)
 
 filename <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[length(year_values)], ".csv", sep="")
-df <- as.data.table(read_csv(filename, show_col_types = FALSE))
+df <- as.data.table(read_csv(filename, show_col_types = FALSE)) |> filter(TAX_YEAR != 2022)
 
 head(df |> select(EIN2, TOT_REV, TAX_YEAR, NTEEV2, SIZE))
 ```
