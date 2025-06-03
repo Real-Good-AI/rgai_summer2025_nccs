@@ -2,7 +2,8 @@ library(tidyverse, warn.conflicts = FALSE)
 library(data.table)
 library(dplyr)
 library(tibble)
-source("reviewing_duplicate_EIN.R")
+source("SCRIPTS/reviewing_duplicate_EIN.R")
+source("SCRIPTS/clean_helper.R")
 
 clean_BMF <- function(vars_to_keep, thresh){
     unified_bmf <- as.data.frame(read.csv("CORE/BMF_UNIFIED_V1.1.csv"))

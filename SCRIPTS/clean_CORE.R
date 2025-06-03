@@ -2,8 +2,8 @@ library(readr)
 library(tidyverse)
 library(data.table)
 library(dplyr)
-source("reviewing_duplicate_EIN.R")
-source("clean_helper.R")
+source("SCRIPTS/reviewing_duplicate_EIN.R")
+source("SCRIPTS/clean_helper.R")
 
 clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, save_dir, prop_NA){
       for (i in year_values){
