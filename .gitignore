@@ -18,3 +18,5 @@ CLEAN/pf/*.csv
 CLEAN/cleanBMF.csv
 CLEAN/cleanBMF.csv
 demo.html
+.Rproj.user
+rgai_summer2025_nccs.Rproj
