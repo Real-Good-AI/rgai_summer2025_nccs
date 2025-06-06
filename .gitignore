@@ -21,3 +21,6 @@ demo.html
 .Rproj.user
 rgai_summer2025_nccs.Rproj
 data_exploration.pdf
+data_exploration.html
+MODEL/*.csv
+MODEL/*.rds
