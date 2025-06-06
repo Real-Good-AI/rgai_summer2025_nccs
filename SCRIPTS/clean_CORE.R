@@ -5,7 +5,7 @@ library(dplyr)
 source("SCRIPTS/reviewing_duplicate_EIN.R")
 source("SCRIPTS/clean_helper.R")
 
-clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, save_dir, prop_NA){
+clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, save_dir, prop_NA, filename_save){
       for (i in year_values){
         filename <- paste(file_dir, i, file_name_tag, sep = "")
         varname <- paste("core", i, sep = "")
@@ -127,15 +127,21 @@ clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, 
         mutate(across(
           .cols = where(is.numeric) & !any_of(c("LATITUDE", "LONGITUDE")),
           .fns = ~ replace(., . < 0, NA))) |>
-        rename(SIZE = `F990_TOTAL_ASSETS_RECENT`)
+        rename(SIZE.CTS = `F990_TOTAL_ASSETS_RECENT`)
       
-      # Convert SIZE to categorical by range of values
+      # Create a factor version of size by splitting SIZE into categories
       # Levels: [0,100000) [100000,500000) [500000,1000000) [1000000,5000000) [5000000,10000000) [10000000,7.02e+10)
       breaks_vec = c(0,100000,500000,1000000,5000000,10000000,max(long_core$SIZE, na.rm = TRUE)+1)
-      long_core$SIZE <- long_core$SIZE |> cut(breaks = breaks_vec, right = FALSE, labels = FALSE)
+      long_core$SIZE.CAT <- long_core$SIZE.CTS |> cut(breaks = breaks_vec, right = FALSE, labels = FALSE) |> factor()
+      
+      # Add in Census Regions and Divisions based on state (CENSUS_STATE_ABBR)
+      if ("CENSUS_STATE_ABBR" %in% names(long_core)){long_core <- add_regions_and_divisions(long_core) |> rename(STATE = `CENSUS_STATE_ABBR`)}
+      
+      # Rename NTEE category mainly for aesthetic reasons :P
+      if ("NTEEV2" %in% names(long_core)){long_core <- long_core |> rename(NTEE = NTEEV2)}
       
       # Save
-      filename <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[length(year_values)], ".csv", sep="")
-      print(filename)
-      write_csv(long_core, filename)
+      if (missing(filename_save)){filename_save <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[length(year_values)], ".csv", sep="")}
+      print(filename_save)
+      write_csv(long_core, filename_save)
 }
