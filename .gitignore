@@ -25,3 +25,6 @@ data_exploration.html
 MODEL/*.csv
 MODEL/*.rds
 docs_cleaning.html
+MODEL/linear_models/*.csv
+MODEL/linear_models/*.rds
+MODEL/plots/*
