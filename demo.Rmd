@@ -287,7 +287,7 @@ start.time <- Sys.time()
 time_model <- lm(formula = LOG_REV ~ factor(YEAR), data = train.set, na.action = na.exclude)
 print("Time model:")
 print(Sys.time() - start.time)
-#saveRDS(time_model, "MODEL/time_model.rds")
+saveRDS(time_model, "MODEL/time_model.rds")
 summary(time_model)
 
 # Add the residuals back to the data frame to fit the next model
