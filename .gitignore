@@ -28,3 +28,4 @@ docs_cleaning.html
 MODEL/linear_models/*.csv
 MODEL/linear_models/*.rds
 MODEL/plots/*
+MODEL/
