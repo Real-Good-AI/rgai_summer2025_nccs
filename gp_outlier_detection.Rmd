@@ -1,0 +1,90 @@
+---
+title: "Outlier Detection with GPs"
+author: "Mayleen"
+date: "2025-06-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, message=FALSE}
+library(fields)
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+
+df <- as.data.table(read_csv("MODEL/small_test.csv", show_col_types = FALSE)) 
+
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV_CENTERED = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+# distance matrix of years
+dist_mat <- dist(sort(unique(df$YEAR)), diag=TRUE, upper=TRUE)
+dist_mat <- as.matrix(dist_mat)
+
+# normalize
+min_val <- min(dist_mat)
+max_val <- max(dist_mat)
+dist_mat <- (dist_mat - min_val) / (max_val - min_val)
+
+# Matérn covariance
+nu <- 0.5
+rho <- 1
+sigma_squared <- 1
+
+mat_cov <- Matern(d = dist_mat, smoothness = nu, range = rho, phi = sigma_squared)
+mu_1 <- 0
+```
+
+
+```{r}
+# Trying for a single organization 
+ein <- "EIN-04-2503758"
+
+# Train GPs
+all_years <- (df |> filter(EIN2 == ein))$YEAR + 1 # all the years we have data for that org
+predictions <- numeric(length(all_years)) # initialize
+mu_2 <- numeric(nrow(df |> filter(EIN2 == ein)) - 1) # all zeros
+
+for(i in 1:length(all_years)){
+      # Leave out i-th year
+      log_revenue <- (df |> filter(EIN2 == ein & YEAR != all_years[i]-1))$LOG_REV
+      
+      SIGMA.11 <- mat_cov[all_years[i], all_years[i]]
+      SIGMA.22.inv <- solve(mat_cov[all_years[-i], all_years[-i]])
+      SIGMA.12 <- mat_cov[all_years[i], all_years[-i], drop = FALSE]
+      SIGMA.21 <- t(SIGMA.12) # SIGMA.12^T
+      
+      predictions[i] <- mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (log_revenue - mu_2)) #mu_bar
+      SIGMA.bar <- SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% SIGMA.21)
+}
+
+residuals <- (df |> filter(EIN2 == ein))$LOG_REV - predictions
+residuals <- abs(residuals / (sum(residuals^2) / length(residuals))) # (true - predicted) / (Stnd Error of Predictions)
+```
+
+
+```{r}
+candidate_outliers <- as.data.frame(list("PREDICTION" = predictions[residuals>=3],
+                                         "YEAR" = all_years[which(residuals > 3)] - 1 + 1989,
+                                         "DATA" = rep("Candidate Outlier", length(predictions[residuals>=3])))
+                                    )
+      
+# Plot org data
+df |>
+    filter(EIN2==ein) |>
+    mutate(DATA = "True") |>
+    ggplot(aes(x = TAX_YEAR, y = LOG_REV, color = DATA)) +
+    geom_point() +
+    geom_line() +
+    geom_point(data = candidate_outliers, aes(x = YEAR, y = PREDICTION, color = DATA), size = 3) +
+    labs(x = "Year", y = "Log(Dollars)", title = paste("Log Revenue for Org:", ein))
+```
+
