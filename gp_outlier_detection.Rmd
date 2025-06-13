@@ -17,7 +17,7 @@ library(tidyverse, warn.conflicts = FALSE)
 library(data.table)
 library(dplyr, warn.conflicts = FALSE)
 
-df <- as.data.table(read_csv("MODEL/small_test.csv", show_col_types = FALSE)) 
+df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
 
 # center the data
 df <- df |>
