@@ -6,23 +6,271 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, eval = FALSE)
 ```
 
-
-```{r, message=FALSE}
+# Grid Search
+```{r, message=F, echo = TRUE, eval = TRUE}
 library(fields)
 library(readr)
 library(tidyverse, warn.conflicts = FALSE)
 library(data.table)
 library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+library(mvtnorm)
+source("SCRIPTS/outlier_detection_helper.R")
 
 df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
 
 # center the data
 df <- df |>
       group_by(EIN2) |>
-      mutate(LOG_REV_CENTERED = LOG_REV - mean(LOG_REV)) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+# distance matrix of years
+dist_mat <- dist(sort(unique(df$YEAR)), diag=TRUE, upper=TRUE)
+dist_mat <- as.matrix(dist_mat)
+
+# normalize
+min_val <- min(dist_mat)
+max_val <- max(dist_mat)
+dist_mat <- (dist_mat - min_val) / (max_val - min_val)
+
+# Set up ranges for Matern covariance matrix hyperparameters
+rho <- 1
+
+nu_vec <- seq(from = 0.05, to = 2.5, by = 0.245)
+nugget_vec <- seq(from = 0, to = 2, by = 0.2)
+sigma_squared_vec <- seq(from = 0.05, to = 0.95, by = 0.1)
+
+# All possible combinations of hyperparameters
+combos <- expand.grid(nu = nu_vec, nugget = nugget_vec, sigma.squared = sigma_squared_vec)
+
+# Grid Search: Looping over all organizations to find best set of hyperparameters
+max_likelihoods = list()
+max_likelihoods_idx = list()
+all_likelihoods = list()
+
+start.time <- Sys.time()
+for (ein in unique(df$EIN2)){
+      all_years <- (df |> filter(EIN2 == ein))$YEAR + 1 # all the years we have data for that org
+      
+      likelihoods <- apply(combos, 
+                           MARGIN = 1, 
+                           function(row) return(get_likelihood(row,
+                                          dist_mat = dist_mat,
+                                          rho = rho,
+                                          all_years = all_years,
+                                          data = (df |> filter(EIN2 == ein))$LOG_REV))
+                           )
+      all_likelihoods[[ein]] <- likelihoods
+      max_likelihoods[[ein]] <- max(likelihoods)
+      max_likelihoods_idx[[ein]] <- which.max(likelihoods)
+}
+
+print(Sys.time() - start.time)
+
+best_combos <- combos[as.vector(unlist(max_likelihoods_idx)),]
+row.names(best_combos) <- names(max_likelihoods_idx)
+
+best_combos
+```
+
+```{r, echo = TRUE, eval = TRUE}
+all_predictions = list()
+all_candidates = list()
+all_se = list()
+
+mu_1 <- 0
+# Looping over all organizations
+start.time <- Sys.time()
+for (ein in unique(df$EIN2)){
+      all_years <- (df |> filter(EIN2 == ein))$YEAR + 1 # all the years we have data for that org
+      mu_2 <- numeric(nrow(df |> filter(EIN2 == ein)) - 1) # all zeros
+      
+      predictions <- numeric(length(all_years)) # initialize
+      standard_errors <- numeric(length(all_years)) # initialize
+      
+      mat_cov <- Matern(d = dist_mat, 
+                        smoothness = best_combos[ein,1], 
+                        range = rho, 
+                        phi = best_combos[ein,3]) + diag(best_combos[ein,2], dim(dist_mat)[1])
+      
+      for(i in 1:length(all_years)){
+            # Leave out i-th year
+            log_revenue <- (df |> filter(EIN2 == ein & YEAR != all_years[i]-1))$LOG_REV
+            
+            SIGMA.11 <- mat_cov[all_years[i], all_years[i]]
+            SIGMA.22.inv <- solve(mat_cov[all_years[-i], all_years[-i]])
+            SIGMA.12 <- mat_cov[all_years[i], all_years[-i], drop = FALSE]
+            
+            predictions[i] <- mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (log_revenue - mu_2)) #mu_bar
+            standard_errors[i] <- sqrt(as.numeric(SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
+      }
+      
+      residuals <- abs(((df |> filter(EIN2 == ein))$LOG_REV - predictions) / standard_errors) # standardized residuals
+      
+      all_predictions[[ein]] <- predictions
+      all_se[[ein]] <- standard_errors
+      all_candidates[[ein]] <-  all_years[which(residuals > 3)] - 1 + 1989
+      
+      p <- plot_true_vs_pred(df, ein, predictions, standard_errors, all_years, all_candidates[ein], best_combos[ein,])
+      print(p)
+}
+
+print(Sys.time() - start.time)
+```
+
+## Response surfaces
+```{r}
+plot_surface_sigma <- function(ein, combos, all_likelihoods, sigma_fixed){
+      subset_data <- subset(combos |> mutate(value = all_likelihoods[[ein]]), 
+                            sigma.squared == sigma_fixed)
+      
+      p <- ggplot(subset_data, aes(x = nu, y = nugget, fill = value)) +
+        geom_tile() +
+        labs(title = paste(ein, "Heatmap at sigma^2 =", sigma_fixed)) +
+        scale_fill_viridis_c() +
+        theme_minimal()
+}
+
+# ein <- "EIN-77-0368378"
+# p <- plot_surface_sigma(ein, combos, all_likelihoods, best_combos[ein,]$sigma.squared)
+# print(p)
+
+for (ein in unique(df$EIN2)){
+      p <- plot_surface_sigma(ein, combos, all_likelihoods, best_combos[ein,]$sigma.squared)
+      print(p)
+}
+```
+
+```{r}
+plot_surface_nu <- function(ein, combos, all_likelihoods, nu_fixed){
+      subset_data <- subset(combos |> mutate(value = all_likelihoods[[ein]]), 
+                            nu == nu_fixed)
+      
+      p <- ggplot(subset_data, aes(x = nugget, y = sigma.squared, fill = value)) +
+        geom_tile() +
+        labs(title = paste(ein, "Heatmap at nu =", nu_fixed)) +
+        scale_fill_viridis_c() +
+        theme_minimal()
+}
+
+# ein <- "EIN-77-0368378"
+# p <- plot_surface_nu(ein, combos, all_likelihoods, best_combos[ein,]$nu)
+# print(p)
+
+for (ein in unique(df$EIN2)){
+      p <- plot_surface_nu(ein, combos, all_likelihoods, best_combos[ein,]$nu)
+      print(p)
+}
+```
+```{r}
+plot_surface_nugget <- function(ein, combos, all_likelihoods, nugget_fixed){
+      subset_data <- subset(combos |> mutate(value = all_likelihoods[[ein]]), 
+                            nugget == nugget_fixed)
+      
+      p <- ggplot(subset_data, aes(x = nu, y = sigma.squared, fill = value)) +
+        geom_tile() +
+        labs(title = paste(ein, "Heatmap at nugget =", nugget_fixed)) +
+        scale_fill_viridis_c() +
+        theme_minimal()
+}
+
+# ein <- "EIN-77-0368378"
+# p <- plot_surface_nugget(ein, combos, all_likelihoods, best_combos[ein,]$nugget)
+# print(p)
+
+for (ein in unique(df$EIN2)){
+      p <- plot_surface_nugget(ein, combos, all_likelihoods, best_combos[ein,]$nugget)
+      print(p)
+}
+```
+
+
+```{r, eval = FALSE, echo = FALSE}
+ein <- "EIN-77-0368378"
+
+subset_data <- subset(combos |> mutate(value = all_likelihoods[[ein]]), 
+                            nu == best_combos[ein,]$nu)
+
+# Create sorted unique vectors for nu and nugget
+nu_vals <- sort(unique(subset_data$nu))
+nugget_vals <- sort(unique(subset_data$nugget))
+sigma_vals <- sort(unique(subset_data$sigma.squared))
+
+# Reshape value into matrix: rows = nu, columns = nugget
+z_matrix <- matrix(
+  subset_data$value,
+  nrow = length(nugget_vals),
+  ncol = length(sigma_vals),
+  byrow = FALSE  # or TRUE depending on how expand.grid was generated
+)
+
+# Now plot
+plot_ly(
+  x = nugget_vals,
+  y = sigma_vals,
+  z = z_matrix,
+  type = "surface"
+)
+```
+
+
+## Single org
+```{r, eval = FALSE, echo = FALSE}
+ein = "EIN-20-3754055"
+all_years <- (df |> filter(EIN2 == ein))$YEAR + 1 # all the years we have data for that org
+
+apply(combos |> head(10), 
+      MARGIN = 1, 
+      function(row) return(get_likelihood(row,
+                                          dist_mat = dist_mat,
+                                          rho = rho,
+                                          all_years = all_years,
+                                          data = (df |> filter(EIN2 == ein))$LOG_REV_CENTERED))
+      )
+
+for (i in seq(1,5,1)){
+      # Compute Matérn Covariance Matrix
+      mat_cov <- Matern(d = dist_mat, 
+                        smoothness = combos[i,1], 
+                        range = rho, 
+                        phi = combos[i,3]) + diag(combos[i,2], dim(dist_mat)[1])
+      
+      print(mat_cov[all_years, all_years])
+      data <- (df |> filter(EIN2 == ein))$LOG_REV_CENTERED
+      print(data)
+      # Compute likelihood
+      likelihood <- dmvnorm(data, 
+                            mean = rep(0, length(data)), 
+                            sigma = mat_cov[all_years, all_years],
+                            log = TRUE)
+      
+      print(likelihood)
+}
+ 
+```
+
+# Test Run (no optimization)
+## Setup
+```{r, message=FALSE, eval=FALSE}
+library(fields)
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+
+df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
+
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |> #mutate(LOG_REV_CENTERED = LOG_REV - mean(LOG_REV))
       ungroup()
 
 # distance matrix of years
@@ -38,21 +286,114 @@ dist_mat <- (dist_mat - min_val) / (max_val - min_val)
 nu <- 0.5
 rho <- 1
 sigma_squared <- 1
+nugget <- 0.1
 
-mat_cov <- Matern(d = dist_mat, smoothness = nu, range = rho, phi = sigma_squared)
+mat_cov <- Matern(d = dist_mat, smoothness = nu, range = rho, phi = sigma_squared) + diag(nugget, dim(dist_mat)[1])
+
 mu_1 <- 0
 ```
 
+## All orgs
+```{r, eval=FALSE}
+#ein <- "EIN-77-0368378"
+#predictions <- all_predictions[ein]
+#standard_errors <- all_se[ein]
+#candidate_outliers <- all_candidates[ein]
+#all_years <- (df |> filter(EIN2 == ein))$YEAR + 1
+#residuals <- abs(filter(df, EIN2 == ein)$LOG_REV - unlist(predictions)) / unlist(standard_errors)
 
-```{r}
+# Select data specific to this org, add predictions, standard errors, and outlier flag to data
+plot_true_vs_pred <- function(df, ein, predictions, standard_errors, all_years, candidate_outliers){
+      df_long <- df |> filter(EIN2==ein) |>
+            mutate(OUTLIER = case_when(TAX_YEAR %in% unlist(candidate_outliers) ~ "Candidate Outlier", .default = "Non-outlier"))
+      df_long$PRED <- unlist(predictions)
+      df_long$SE <- unlist(standard_errors)
+
+      df_long <- df_long |>
+            pivot_longer(cols = c(LOG_REV, PRED), names_to = "Variable", values_to = "Value")
+      
+      # Add a column to flag outliers (TRUE if OUTLIER is not NA), add confidence intervals
+      df_long <- df_long |>
+            mutate(CI.LOWER = case_when(
+                  Variable == "LOG_REV" ~ 0,
+                  Variable == "PRED" ~ qt(0.95, df = length(all_years)-1) * SE)) |>
+            mutate(CI.UPPER = case_when(
+                  Variable == "LOG_REV" ~ 0,
+                  Variable == "PRED" ~ qt(0.95, df = length(all_years)-1) * SE))
+      
+      # Base plot of true versus predicted with error bars on predicted
+      p <- ggplot(df_long, aes(x = TAX_YEAR, y = Value, color = Variable, shape = OUTLIER)) +
+            geom_point(size=3) +
+            geom_line(aes(group = Variable)) +
+            geom_errorbar(data = (df_long |> filter(Variable == "PRED")),aes(ymin = Value - CI.LOWER, ymax = Value + CI.UPPER,group = Variable)) +
+            labs(x = "Tax Year", y = "Log Revenue", title = paste("Observed vs Predicted Log Revenue:", ein)) +
+            scale_color_manual(values = c("LOG_REV" = "#1796D2", "PRED" = "#55B748"), 
+                               labels = c("LOG_REV" = "True", "PRED" = "Predicted"), 
+                               name = "Legend") +
+            scale_shape_manual(values = c("Candidate Outlier" = 8, "Non-outlier" = 16)) 
+      
+      # Highlight outliers
+      #p <- p + geom_vline(xintercept = candidate_outliers, color = "black", alpha = 0.5, linetype = "dashed", show.legend = FALSE)
+      
+      return(p)
+}
+```
+
+
+```{r, eval=FALSE}
+all_predictions = list()
+all_candidates = list()
+all_se = list()
+
+# Looping over all organizations
+for (ein in unique(df$EIN2)){
+      all_years <- (df |> filter(EIN2 == ein))$YEAR + 1 # all the years we have data for that org
+      mu_2 <- numeric(nrow(df |> filter(EIN2 == ein)) - 1) # all zeros
+      
+      predictions <- numeric(length(all_years)) # initialize
+      standard_errors <- numeric(length(all_years)) # initialize
+      for(i in 1:length(all_years)){
+            # Leave out i-th year
+            log_revenue <- (df |> filter(EIN2 == ein & YEAR != all_years[i]-1))$LOG_REV
+            
+            SIGMA.11 <- mat_cov[all_years[i], all_years[i]]
+            SIGMA.22.inv <- solve(mat_cov[all_years[-i], all_years[-i]])
+            SIGMA.12 <- mat_cov[all_years[i], all_years[-i], drop = FALSE]
+            
+            predictions[i] <- mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (log_revenue - mu_2)) #mu_bar
+            standard_errors[i] <- sqrt(as.numeric(SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
+      }
+      
+      residuals <- abs(((df |> filter(EIN2 == ein))$LOG_REV - predictions) / standard_errors) # (true - predicted) / (Stnd Error of Predictions)
+      
+      all_predictions[[ein]] <- predictions
+      all_se[[ein]] <- standard_errors
+      all_candidates[[ein]] <-  all_years[which(residuals > 3)] - 1 + 1989
+      
+      p <- plot_true_vs_pred(df, ein, predictions, standard_errors, all_years, all_candidates[ein])
+      print(p)
+}
+
+```
+
+```{r, eval=FALSE}
+all_sig_squared <- lapply(all_se, function(x) x^2)
+max(sapply(all_sig_squared, max))
+min(sapply(all_sig_squared, min))
+```
+
+
+## Single Organization (TEST)
+```{r, eval = FALSE, echo = FALSE}
 # Trying for a single organization 
 ein <- "EIN-04-2503758"
 
 # Train GPs
 all_years <- (df |> filter(EIN2 == ein))$YEAR + 1 # all the years we have data for that org
-predictions <- numeric(length(all_years)) # initialize
 mu_2 <- numeric(nrow(df |> filter(EIN2 == ein)) - 1) # all zeros
 
+predictions <- numeric(length(all_years)) # initialize
+standard_errors <- numeric(length(all_years)) # initialize
 for(i in 1:length(all_years)){
       # Leave out i-th year
       log_revenue <- (df |> filter(EIN2 == ein & YEAR != all_years[i]-1))$LOG_REV
@@ -60,31 +401,50 @@ for(i in 1:length(all_years)){
       SIGMA.11 <- mat_cov[all_years[i], all_years[i]]
       SIGMA.22.inv <- solve(mat_cov[all_years[-i], all_years[-i]])
       SIGMA.12 <- mat_cov[all_years[i], all_years[-i], drop = FALSE]
-      SIGMA.21 <- t(SIGMA.12) # SIGMA.12^T
       
       predictions[i] <- mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (log_revenue - mu_2)) #mu_bar
-      SIGMA.bar <- SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% SIGMA.21)
+      standard_errors[i] <- sqrt(as.numeric(SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
 }
 
-residuals <- (df |> filter(EIN2 == ein))$LOG_REV - predictions
-residuals <- abs(residuals / (sum(residuals^2) / length(residuals))) # (true - predicted) / (Stnd Error of Predictions)
+residuals <- abs(((df |> filter(EIN2 == ein))$LOG_REV - predictions) / standard_errors) # (true - predicted) / (Stnd Error of Predictions)
+
+candidate_outliers <- all_years[which(residuals > 3)] - 1 + 1989
 ```
 
 
-```{r}
-candidate_outliers <- as.data.frame(list("PREDICTION" = predictions[residuals>=3],
-                                         "YEAR" = all_years[which(residuals > 3)] - 1 + 1989,
-                                         "DATA" = rep("Candidate Outlier", length(predictions[residuals>=3])))
-                                    )
-      
-# Plot org data
-df |>
-    filter(EIN2==ein) |>
-    mutate(DATA = "True") |>
-    ggplot(aes(x = TAX_YEAR, y = LOG_REV, color = DATA)) +
-    geom_point() +
-    geom_line() +
-    geom_point(data = candidate_outliers, aes(x = YEAR, y = PREDICTION, color = DATA), size = 3) +
-    labs(x = "Year", y = "Log(Dollars)", title = paste("Log Revenue for Org:", ein))
-```
+```{r, eval = FALSE, echo = FALSE}
+# Select data specific to this org, add predictions, standard errors, and outlier flag to data
+df_long <- df |> 
+      filter(EIN2==ein) |> 
+      mutate(PRED = predictions,
+             OUTLIER = case_when(TAX_YEAR %in% candidate_outliers ~ "Candidate Outlier", .default = "Non-outlier"),
+             SE = standard_errors)
 
+df_long <- df_long |>
+      pivot_longer(cols = c(LOG_REV, PRED), names_to = "Variable", values_to = "Value")
+
+# Add a column to flag outliers (TRUE if OUTLIER is not NA), add confidence intervals
+df_long <- df_long |>
+      mutate(IsOutlier = !is.na(OUTLIER)) |>
+      mutate(CI.LOWER = case_when(
+            Variable == "LOG_REV" ~ 0,
+            Variable == "PRED" ~ qt(0.95, df = length(all_years)-1) * SE)) |>
+      mutate(CI.UPPER = case_when(
+            Variable == "LOG_REV" ~ 0,
+            Variable == "PRED" ~ qt(0.95, df = length(all_years)-1) * SE))
+
+# Base plot of true versus predicted with error bars on predicted
+p <- ggplot(df_long, aes(x = TAX_YEAR, y = Value, color = Variable, shape = OUTLIER)) +
+      geom_point(size=3) +
+      geom_line(aes(group = Variable)) +
+      geom_errorbar(data = (df_long |> filter(Variable == "PRED")),aes(ymin = Value - CI.LOWER, ymax = Value + CI.UPPER,group = Variable)) +
+      labs(x = "Tax Year", y = "Log Revenue", title = "Observed vs Predicted Log Revenue") +
+      scale_color_manual(values = c("LOG_REV" = "#1796D2", "PRED" = "#55B748"), 
+                         labels = c("LOG_REV" = "True", "PRED" = "Predicted"), 
+                         name = "Legend") +
+      scale_shape_manual(values = c("Candidate Outlier" = 8, "Non-outlier" = 16)) 
+
+# Highlight outliers
+p <- p + geom_vline(xintercept = candidate_outliers, color = "black", alpha = 0.5, linetype = "dashed", show.legend = FALSE)
+print(p)
+```
