@@ -9,8 +9,289 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE, eval = FALSE)
 ```
 
-# Grid Search
+# Results: Side by Side comparison
 ```{r, message=F, echo = TRUE, eval = TRUE}
+library(fields)
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+library(mvtnorm)
+library(ParBayesianOptimization)
+library(cowplot)
+library(tibble)
+source("SCRIPTS/outlier_detection_helper.R")
+```
+
+```{r, eval = TRUE, echo = FALSE}
+df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
+
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+#Load in results from Grid Search
+predictions_grid <- readRDS("MODEL/outlier_detection/grid_predictions.rds")
+se_grid <- readRDS("MODEL/outlier_detection/grid_standard_errors.rds")
+candidates_grid <- readRDS("MODEL/outlier_detection/grid_candidates.rds")
+best_params_grid <- readRDS("MODEL/outlier_detection/grid_best_params.rds")
+
+# Load in results from Bayesian Optimization
+predictions_bayes <- readRDS("MODEL/outlier_detection/bayesOpt_predictions.rds")
+se_bayes <- readRDS("MODEL/outlier_detection/bayesOpt_standard_errors.rds")
+candidates_bayes <- readRDS("MODEL/outlier_detection/bayesOpt_candidates.rds")
+best_params_bayes <- readRDS("MODEL/outlier_detection/bayesOpt_best_params.rds")
+
+# Create a df that shows the optimal parameters for each optimization algorithm per org
+best_params_bayes <- rownames_to_column(as.data.frame(do.call(rbind, lapply(X = best_params_bayes, FUN = unlist))), var = "EIN") 
+best_params_grid <- rownames_to_column(best_params_grid, var = "EIN")
+best_combos <- full_join(best_params_grid, best_params_bayes, by = "EIN", suffix = c(".grid", ".bayes"))
+best_combos <- best_combos[,c(1,2,5,3,6,4,7)] #reorder
+best_combos <- best_combos |> rename(all_of(c(sig.sqr.grid = "sigma.squared.grid", sig.sqr.bayes = "sigma.squared.bayes", nug.grid = "nugget.grid", nug.bayes = "nugget.bayes")))
+```
+
+```{r, eval = TRUE, echo = TRUE, message=FALSE, warning=FALSE}
+best_combos |> mutate(across(where(is.numeric), round, digits=3)) |> select(-EIN)
+```
+
+## Selected plots
+Ranges (Bayesian Optimization)
+
+- $\nu \in [0.025, 2.5]$
+- $\tau^2 \in [0, 2.5]$
+- $\sigma^2 \in [0.025, 1.5]$
+
+Ranges (Grid Search Optimization)
+
+- $\nu \in [0.05, 2.5]$
+- $\tau^2 \in [0, 2]$
+- $\sigma^2 \in [0.05, 0.95]$
+
+```{r, eval = TRUE, echo = FALSE}
+same <- c("EIN-04-2503758", "EIN-13-3547386", "EIN-15-6016932", "EIN-20-3754055", "EIN-20-5835134", "EIN-22-1487233", "EIN-23-7350663", "EIN-25-1891936", "EIN-27-3103886", "EIN-34-1521536", "EIN-38-2618245", "EIN-45-4079697", "EIN-46-1307863", "EIN-51-0179336", "EIN-64-0501136", "EIN-74-1396245", "EIN-76-0293955", "EIN-80-0011237", "EIN-94-1450438")
+bayes_better <- c("EIN-13-3896558", "EIN-47-5626789")
+grid_better <- c("EIN-63-0811078", "EIN-13-2720896", "EIN-14-1755337", "EIN-33-0183017", "EIN-36-4556466", "EIN-75-2897026")
+
+for (ein in c("EIN-34-1521536", "EIN-51-0179336", "EIN-58-1708047", "EIN-77-0368378", "EIN-94-1450438", bayes_better, grid_better)){
+      zScore <- qt(0.95, df = length((df |> filter(EIN2 == ein))$YEAR)-1)
+      y_max <- max(c(predictions_bayes[[ein]] + (se_bayes[[ein]] * zScore), 
+                     predictions_grid[[ein]] + (se_grid[[ein]] * zScore),
+                     unlist(df |> filter(EIN2==ein) |> select(LOG_REV))))
+      y_min <- min(c(predictions_bayes[[ein]] - (se_bayes[[ein]] * zScore), 
+                     predictions_grid[[ein]] - (se_grid[[ein]] * zScore),
+                     unlist(df |> filter(EIN2==ein) |> select(LOG_REV))))
+      
+      pBayes <- plot_true_vs_pred(df, ein, predictions = predictions_bayes[[ein]], 
+                             standard_errors = se_bayes[[ein]], 
+                             all_years = (df |> filter(EIN2 == ein))$YEAR + 1, 
+                             candidate_outliers = candidates_bayes[[ein]], 
+                             combo = best_params_bayes |> filter(EIN == ein),
+                             y_lim = c(y_min, y_max)) + theme(legend.position = "bottom", plot.title = element_text(hjust=1))
+      
+      pGrid <- plot_true_vs_pred(df, ein, predictions = predictions_grid[[ein]], 
+                             standard_errors = se_grid[[ein]], 
+                             all_years = (df |> filter(EIN2 == ein))$YEAR + 1, 
+                             candidate_outliers = candidates_grid[[ein]], 
+                             combo = best_params_grid |> filter(EIN == ein),
+                             y_lim = c(y_min, y_max)) + theme(legend.position = "bottom", plot.title = element_text(hjust=1))
+
+      # if neither have outliers or both have outliers, doesn't matter which legend we keep so keep first
+      # if only one has outliers, keep the legend of the one with outliers
+      if( (length(candidates_bayes[[ein]])==0 & length(candidates_grid[[ein]])==0) | (length(candidates_bayes[[ein]])>0 & length(candidates_grid[[ein]])>0)){
+            leg <- get_plot_component(pBayes, "guide-box-bottom", return_all=TRUE)
+      } else if(length(candidates_bayes[[ein]]) > length(candidates_grid[[ein]])){
+            leg <- get_plot_component(pBayes, "guide-box-bottom", return_all=TRUE)
+      } else {
+            leg <- get_plot_component(pGrid, "guide-box-bottom", return_all=TRUE)
+      }
+      
+      p <- plot_grid(pBayes + theme(legend.position = "none"), 
+                            pGrid + theme(legend.position="none"), 
+                            nrow = 1, labels = c('BayesOpt', 'Grid'))
+      
+      title <- ggdraw() + draw_label(ein, fontface = 'bold', x = 0, hjust = 0) + theme(plot.margin = margin(l=10))
+      print(plot_grid(title, p, leg, ncol = 1, rel_heights = c(0.1,1,0.1)))
+}
+```
+
+## All plots
+```{r, eval = FALSE, echo = FALSE}
+for (ein in unique(df$EIN2)){
+      zScore <- qt(0.95, df = length((df |> filter(EIN2 == ein))$YEAR)-1)
+      y_max <- max(c(predictions_bayes[[ein]] + (se_bayes[[ein]] * zScore), 
+                     predictions_grid[[ein]] + (se_grid[[ein]] * zScore),
+                     unlist(df |> filter(EIN2==ein) |> select(LOG_REV))))
+      y_min <- min(c(predictions_bayes[[ein]] - (se_bayes[[ein]] * zScore), 
+                     predictions_grid[[ein]] - (se_grid[[ein]] * zScore),
+                     unlist(df |> filter(EIN2==ein) |> select(LOG_REV))))
+      
+      pBayes <- plot_true_vs_pred(df, ein, predictions = predictions_bayes[[ein]], 
+                             standard_errors = se_bayes[[ein]], 
+                             all_years = (df |> filter(EIN2 == ein))$YEAR + 1, 
+                             candidate_outliers = candidates_bayes[[ein]], 
+                             combo = best_params_bayes |> filter(EIN == ein),
+                             y_lim = c(y_min, y_max)) + theme(legend.position = "bottom", plot.title = element_text(hjust=1))
+      
+      pGrid <- plot_true_vs_pred(df, ein, predictions = predictions_grid[[ein]], 
+                             standard_errors = se_grid[[ein]], 
+                             all_years = (df |> filter(EIN2 == ein))$YEAR + 1, 
+                             candidate_outliers = candidates_grid[[ein]], 
+                             combo = best_params_grid |> filter(EIN == ein),
+                             y_lim = c(y_min, y_max)) + theme(legend.position = "bottom", plot.title = element_text(hjust=1))
+
+      # if neither have outliers or both have outliers, doesn't matter which legend we keep so keep first
+      # if only one has outliers, keep the legend of the one with outliers
+      if( (length(candidates_bayes[[ein]])==0 & length(candidates_grid[[ein]])==0) | (length(candidates_bayes[[ein]])>0 & length(candidates_grid[[ein]])>0)){
+            leg <- get_plot_component(pBayes, "guide-box-bottom", return_all=TRUE)
+      } else if(length(candidates_bayes[[ein]]) > length(candidates_grid[[ein]])){
+            leg <- get_plot_component(pBayes, "guide-box-bottom", return_all=TRUE)
+      } else {
+            leg <- get_plot_component(pGrid, "guide-box-bottom", return_all=TRUE)
+      }
+      
+      p <- plot_grid(pBayes + theme(legend.position = "none"), 
+                            pGrid + theme(legend.position="none"), 
+                            nrow = 1, labels = c('BayesOpt', 'Grid'))
+      
+      title <- ggdraw() + draw_label(ein, fontface = 'bold', x = 0, hjust = 0) + theme(plot.margin = margin(l=10))
+      print(plot_grid(title, p, leg, ncol = 1, rel_heights = c(0.1,1,0.1)))
+}
+```
+
+# Hyperparameter Tuning Code
+
+## Bayesian Optimization
+```{r, message=F, echo = F, eval = F}
+library(fields)
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+library(mvtnorm)
+library(ParBayesianOptimization)
+source("SCRIPTS/outlier_detection_helper.R")
+```
+
+```{r, eval = FALSE, echo = TRUE}
+df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
+
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+# distance matrix of years
+dist_mat <- dist(sort(unique(df$YEAR)), diag=TRUE, upper=TRUE)
+dist_mat <- as.matrix(dist_mat)
+
+# normalize
+dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
+```
+
+```{r, eval = FALSE, echo = TRUE}
+bounds <- list(nu = c(0.025,2.5), nugget = c(0,2.5), sigma.squared = c(0.025, 1.5))
+opt_info <- list()
+
+start.time <- Sys.time() # about two minutes per org / took about 50 minutes for whole dataset
+for (ein in unique(df$EIN2)){
+      print(ein)
+      df.subset <- df |> filter(EIN2 == ein)
+      
+      # need to define different wrapper function per org to pass to bayesOpt since data and years is differs org to org
+      get_likelihood_bayesopt_wrapper <- function(nu, nugget, sigma.squared) {
+            return(list(Score = get_likelihood_bayesopt(distance.matrix = dist_mat, 
+                                     data = df.subset$LOG_REV, 
+                                     years = df.subset$YEAR + 1, 
+                                     nu, nugget, sigma.squared)))
+      } 
+      
+      opt_info[[ein]] <- bayesOpt(FUN = get_likelihood_bayesopt_wrapper,
+                                     bounds = bounds,
+                                     initPoints = 5,
+                                     iters.n = 50,
+                                     plotProgress = FALSE,
+                                     verbose = 0)
+}
+print(Sys.time() - start.time)
+```
+
+```{r}
+# opt_obj <- all_optimal[["EIN-20-3754055"]]
+# opt_obj$scoreSummary
+# best.pars <- getBestPars(opt_obj)
+# best.pars$nu
+```
+
+
+```{r, echo = TRUE, eval = FALSE}
+all_predictions = list()
+all_candidates = list()
+all_se = list()
+all_best_params = list()
+
+mu_1 <- 0
+# Looping over all organizations
+start.time <- Sys.time()
+for (ein in unique(df$EIN2)){
+      all_years <- (df |> filter(EIN2 == ein))$YEAR + 1 # all the years we have data for that org
+      mu_2 <- numeric(nrow(df |> filter(EIN2 == ein)) - 1) # all zeros
+      
+      predictions <- numeric(length(all_years)) # initialize
+      standard_errors <- numeric(length(all_years)) # initialize
+      
+      best.pars <- getBestPars(opt_info[[ein]])
+      all_best_params[[ein]] <- best.pars
+      
+      # Generate Matern covariance matrix using "best" hyperparameters
+      mat_cov <- Matern(d = dist_mat, 
+                        smoothness = best.pars$nu, 
+                        range = 1, 
+                        phi = best.pars$sigma.squared) + diag(best.pars$nugget, dim(dist_mat)[1])
+      
+      # Train different model per org leave-one-out style
+      for(i in 1:length(all_years)){
+            # Leave out i-th year
+            log_revenue <- (df |> filter(EIN2 == ein & YEAR != all_years[i]-1))$LOG_REV
+            
+            SIGMA.11 <- mat_cov[all_years[i], all_years[i]]
+            SIGMA.22.inv <- solve(mat_cov[all_years[-i], all_years[-i]])
+            SIGMA.12 <- mat_cov[all_years[i], all_years[-i], drop = FALSE]
+            
+            predictions[i] <- mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (log_revenue - mu_2)) #mu_bar
+            standard_errors[i] <- sqrt(as.numeric(SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
+      }
+      
+      residuals <- abs(((df |> filter(EIN2 == ein))$LOG_REV - predictions) / standard_errors) # standardized residuals
+      
+      all_predictions[[ein]] <- predictions
+      all_se[[ein]] <- standard_errors
+      all_candidates[[ein]] <-  all_years[which(residuals > 3)] - 1 + 1989
+      
+      p <- plot_true_vs_pred(df, ein, predictions, standard_errors, all_years, all_candidates[ein], best.pars)
+      print(p)
+}
+
+print(Sys.time() - start.time)
+```
+
+```{r}
+saveRDS(all_predictions, "MODEL/outlier_detection/bayesOpt_predictions.rds")
+saveRDS(all_se, "MODEL/outlier_detection/bayesOpt_standard_errors.rds")
+saveRDS(all_candidates, "MODEL/outlier_detection/bayesOpt_candidates.rds")
+saveRDS(all_best_params, "MODEL/outlier_detection/bayesOpt_best_params.rds")
+saveRDS(opt_info, "MODEL/outlier_detection/bayesOpt_opt_info.rds")
+```
+
+
+## Grid Search
+```{r, message=F, echo = FALSE, eval = FALSE}
 library(fields)
 library(readr)
 library(tidyverse, warn.conflicts = FALSE)
@@ -23,7 +304,7 @@ source("SCRIPTS/outlier_detection_helper.R")
 ```
 
 
-```{r, echo = TRUE, eval = TRUE}
+```{r, echo = TRUE, eval = FALSE}
 df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
 
 # center the data
@@ -60,6 +341,7 @@ start.time <- Sys.time()
 for (ein in unique(df$EIN2)){
       all_years <- (df |> filter(EIN2 == ein))$YEAR + 1 # all the years we have data for that org
       
+      # get the likelihood for each combination of parameters
       likelihoods <- apply(combos, 
                            MARGIN = 1, 
                            function(row) return(get_likelihood(row,
@@ -81,7 +363,7 @@ row.names(best_combos) <- names(max_likelihoods_idx)
 best_combos
 ```
 
-```{r, echo = TRUE, eval = TRUE}
+```{r, echo = TRUE, eval = FALSE}
 all_predictions = list()
 all_candidates = list()
 all_se = list()
@@ -96,6 +378,7 @@ for (ein in unique(df$EIN2)){
       predictions <- numeric(length(all_years)) # initialize
       standard_errors <- numeric(length(all_years)) # initialize
       
+      # Generate Matern covariance matrix using "best" hyperparameters
       mat_cov <- Matern(d = dist_mat, 
                         smoothness = best_combos[ein,1], 
                         range = rho, 
@@ -126,8 +409,16 @@ for (ein in unique(df$EIN2)){
 print(Sys.time() - start.time)
 ```
 
-## Response surfaces
-```{r, eval = TRUE, echo = TRUE}
+```{r}
+saveRDS(all_predictions, "MODEL/outlier_detection/grid_predictions.rds")
+saveRDS(all_se, "MODEL/outlier_detection/grid_standard_errors.rds")
+saveRDS(all_candidates, "MODEL/outlier_detection/grid_candidates.rds")
+saveRDS(best_combos, "MODEL/outlier_detection/grid_best_params.rds")
+```
+
+
+### Response surfaces
+```{r, eval = FALSE, echo = FALSE}
 library(cowplot)
 
 # ein <- "EIN-77-0368378"
@@ -144,7 +435,7 @@ for (ein in unique(df$EIN2)){
 ```
 
 
-```{r, eval = TRUE, echo = TRUE}
+```{r, eval = FALSE, echo = FALSE}
 library(plotly)
 ein = "EIN-20-3754055"
 # x = nugget, y = sigma^2

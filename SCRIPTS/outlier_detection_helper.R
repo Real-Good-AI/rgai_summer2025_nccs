@@ -5,6 +5,23 @@ library(tidyr)
 library(cowplot)
 library(plotly)
 
+
+get_likelihood_bayesopt <- function(distance.matrix, data, years, nu, nugget, sigma.squared){
+      # Compute Matérn Covariance Matrix
+      mat_cov <- Matern(d = distance.matrix, 
+                        smoothness = nu, 
+                        range = 1, 
+                        phi = sigma.squared) + diag(nugget, dim(distance.matrix)[1])
+      
+      # Compute likelihood
+      likelihood <- dmvnorm(data, 
+                            mean = rep(0, length(data)), 
+                            sigma = mat_cov[years, years],
+                            log = TRUE)
+      
+      return(likelihood)
+}
+
 get_likelihood <- function(row, dist_mat, rho, all_years, data){
       # Compute Matérn Covariance Matrix
       mat_cov <- Matern(d = dist_mat, smoothness = row[1], range = rho, phi = row[3]) + diag(row[2], dim(dist_mat)[1])
@@ -18,7 +35,7 @@ get_likelihood <- function(row, dist_mat, rho, all_years, data){
       return(likelihood)
 }
 
-plot_true_vs_pred <- function(df, ein, predictions, standard_errors, all_years, candidate_outliers, combo){
+plot_true_vs_pred <- function(df, ein, predictions, standard_errors, all_years, candidate_outliers, combo, y_lim, label = ""){
       df_long <- df |> filter(EIN2==ein) |>
             mutate(OUTLIER = case_when(TAX_YEAR %in% unlist(candidate_outliers) ~ "Candidate Outlier", .default = "Non-outlier"))
       df_long$PRED <- unlist(predictions)
@@ -37,6 +54,9 @@ plot_true_vs_pred <- function(df, ein, predictions, standard_errors, all_years, 
                   Variable == "PRED" ~ qt(0.95, df = length(all_years)-1) * SE))
       
       # Base plot of true versus predicted with error bars on predicted
+      round_nu <- round(combo$nu, 2)
+      round_nugget <- round(combo$nugget, 2)
+      round_sigma.squared <- round(combo$sigma.squared, 2)
       p <- ggplot(df_long, aes(x = TAX_YEAR, y = Value, color = Variable, shape = OUTLIER)) +
             geom_point(size=3) +
             geom_line(aes(group = Variable), linewidth=1) +
@@ -45,12 +65,13 @@ plot_true_vs_pred <- function(df, ein, predictions, standard_errors, all_years, 
                         fill = "#55B748",
                         alpha = 0.25) +
             labs(x = "Tax Year", y = "Log Revenue") +
+            ylim(y_lim[1], y_lim[2]) +
             scale_color_manual(values = c("LOG_REV" = "#1796D2", "PRED" = "#55B748"), 
                                labels = c("LOG_REV" = "True", "PRED" = "Predicted, 95% CI"), 
                                name = "Legend") +
             scale_shape_manual(values = c("Candidate Outlier" = 8, "Non-outlier" = 16)) +
             ggtitle(
-                  bquote("Observed vs Predicted Log Rev:" ~ .(ein) ~ "," ~ nu == .(combo$nu) ~ "," ~tau^2 == .(combo$nugget) ~ "," ~ sigma^2 == .(combo$sigma.squared))
+                  bquote(.(label) ~ nu == .(round_nu) ~ "," ~tau^2 == .(round_nugget) ~ "," ~ sigma^2 == .(round_sigma.squared))
             )
       
       return(p)
