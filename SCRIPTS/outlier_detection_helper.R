@@ -6,11 +6,11 @@ library(cowplot)
 library(plotly)
 
 
-get_likelihood_bayesopt <- function(distance.matrix, data, years, nu, nugget, sigma.squared){
+get_likelihood_bayesopt <- function(distance.matrix, data, years, nu, nugget, sigma.squared, rho = 1){
       # Compute Matérn Covariance Matrix
       mat_cov <- Matern(d = distance.matrix, 
                         smoothness = nu, 
-                        range = 1, 
+                        range = rho, 
                         phi = sigma.squared) + diag(nugget, dim(distance.matrix)[1])
       
       # Compute likelihood
