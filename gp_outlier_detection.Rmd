@@ -54,8 +54,63 @@ best_combos <- best_combos[,c(1,2,5,3,6,4,7)] #reorder
 best_combos <- best_combos |> rename(all_of(c(sig.sqr.grid = "sigma.squared.grid", sig.sqr.bayes = "sigma.squared.bayes", nug.grid = "nugget.grid", nug.bayes = "nugget.bayes")))
 ```
 
+
 ```{r, eval = TRUE, echo = TRUE, message=FALSE, warning=FALSE}
 best_combos |> mutate(across(where(is.numeric), round, digits=3)) |> select(-EIN)
+```
+
+## Trouble-Shooting
+```{r}
+optInfo <- readRDS("MODEL/outlier_detection/bayesOpt_opt_info.rds")
+max_likelihoods <- readRDS("MODEL/outlier_detection/grid_max_likelihoods.rds")
+best_params_grid_raw <- readRDS("MODEL/outlier_detection/grid_best_params.rds")
+best_params_bayes_raw <- readRDS("MODEL/outlier_detection/bayesOpt_best_params.rds")
+max_likelihoods_bayesOpt <- list()
+
+# check if BayesOpt consistently has bigger likelihoods than 
+for (ein in unique(df$EIN2)){
+      # Need to grab the row in scoreSummary corresponding to the "best parameters" determined by bayesOpt
+      bScore <- (optInfo[[ein]]$scoreSummary |> filter(nu == best_params_bayes_raw[[ein]]$nu & nugget == best_params_bayes_raw[[ein]]$nugget & sigma.squared == best_params_bayes_raw[[ein]]$sigma.squared))
+      max_likelihoods_bayesOpt[[ein]] <- bScore$Score
+      # Print the score (likelihood) corresponding to "best BayesOpt parameters", the likelihood from "best GridOpt parameters
+      print(paste(ein, bScore$Score, max_likelihoods[[ein]], (bScore$Score >= max_likelihoods[[ein]]), sep = ", "))
+}
+```
+
+```{r}
+# distance matrix of years
+dist_mat <- dist(sort(unique(df$YEAR)), diag=TRUE, upper=TRUE)
+dist_mat <- as.matrix(dist_mat)
+
+# normalize
+dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
+
+rho <- 1
+
+# check that likelihood functions works the same for both opt schemes 
+for (ein in unique(df$EIN2)){
+      combos <- optInfo[[ein]]$scoreSummary |> select(nu, nugget, sigma.squared, Score)
+      combos$Likelihood <- apply(combos, 
+                           MARGIN = 1, 
+                           function(row) return(get_likelihood(row,
+                                                dist_mat = dist_mat,
+                                                rho = rho,
+                                                all_years = (df |> filter(EIN2 == ein))$YEAR + 1,
+                                                data = (df |> filter(EIN2 == ein))$LOG_REV))
+                           )
+      print(paste(ein, all(combos$Score == combos$Likelihood)))
+}
+```
+
+```{r}
+dat <- as.data.frame(list(Likelihood = c(unlist(max_likelihoods), unlist(max_likelihoods_bayesOpt)),
+                          OptScheme = c(rep("Grid", 30), rep("Bayes", 30))))
+
+dat |> ggplot(mapping = aes(x = Likelihood, color = OptScheme, fill = OptScheme)) +
+      geom_histogram()
+
+dat |> ggplot(mapping = aes(x = OptScheme, y = Likelihood, color = OptScheme)) + 
+      geom_boxplot(outlier.colour="black", outlier.shape=16, outlier.size=2, notch=FALSE)
 ```
 
 ## Selected plots
@@ -90,14 +145,18 @@ for (ein in c("EIN-34-1521536", "EIN-51-0179336", "EIN-58-1708047", "EIN-77-0368
                              all_years = (df |> filter(EIN2 == ein))$YEAR + 1, 
                              candidate_outliers = candidates_bayes[[ein]], 
                              combo = best_params_bayes |> filter(EIN == ein),
-                             y_lim = c(y_min, y_max)) + theme(legend.position = "bottom", plot.title = element_text(hjust=1))
+                             y_lim = c(y_min, y_max),
+                             label = paste("L = ", round(max_likelihoods_bayesOpt[[ein]], 2), ",", sep = "")) + 
+            theme(legend.position = "bottom", plot.title = element_text(hjust=1))
       
       pGrid <- plot_true_vs_pred(df, ein, predictions = predictions_grid[[ein]], 
                              standard_errors = se_grid[[ein]], 
                              all_years = (df |> filter(EIN2 == ein))$YEAR + 1, 
                              candidate_outliers = candidates_grid[[ein]], 
                              combo = best_params_grid |> filter(EIN == ein),
-                             y_lim = c(y_min, y_max)) + theme(legend.position = "bottom", plot.title = element_text(hjust=1))
+                             y_lim = c(y_min, y_max),
+                             label = paste("L = ", round(max_likelihoods[[ein]], 2), ",", sep = "")) + 
+            theme(legend.position = "bottom", plot.title = element_text(hjust=1))
 
       # if neither have outliers or both have outliers, doesn't matter which legend we keep so keep first
       # if only one has outliers, keep the legend of the one with outliers
@@ -111,7 +170,7 @@ for (ein in c("EIN-34-1521536", "EIN-51-0179336", "EIN-58-1708047", "EIN-77-0368
       
       p <- plot_grid(pBayes + theme(legend.position = "none"), 
                             pGrid + theme(legend.position="none"), 
-                            nrow = 1, labels = c('BayesOpt', 'Grid'))
+                            nrow = 1, labels = c('B', 'G'))
       
       title <- ggdraw() + draw_label(ein, fontface = 'bold', x = 0, hjust = 0) + theme(plot.margin = margin(l=10))
       print(plot_grid(title, p, leg, ncol = 1, rel_heights = c(0.1,1,0.1)))
@@ -163,7 +222,6 @@ for (ein in unique(df$EIN2)){
 ```
 
 # Hyperparameter Tuning Code
-
 ## Bayesian Optimization
 ```{r, message=F, echo = F, eval = F}
 library(fields)
@@ -204,7 +262,7 @@ for (ein in unique(df$EIN2)){
       print(ein)
       df.subset <- df |> filter(EIN2 == ein)
       
-      # need to define different wrapper function per org to pass to bayesOpt since data and years is differs org to org
+      # need to define different wrapper function per org to pass to bayesOpt since data and years differs org to org
       get_likelihood_bayesopt_wrapper <- function(nu, nugget, sigma.squared) {
             return(list(Score = get_likelihood_bayesopt(distance.matrix = dist_mat, 
                                      data = df.subset$LOG_REV, 
@@ -414,6 +472,7 @@ saveRDS(all_predictions, "MODEL/outlier_detection/grid_predictions.rds")
 saveRDS(all_se, "MODEL/outlier_detection/grid_standard_errors.rds")
 saveRDS(all_candidates, "MODEL/outlier_detection/grid_candidates.rds")
 saveRDS(best_combos, "MODEL/outlier_detection/grid_best_params.rds")
+saveRDS(max_likelihoods, "MODEL/outlier_detection/grid_max_likelihoods.rds")
 ```
 
 
