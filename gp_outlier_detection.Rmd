@@ -25,7 +25,94 @@ library(tibble)
 source("SCRIPTS/outlier_detection_helper.R")
 ```
 
+## Grid versus Nelder-Mead - NOT Leave-one-out-one Year
 ```{r, eval = TRUE, echo = FALSE}
+df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
+
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+#Load in results from Grid Search
+predictions.Grid <- readRDS("MODEL/outlier_detection/grid_predictions.rds")
+se.Grid <- readRDS("MODEL/outlier_detection/grid_standard_errors.rds")
+candidates.Grid <- readRDS("MODEL/outlier_detection/grid_candidates.rds")
+best_pars.Grid <- readRDS("MODEL/outlier_detection/grid_best_params.rds")
+max_L.Grid <- readRDS("MODEL/outlier_detection/grid_max_likelihoods.rds")
+
+#Load in results from Constrained Nelder-Mead
+res.constrainNM <- readRDS("MODEL/outlier_detection/constrainNM_results.rds")
+predictions.constrainNM <- readRDS("MODEL/outlier_detection/constrainNM_predictions.rds")
+se.constrainNM <- readRDS("MODEL/outlier_detection/constrainNM_standard_errors.rds")
+candidates.constrainNM <- readRDS("MODEL/outlier_detection/constrainNM_candidates.rds")
+
+# Create a df that shows the optimal parameters for each optimization algorithm per org
+max_L.Grid <- rownames_to_column(as.data.frame(do.call(rbind, lapply(X = max_L.Grid, FUN = unlist))), var = "EIN")
+best_pars.Grid <- rownames_to_column(best_pars.Grid, var = "EIN")
+
+best_combos <- full_join(best_pars.Grid, res.constrainNM, by = "EIN", suffix = c(".grid", ".CNM"))
+
+best_combos <- best_combos |> rename(all_of(c(sig.sqr.grid = "sigma.squared.grid", sig.sqr.CNM = "sigma.squared.CNM", nug.grid = "nugget.grid", nug.CNM = "nugget.CNM")))
+
+best_combos <- best_combos |> mutate(across(where(is.numeric), round, digits=4)) |> select(-trial, -nu.init, -nugg.init, -likelihood)
+```
+```{r, eval = TRUE, echo = TRUE}
+best_combos[,c(2,5,3,6,4,7)]
+```
+
+```{r, eval = TRUE, echo = FALSE}
+rownames(max_L.Grid) <- max_L.Grid[,"EIN"]
+
+for (ein in unique(df$EIN2)){
+      zScore <- qt(0.95, df = length((df |> filter(EIN2 == ein))$YEAR)-1)
+      y_max <- max(c(predictions.constrainNM[[ein]] + (se.constrainNM[[ein]] * zScore), 
+                     predictions.Grid[[ein]] + (se.Grid[[ein]] * zScore),
+                     unlist(df |> filter(EIN2==ein) |> select(LOG_REV))))
+      y_min <- min(c(predictions.constrainNM[[ein]] - (se.constrainNM[[ein]] * zScore), 
+                     predictions.Grid[[ein]] - (se.Grid[[ein]] * zScore),
+                     unlist(df |> filter(EIN2==ein) |> select(LOG_REV))))
+      
+      pConstrainNM <- plot_true_vs_pred(df, ein, predictions = predictions.constrainNM[[ein]], 
+                             standard_errors = se.constrainNM[[ein]], 
+                             all_years = (df |> filter(EIN2 == ein))$YEAR + 1, 
+                             candidate_outliers = candidates.constrainNM[[ein]], 
+                             combo = res.constrainNM |> filter(EIN == ein) |> select(nu, nugget, sigma.squared),
+                             y_lim = c(y_min, y_max),
+                             round_to = 3) + theme(legend.position = "bottom", plot.title = element_text(hjust=1))
+      
+      pGrid <- plot_true_vs_pred(df, ein, predictions = predictions.Grid[[ein]], 
+                             standard_errors = se.Grid[[ein]], 
+                             all_years = (df |> filter(EIN2 == ein))$YEAR + 1, 
+                             candidate_outliers = candidates.Grid[[ein]], 
+                             combo = best_pars.Grid |> filter(EIN == ein),
+                             y_lim = c(y_min, y_max)) + theme(legend.position = "bottom", plot.title = element_text(hjust=1))
+
+      # if neither have outliers or both have outliers, doesn't matter which legend we keep so keep first
+      # if only one has outliers, keep the legend of the one with outliers
+      if( (length(candidates.constrainNM[[ein]])==0 & length(candidates.Grid[[ein]])==0) | (length(candidates.constrainNM[[ein]])>0 & length(candidates.Grid[[ein]])>0)){
+            leg <- get_plot_component(pConstrainNM, "guide-box-bottom", return_all=TRUE)
+      } else if(length(candidates.constrainNM[[ein]]) > length(candidates.Grid[[ein]])){
+            leg <- get_plot_component(pConstrainNM, "guide-box-bottom", return_all=TRUE)
+      } else {
+            leg <- get_plot_component(pGrid, "guide-box-bottom", return_all=TRUE)
+      }
+      
+      p <- plot_grid(pConstrainNM + theme(legend.position = "none"), 
+                            pGrid + theme(legend.position="none"), 
+                            nrow = 1, labels = c('NM', 'Grid'))
+      
+      title <- ggdraw() + draw_label(paste(ein, ", NM Likelihood = ", round(res.constrainNM[ein,]$likelihood, 3), ", Grid Likelihood = ", round(max_L.Grid[ein,]$V1, 3), sep = ""), 
+                                     fontface = 'bold', x = 0, hjust = 0) + theme(plot.margin = margin(l=10))
+      print(plot_grid(title, p, leg, ncol = 1, rel_heights = c(0.1,1,0.1)))
+}
+```
+
+
+
+## Grid versus Bayes
+```{r, eval = FALSE, echo = FALSE}
 df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
 
 # center the data
@@ -55,11 +142,11 @@ best_combos <- best_combos |> rename(all_of(c(sig.sqr.grid = "sigma.squared.grid
 ```
 
 
-```{r, eval = TRUE, echo = TRUE, message=FALSE, warning=FALSE}
+```{r, eval = FALSE, echo = FALSE, message=FALSE, warning=FALSE}
 best_combos |> mutate(across(where(is.numeric), round, digits=3)) |> select(-EIN)
 ```
 
-## Trouble-Shooting
+### Trouble-Shooting
 ```{r}
 optInfo <- readRDS("MODEL/outlier_detection/bayesOpt_opt_info.rds")
 max_likelihoods <- readRDS("MODEL/outlier_detection/grid_max_likelihoods.rds")
@@ -126,7 +213,7 @@ Ranges (Grid Search Optimization)
 - $\tau^2 \in [0, 2]$
 - $\sigma^2 \in [0.05, 0.95]$
 
-```{r, eval = TRUE, echo = FALSE}
+```{r, eval = FALSE, echo = FALSE}
 same <- c("EIN-04-2503758", "EIN-13-3547386", "EIN-15-6016932", "EIN-20-3754055", "EIN-20-5835134", "EIN-22-1487233", "EIN-23-7350663", "EIN-25-1891936", "EIN-27-3103886", "EIN-34-1521536", "EIN-38-2618245", "EIN-45-4079697", "EIN-46-1307863", "EIN-51-0179336", "EIN-64-0501136", "EIN-74-1396245", "EIN-76-0293955", "EIN-80-0011237", "EIN-94-1450438")
 bayes_better <- c("EIN-13-3896558", "EIN-47-5626789")
 grid_better <- c("EIN-63-0811078", "EIN-13-2720896", "EIN-14-1755337", "EIN-33-0183017", "EIN-36-4556466", "EIN-75-2897026")
@@ -221,7 +308,346 @@ for (ein in unique(df$EIN2)){
 }
 ```
 
-# Hyperparameter Tuning Code
+
+# Hyperparameter Tuning Code - one best set of params per org per year
+## Nelder Mead
+```{r, message = FALSE}
+library(fields)
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+library(mvtnorm)
+library(pracma)
+library(doParallel)
+source("SCRIPTS/outlier_detection_helper.R")
+```
+
+```{r}
+df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
+
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+# distance matrix of years
+dist_mat <- dist(sort(unique(df$YEAR)), diag=TRUE, upper=TRUE)
+dist_mat <- as.matrix(dist_mat)
+
+# normalize
+dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
+
+# Set up ranges for Matern covariance matrix hyperparameters
+rho <- 1
+
+# All possible combinations of hyperparameters
+combos <- expand.grid(nu = seq(from = 0.05, to = 2.5, by = 0.1225), 
+                      nugget = seq(from = 0, to = 2, by = 0.1)+0.001)
+```
+
+```{r}
+# Register cluster
+cluster <- makeCluster(6)
+registerDoParallel(cluster)
+clusterExport(cluster,c('df'))
+clusterEvalQ(cluster,expr= {
+      source("SCRIPTS/outlier_detection_helper.R")
+})
+
+start.time <- Sys.time()
+max_L.constrainNM.par <- foreach(ein = unique(df$EIN2), .combine = 'rbind', .packages = c("dplyr", "fields", "mvtnorm")) %dopar% {
+      df.sub <- filter(df, EIN2==ein)
+      all_years <- df.sub$YEAR + 1 # all the years we have data for that org
+      
+      tst <- setNames(data.frame(matrix(ncol = 8, nrow = 0)), c("EIN", "year", "nu.init", "nugg.init", "nu", "nugget", "likelihood", "trial"))
+      for(i in 1:length(all_years)){ # Leave out i-th year
+            likelihood_wrapper <- function(pars.vec){
+                  return(-1 * get_likelihood(row = pars.vec,
+                                        dist_mat = dist_mat,
+                                        rho = rho,
+                                        all_years = all_years[-i],
+                                        data = (df.sub |> filter(YEAR != all_years[i]-1))$LOG_REV,
+                                        compute.sigma = TRUE))
+            }
+            initial.conds <- combos[sample(nrow(combos), 15),]
+            for (j in 1:nrow(initial.conds)){
+                  res <- constrOptim(theta = as.numeric(as.vector(initial.conds[j,])), 
+                                     f = likelihood_wrapper,
+                                     grad = NULL,
+                                     ui = cbind(c(1,0),c(0,1)),
+                                     ci = c(0.001,0))
+                  tst[nrow(tst)+1,1] <- ein
+                  tst[nrow(tst), 2:ncol(tst)] <- c(all_years[i]-1, initial.conds[j,1], initial.conds[j,2], res$par[1], res$par[2], -1*res$value, j)
+            }
+      }
+      tst
+}
+print(Sys.time() - start.time) # ~10 min
+stopCluster(cl = cluster) 
+```
+
+```{r}
+maxes.constrainNM.par <- max_L.constrainNM.par |> group_by(EIN, year) |> summarise(MAX = max(likelihood)) 
+
+saveRDS(max_L.constrainNM.par |> inner_join(maxes.constrainNM.par, by = c("EIN", "year")) |> filter(likelihood == MAX) |> select(-MAX), 
+        "MODEL/outlier_detection/par_constrainNM_results.rds")
+```
+
+```{r}
+res <- readRDS("MODEL/outlier_detection/par_constrainNM_results.rds")
+res <- res |> mutate(sigma.squared = 0)
+
+all_predictions = list()
+all_candidates = list()
+all_se = list()
+
+mu_1 <- 0
+# Looping over all organizations
+start.time <- Sys.time()
+for (ein in unique(df$EIN2)){
+      df.sub <- filter(df, EIN2==ein)
+      all_years <- df.sub$YEAR + 1 # all the years we have data for that org
+      mu_2 <- numeric(nrow(df.sub) - 1) # all zeros
+      
+      predictions <- numeric(length(all_years)) # initialize
+      standard_errors <- numeric(length(all_years)) # initialize
+      
+      for(i in 1:length(all_years)){
+            # Leave out i-th year
+            log_revenue <- (df.sub |> filter(YEAR != all_years[i]-1))$LOG_REV
+            
+            # Generate Matern covariance matrix using "best" hyperparameters
+            mat_cov <- Matern(d = dist_mat, 
+                              smoothness = (res |> filter(EIN == ein, year == all_years[i]-1))$nu, 
+                              range = rho, 
+                              phi = 1) + diag((res |> filter(EIN == ein, year == all_years[i]-1))$nugget, dim(dist_mat)[1])
+            
+            sigma.squared <- (1/length(log_revenue)) * (log_revenue %*% solve(mat_cov[all_years[-i], all_years[-i]]) %*% log_revenue)[1,1]
+            mat_cov <- sigma.squared * mat_cov
+            
+            res[(res$EIN == ein & res$year == all_years[i]-1),]$sigma.squared <- sigma.squared
+            
+            SIGMA.11 <- mat_cov[all_years[i], all_years[i]]
+            SIGMA.22.inv <- solve(mat_cov[all_years[-i], all_years[-i]])
+            SIGMA.12 <- mat_cov[all_years[i], all_years[-i], drop = FALSE]
+            
+            predictions[i] <- mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (log_revenue - mu_2)) #mu_bar
+            standard_errors[i] <- sqrt(as.numeric(SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
+      }
+      
+      residuals <- abs(df.sub$LOG_REV - predictions) / standard_errors # standardized residuals
+      
+      all_predictions[[ein]] <- predictions
+      all_se[[ein]] <- standard_errors
+      all_candidates[[ein]] <-  all_years[which(residuals > 3)] - 1 + 1989
+      
+      p <- plot_true_vs_pred(df = df, 
+                             ein = ein, 
+                             predictions = predictions, 
+                             standard_errors = standard_errors, 
+                             all_years = all_years, 
+                             candidate_outliers = all_candidates[ein], 
+                             label = ein)
+      print(p)
+}
+
+print(Sys.time() - start.time)
+```
+### Non parallel version
+
+```{r}
+max_L.constrainNM <- setNames(data.frame(matrix(ncol = 8, nrow = 0)), c("EIN", "year", "nu.init", "nugg.init", "nu", "nugget", "likelihood", "trial"))
+
+start.time <- Sys.time()
+for (ein in unique(df$EIN2)){ #~40min
+      print(ein)
+      df.sub <- filter(df, EIN2==ein)
+      all_years <- df.sub$YEAR + 1 # all the years we have data for that org
+      
+      for(i in 1:length(all_years)){ # Leave out i-th year
+            likelihood_wrapper <- function(pars.vec){
+                  return(-1 * get_likelihood(row = pars.vec,
+                                        dist_mat = dist_mat,
+                                        rho = rho,
+                                        all_years = all_years[-i],
+                                        data = (df.sub |> filter(YEAR != all_years[i]-1))$LOG_REV,
+                                        compute.sigma = TRUE))
+            }
+            initial.conds <- combos[sample(nrow(combos), 15),]
+            for (j in 1:nrow(initial.conds)){
+                  res <- constrOptim(theta = as.numeric(as.vector(initial.conds[j,])), 
+                                     f = likelihood_wrapper,
+                                     grad = NULL,
+                                     ui = cbind(c(1,0),c(0,1)),
+                                     ci = c(0.001,0))
+                  max_L.constrainNM[nrow(max_L.constrainNM)+1,1] <- ein
+                  max_L.constrainNM[nrow(max_L.constrainNM),2:ncol(max_L.constrainNM)] <- c(all_years[i]-1, initial.conds[j,1], initial.conds[j,2], res$par[1], res$par[2], -1*res$value, j)
+            }
+      }
+}
+print(Sys.time() - start.time)
+```
+
+
+## Grid Search
+```{r}
+
+```
+
+# Hyperparameter Tuning Code - one best set of params per org
+
+## Nelder Mead
+```{r, message = FALSE}
+library(fields)
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+library(mvtnorm)
+library(pracma)
+source("SCRIPTS/outlier_detection_helper.R")
+```
+
+```{r}
+df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
+
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+# distance matrix of years
+dist_mat <- dist(sort(unique(df$YEAR)), diag=TRUE, upper=TRUE)
+dist_mat <- as.matrix(dist_mat)
+
+# normalize
+dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
+
+# Set up ranges for Matern covariance matrix hyperparameters
+rho <- 1
+
+# All possible combinations of hyperparameters
+combos <- expand.grid(nu = seq(from = 0.05, to = 2.5, by = 0.1225), 
+                      nugget = seq(from = 0, to = 2, by = 0.1)+0.001)
+```
+
+```{r}
+max_L.constrainNM <- setNames(data.frame(matrix(ncol = 7, nrow = 0)), c("EIN", "nu.init", "nugg.init", "nu", "nugget", "likelihood", "trial"))
+
+start.time <- Sys.time()
+for (ein in unique(df$EIN2)){
+      print(ein)
+      df.sub <- filter(df, EIN2==ein)
+      likelihood_wrapper <- function(pars.vec){
+            return(-1 * get_likelihood(row = pars.vec,
+                                  dist_mat = dist_mat,
+                                  rho = rho,
+                                  all_years = df.sub$YEAR + 1,
+                                  data = df.sub$LOG_REV,
+                                  compute.sigma = TRUE))
+      }
+      initial.conds <- combos[sample(nrow(combos), 15),]
+      for (i in 1:nrow(initial.conds)){
+            res <- constrOptim(theta = as.numeric(as.vector(initial.conds[i,])), 
+                               f = likelihood_wrapper,
+                               grad = NULL,
+                               ui = cbind(c(1,0),c(0,1)),
+                               ci = c(0.001,0))
+            max_L.constrainNM[nrow(max_L.constrainNM)+1,1] <- ein
+            max_L.constrainNM[nrow(max_L.constrainNM),2:ncol(max_L.constrainNM)] <- c(c(initial.conds[i,1], initial.conds[i,2], res$par[1], res$par[2], -1*res$value, i))
+      }
+}
+print(Sys.time() - start.time)
+
+max_L.Grid <- readRDS("MODEL/outlier_detection/grid_max_likelihoods.rds")
+max_L.Grid <- rownames_to_column(as.data.frame(do.call(rbind, lapply(X = max_L.Grid, FUN = unlist))), var = "EIN") 
+maxes.constrainNM <- max_L.constrainNM |> group_by(EIN) |> summarise(MAX = max(likelihood)) 
+saveRDS(maxes.constrainNM, "MODEL/outlier_detection/constrainNM_max_likelihoods.rds")
+
+full_join(max_L.Grid, maxes.constrainNM, by = "EIN", suffix = c(".grid", ".NM")) |> mutate(BIGGER = (V1 <= MAX))
+
+saveRDS(max_L.constrainNM |> inner_join(maxes.constrainNM, by = "EIN") |> filter(likelihood == MAX) |> select(-MAX), 
+        "MODEL/outlier_detection/constrainNM_results.rds")
+```
+
+
+```{r, echo = TRUE, eval = FALSE}
+res <- readRDS("MODEL/outlier_detection/constrainNM_results.rds")
+rownames(res) <- res[,"EIN"]
+res <- res |> mutate(sigma.squared = 0)
+
+all_predictions = list()
+all_candidates = list()
+all_se = list()
+
+mu_1 <- 0
+# Looping over all organizations
+start.time <- Sys.time()
+for (ein in unique(df$EIN2)){
+      df.sub <- filter(df, EIN2==ein)
+      all_years <- df.sub$YEAR + 1 # all the years we have data for that org
+      mu_2 <- numeric(nrow(df.sub) - 1) # all zeros
+      
+      predictions <- numeric(length(all_years)) # initialize
+      standard_errors <- numeric(length(all_years)) # initialize
+      
+      # Generate Matern covariance matrix using "best" hyperparameters
+      mat_cov <- Matern(d = dist_mat, 
+                        smoothness = res[ein,]$nu, 
+                        range = rho, 
+                        phi = 1) + diag(res[ein,]$nugget, dim(dist_mat)[1])
+      
+      sigma.squared <- (1/length(df.sub$LOG_REV)) * (df.sub$LOG_REV %*% solve(mat_cov[all_years, all_years]) %*% df.sub$LOG_REV)[1,1]
+      mat_cov <- sigma.squared * mat_cov
+      
+      res[ein,]$sigma.squared <- sigma.squared
+      for(i in 1:length(all_years)){
+            # Leave out i-th year
+            log_revenue <- (df |> filter(EIN2 == ein & YEAR != all_years[i]-1))$LOG_REV
+            
+            SIGMA.11 <- mat_cov[all_years[i], all_years[i]]
+            SIGMA.22.inv <- solve(mat_cov[all_years[-i], all_years[-i]])
+            SIGMA.12 <- mat_cov[all_years[i], all_years[-i], drop = FALSE]
+            
+            predictions[i] <- mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (log_revenue - mu_2)) #mu_bar
+            standard_errors[i] <- sqrt(as.numeric(SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
+      }
+      
+      residuals <- abs(((df |> filter(EIN2 == ein))$LOG_REV - predictions) / standard_errors) # standardized residuals
+      
+      all_predictions[[ein]] <- predictions
+      all_se[[ein]] <- standard_errors
+      all_candidates[[ein]] <-  all_years[which(residuals > 3)] - 1 + 1989
+      
+      p <- plot_true_vs_pred(df = df, 
+                             ein = ein, 
+                             predictions = predictions, 
+                             standard_errors = standard_errors, 
+                             all_years = all_years, 
+                             candidate_outliers = all_candidates[ein], 
+                             combo = res[ein,], label = ein)
+      print(p)
+}
+
+print(Sys.time() - start.time)
+```
+
+
+```{r}
+saveRDS(res, "MODEL/outlier_detection/constrainNM_results.rds")
+saveRDS(all_predictions, "MODEL/outlier_detection/constrainNM_predictions.rds")
+saveRDS(all_se, "MODEL/outlier_detection/constrainNM_standard_errors.rds")
+saveRDS(all_candidates, "MODEL/outlier_detection/constrainNM_candidates.rds")
+```
+
+
 ## Bayesian Optimization
 ```{r, message=F, echo = F, eval = F}
 library(fields)
@@ -232,7 +658,9 @@ library(dplyr, warn.conflicts = FALSE)
 library(ggplot2)
 library(tidyr)
 library(mvtnorm)
-library(ParBayesianOptimization)
+library(devtools)
+#library(ParBayesianOptimization)
+load_all('ParBayesianOptimization')
 source("SCRIPTS/outlier_detection_helper.R")
 ```
 
@@ -281,10 +709,64 @@ print(Sys.time() - start.time)
 ```
 
 ```{r}
-# opt_obj <- all_optimal[["EIN-20-3754055"]]
-# opt_obj$scoreSummary
-# best.pars <- getBestPars(opt_obj)
-# best.pars$nu
+# Trying stuff in parallel
+library(doParallel)
+
+bounds <- list(nu = c(0.025,2.5), nugget = c(0,2.5), sigma.squared = c(0.025, 1.5))
+combos <- expand.grid(nu = seq(from = 0.05, to = 2.5, by = 0.245), 
+                      nugget = seq(from = 0, to = 2, by = 0.2), 
+                      sigma.squared = seq(from = 0.05, to = 0.95, by = 0.1))
+
+opt_info <- list()
+# 15 minutes for initPoints = 605, iters.n = 28, iters.k = 2 on 4 clusters
+# 51 minutes for initPoints = 1210, iters.n = 20, iters.k = 2 on 4 clusters
+# 28 minutes for initPoints = 605, iters.n = 300, iters.k = 6 on 6 clusters
+start.time.outer <- Sys.time() #"EIN-75-2897026", "EIN-62-6041523", "EIN-36-4556466", "EIN-04-2503758", "EIN-15-6016932", "EIN-22-1487233"
+for (ein in c("EIN-75-2897026")){
+      print(ein)
+      df.subset <- df |> filter(EIN2 == ein)
+      
+      # need to define different wrapper function per org to pass to bayesOpt since data and years differs org to org
+      get_likelihood_bayesopt_wrapper <- function(nu, nugget, sigma.squared) {
+            return(list(Score = get_likelihood_bayesopt(distance.matrix = dist_mat, 
+                                     data = df.subset$LOG_REV, 
+                                     years = df.subset$YEAR + 1, 
+                                     nu, nugget, sigma.squared)))
+      } 
+      
+      cl <- makeCluster(6) # 6 cl, iters.k=2 - 2.5 min; 6 cl, iters.k=4 - 1.3 min; 6 cl, iters.k=1 - 2.4 min; no clusters - 9 min
+      registerDoParallel(cl)
+      clusterExport(cl,c('dist_mat','df.subset'))
+      clusterEvalQ(cl,expr= {
+        library(mvtnorm)
+        library(fields)
+        source("SCRIPTS/outlier_detection_helper.R")
+      })
+      
+      start.time.inner <- Sys.time()
+      opt_info[[ein]] <- bayesOpt(FUN = get_likelihood_bayesopt_wrapper,
+                                  bounds = bounds,
+                                  initPoints = 605,
+                                  iters.n = 300,
+                                  iters.k = 6,
+                                  plotProgress = FALSE,
+                                  verbose = 2,
+                                  parallel = TRUE)
+      print(Sys.time() - start.time.inner)
+      stopCluster(cl)
+}
+print(Sys.time() - start.time.outer)
+
+max_L.grid <- readRDS("MODEL/outlier_detection/grid_max_likelihoods.rds")
+max_L.bayes <- list()
+for (ein in names(opt_info)){
+      # Need to grab the row in scoreSummary corresponding to the "best parameters" determined by bayesOpt
+      best_pars.bayes <- getBestPars(opt_info[[ein]])
+      bScore <- (opt_info[[ein]]$scoreSummary |> filter(nu == best_pars.bayes$nu & nugget == best_pars.bayes$nugget & sigma.squared == best_pars.bayes$sigma.squared))
+      max_L.bayes[[ein]] <- bScore$Score
+      # Print the score (likelihood) corresponding to "best BayesOpt parameters", the likelihood from "best GridOpt parameters
+      print(paste(ein, bScore$Score, max_L.grid[[ein]], (bScore$Score >= max_L.grid[[ein]]), sep = ", "))
+}
 ```
 
 
