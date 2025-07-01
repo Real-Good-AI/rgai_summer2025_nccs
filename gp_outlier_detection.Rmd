@@ -25,8 +25,163 @@ library(tibble)
 source("SCRIPTS/outlier_detection_helper.R")
 ```
 
-## Grid versus Nelder-Mead - NOT Leave-one-out-one Year
+## Nelder-Mead (per org) versus Nelder-Mead (per org, year pair)
 ```{r, eval = TRUE, echo = FALSE}
+df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
+
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+#Load in results from Constrained Nelder-Mead per org ONLY
+res.constrainNM <- readRDS("MODEL/outlier_detection/constrainNM_results.rds")
+predictions.constrainNM <- readRDS("MODEL/outlier_detection/constrainNM_predictions.rds")
+se.constrainNM <- readRDS("MODEL/outlier_detection/constrainNM_standard_errors.rds")
+candidates.constrainNM <- readRDS("MODEL/outlier_detection/constrainNM_candidates.rds")
+
+#Load in results from Constrained Nelder-Mead per org per year
+res.par.constrainNM <- readRDS("MODEL/outlier_detection/par_constrainNM_results.rds")
+predictions.par.constrainNM <- readRDS("MODEL/outlier_detection/par_constrainNM_predictions.rds")
+se.par.constrainNM <- readRDS("MODEL/outlier_detection/par_constrainNM_standard_errors.rds")
+candidates.par.constrainNM <- readRDS("MODEL/outlier_detection/par_constrainNM_candidates.rds")
+```
+
+
+```{r, eval = TRUE, echo = FALSE}
+for (ein in unique(df$EIN2)){
+      df.sub <- df |> filter(EIN2 == ein)
+      zScore <- qt(0.95, df = length(df.sub$YEAR)-1)
+      y_max <- max(c(predictions.par.constrainNM[[ein]] + (se.par.constrainNM[[ein]] * zScore), 
+                     predictions.constrainNM[[ein]] + (se.constrainNM[[ein]] * zScore),
+                     unlist(df.sub |> select(LOG_REV))))
+      y_min <- min(c(predictions.par.constrainNM[[ein]] - (se.par.constrainNM[[ein]] * zScore), 
+                     predictions.constrainNM[[ein]] - (se.constrainNM[[ein]] * zScore),
+                     unlist(df.sub |> select(LOG_REV))))
+      
+      pConstrainNM <- plot_true_vs_pred(df, ein, predictions = predictions.constrainNM[[ein]], 
+                             standard_errors = se.constrainNM[[ein]], 
+                             all_years = df.sub$YEAR + 1, 
+                             candidate_outliers = candidates.constrainNM[[ein]], 
+                             y_lim = c(y_min, y_max),
+                             round_to = 3) + theme(legend.position = "bottom")
+      
+      pConstrainNM.par <- plot_true_vs_pred(df, ein, predictions = predictions.par.constrainNM[[ein]], 
+                             standard_errors = se.par.constrainNM[[ein]], 
+                             all_years = df.sub$YEAR + 1, 
+                             candidate_outliers = candidates.par.constrainNM[[ein]], 
+                             y_lim = c(y_min, y_max)) + theme(legend.position = "bottom")
+
+      # if neither have outliers or both have outliers, doesn't matter which legend we keep so keep first
+      # if only one has outliers, keep the legend of the one with outliers
+      if( (length(candidates.constrainNM[[ein]])==0 & length(candidates.par.constrainNM[[ein]])==0) | (length(candidates.constrainNM[[ein]])>0 & length(candidates.par.constrainNM[[ein]])>0)){
+            leg <- get_plot_component(pConstrainNM, "guide-box-bottom", return_all=TRUE)
+      } else if(length(candidates.constrainNM[[ein]]) > length(candidates.par.constrainNM[[ein]])){
+            leg <- get_plot_component(pConstrainNM, "guide-box-bottom", return_all=TRUE)
+      } else {
+            leg <- get_plot_component(pConstrainNM.par, "guide-box-bottom", return_all=TRUE)
+      }
+      
+      p <- plot_grid(pConstrainNM + theme(legend.position = "none"), 
+                            pConstrainNM.par + theme(legend.position="none"), 
+                            nrow = 1, labels = c('ORG', 'ORG-YEAR'))
+      
+      title <- ggdraw() + draw_label(ein, 
+                                     fontface = 'bold', x = 0, hjust = 0) + theme(plot.margin = margin(l=10))
+      print(plot_grid(title, p, leg, ncol = 1, rel_heights = c(0.1,1,0.1)))
+}
+```
+
+
+
+
+## Grid versus Nelder-Mead, per org per year
+```{r, eval = TRUE, echo = FALSE}
+df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
+
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+#Load in results from Grid Search
+res.Grid <- readRDS("MODEL/outlier_detection/par_grid_results.rds")
+predictions.Grid <- readRDS("MODEL/outlier_detection/par_grid_predictions.rds")
+se.Grid <- readRDS("MODEL/outlier_detection/par_grid_standard_errors.rds")
+candidates.Grid <- readRDS("MODEL/outlier_detection/par_grid_candidates.rds")
+
+#Load in results from Constrained Nelder-Mead
+res.constrainNM <- readRDS("MODEL/outlier_detection/par_constrainNM_results.rds")
+predictions.constrainNM <- readRDS("MODEL/outlier_detection/par_constrainNM_predictions.rds")
+se.constrainNM <- readRDS("MODEL/outlier_detection/par_constrainNM_standard_errors.rds")
+candidates.constrainNM <- readRDS("MODEL/outlier_detection/par_constrainNM_candidates.rds")
+
+# Create a df that shows the optimal parameters for each optimization algorithm per org
+best_combos <- full_join(res.Grid, res.constrainNM, by = c("EIN", "year"), suffix = c(".grid", ".CNM"))
+
+best_combos <- best_combos |> mutate(across(where(is.numeric), \(x) round(x, digits=4))) |> select(-trial, -nu.init, -nugg.init)
+```
+
+```{r, echo = TRUE, eval = TRUE}
+head(best_combos |> select(-likelihood.grid, -likelihood.CNM, -sigma.squared.grid, -sigma.squared.CNM), 20)
+
+print(paste("Out of ", nrow(best_combos), " org-year pairs, constrained Nelder-Mead got the higher likelihood (compared to grid search) for ", sum(best_combos$likelihood.grid <= best_combos$likelihood.CNM), " pairs.", sep = ""))
+```
+
+```{r, eval = TRUE, echo = FALSE}
+mean_L.grid <- column_to_rownames(res.Grid |> group_by(EIN) |> summarize(MEAN = mean(likelihood)), var = "EIN")
+mean_L.contrainNM <- column_to_rownames(res.constrainNM |> group_by(EIN) |> summarize(MEAN = mean(likelihood)), var = "EIN")
+
+for (ein in unique(df$EIN2)){
+      df.sub <- df |> filter(EIN2 == ein)
+      zScore <- qt(0.95, df = length(df.sub$YEAR)-1)
+      y_max <- max(c(predictions.constrainNM[[ein]] + (se.constrainNM[[ein]] * zScore), 
+                     predictions.Grid[[ein]] + (se.Grid[[ein]] * zScore),
+                     unlist(df.sub |> select(LOG_REV))))
+      y_min <- min(c(predictions.constrainNM[[ein]] - (se.constrainNM[[ein]] * zScore), 
+                     predictions.Grid[[ein]] - (se.Grid[[ein]] * zScore),
+                     unlist(df.sub |> select(LOG_REV))))
+      
+      pConstrainNM <- plot_true_vs_pred(df, ein, predictions = predictions.constrainNM[[ein]], 
+                             standard_errors = se.constrainNM[[ein]], 
+                             all_years = df.sub$YEAR + 1, 
+                             candidate_outliers = candidates.constrainNM[[ein]], 
+                             y_lim = c(y_min, y_max),
+                             round_to = 3) + theme(legend.position = "bottom")
+      
+      pGrid <- plot_true_vs_pred(df, ein, predictions = predictions.Grid[[ein]], 
+                             standard_errors = se.Grid[[ein]], 
+                             all_years = df.sub$YEAR + 1, 
+                             candidate_outliers = candidates.Grid[[ein]], 
+                             y_lim = c(y_min, y_max)) + theme(legend.position = "bottom")
+
+      # if neither have outliers or both have outliers, doesn't matter which legend we keep so keep first
+      # if only one has outliers, keep the legend of the one with outliers
+      if( (length(candidates.constrainNM[[ein]])==0 & length(candidates.Grid[[ein]])==0) | (length(candidates.constrainNM[[ein]])>0 & length(candidates.Grid[[ein]])>0)){
+            leg <- get_plot_component(pConstrainNM, "guide-box-bottom", return_all=TRUE)
+      } else if(length(candidates.constrainNM[[ein]]) > length(candidates.Grid[[ein]])){
+            leg <- get_plot_component(pConstrainNM, "guide-box-bottom", return_all=TRUE)
+      } else {
+            leg <- get_plot_component(pGrid, "guide-box-bottom", return_all=TRUE)
+      }
+      
+      p <- plot_grid(pConstrainNM + theme(legend.position = "none"), 
+                            pGrid + theme(legend.position="none"), 
+                            nrow = 1, labels = c('NM', 'Grid'))
+      
+      title <- ggdraw() + draw_label(paste(ein, ", NM mean L() = ", round(mean_L.contrainNM[ein,], 3), ", Grid mean L() = ", round(mean_L.grid[ein,], 3), sep = ""), 
+                                     fontface = 'bold', x = 0, hjust = 0) + theme(plot.margin = margin(l=10))
+      print(plot_grid(title, p, leg, ncol = 1, rel_heights = c(0.1,1,0.1)))
+}
+```
+
+
+
+
+## Grid versus Nelder-Mead - per year ONLY
+```{r, eval = FALSE, echo = FALSE}
 df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
 
 # center the data
@@ -58,11 +213,12 @@ best_combos <- best_combos |> rename(all_of(c(sig.sqr.grid = "sigma.squared.grid
 
 best_combos <- best_combos |> mutate(across(where(is.numeric), round, digits=4)) |> select(-trial, -nu.init, -nugg.init, -likelihood)
 ```
-```{r, eval = TRUE, echo = TRUE}
+
+```{r, eval = FALSE, echo = FALSE}
 best_combos[,c(2,5,3,6,4,7)]
 ```
 
-```{r, eval = TRUE, echo = FALSE}
+```{r, eval = FALSE, echo = FALSE}
 rownames(max_L.Grid) <- max_L.Grid[,"EIN"]
 
 for (ein in unique(df$EIN2)){
@@ -111,7 +267,7 @@ for (ein in unique(df$EIN2)){
 
 
 
-## Grid versus Bayes
+## Grid versus Bayes - per year ONLY
 ```{r, eval = FALSE, echo = FALSE}
 df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
 
@@ -200,7 +356,7 @@ dat |> ggplot(mapping = aes(x = OptScheme, y = Likelihood, color = OptScheme)) +
       geom_boxplot(outlier.colour="black", outlier.shape=16, outlier.size=2, notch=FALSE)
 ```
 
-## Selected plots
+### Selected plots
 Ranges (Bayesian Optimization)
 
 - $\nu \in [0.025, 2.5]$
@@ -264,7 +420,7 @@ for (ein in c("EIN-34-1521536", "EIN-51-0179336", "EIN-58-1708047", "EIN-77-0368
 }
 ```
 
-## All plots
+### All plots
 ```{r, eval = FALSE, echo = FALSE}
 for (ein in unique(df$EIN2)){
       zScore <- qt(0.95, df = length((df |> filter(EIN2 == ein))$YEAR)-1)
@@ -307,6 +463,7 @@ for (ein in unique(df$EIN2)){
       print(plot_grid(title, p, leg, ncol = 1, rel_heights = c(0.1,1,0.1)))
 }
 ```
+
 
 
 # Hyperparameter Tuning Code - one best set of params per org per year
@@ -457,6 +614,7 @@ for (ein in unique(df$EIN2)){
 
 print(Sys.time() - start.time)
 ```
+
 ### Non parallel version
 
 ```{r}
@@ -494,12 +652,164 @@ print(Sys.time() - start.time)
 
 
 ## Grid Search
-```{r}
-
+```{r, message=F, echo = FALSE, eval = FALSE}
+library(fields)
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+library(mvtnorm)
+library(doParallel)
+source("SCRIPTS/outlier_detection_helper.R")
 ```
 
-# Hyperparameter Tuning Code - one best set of params per org
+```{r, echo = TRUE, eval = FALSE}
+df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
 
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+# distance matrix of years
+dist_mat <- as.matrix(dist(sort(unique(df$YEAR)), diag=TRUE, upper=TRUE))
+
+# normalize
+dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
+
+# Set up ranges for Matern covariance matrix hyperparameters
+rho <- 1
+# All possible combinations of hyperparameters
+combos <- expand.grid(nu = seq(from = 0.025, to = 2.5, by = 0.165), 
+                      nugget = seq(from = 0, to = 2.5, by = 0.1))
+```
+
+```{r}
+# Register cluster
+cluster <- makeCluster(6)
+registerDoParallel(cluster)
+#clusterExport(cluster,c('df', 'combos'))
+clusterEvalQ(cluster,expr= {
+      source("SCRIPTS/outlier_detection_helper.R")
+})
+
+start.time <- Sys.time() # .combine = 'rbind'
+likelihoods.grid.par <- foreach(ein = unique(df$EIN2), .combine = 'rbind', .packages = c("dplyr", "fields", "mvtnorm")) %dopar% {
+      df.sub <- filter(df, EIN2==ein)
+      all_years <- df.sub$YEAR + 1 # all the years we have data for that org
+      tst <- setNames(data.frame(matrix(ncol = 5, nrow = 0)), c("EIN", "year", "nu", "nugget", "likelihood")) # empty data.frame
+
+      for(i in 1:length(all_years)){ # Leave out i-th year
+            likelihoods <- apply(combos, 
+                           MARGIN = 1, 
+                           function(row) return(get_likelihood(row,
+                                          dist_mat = dist_mat,
+                                          rho = rho,
+                                          all_years = all_years[-i],
+                                          data = (df.sub |> filter(YEAR != all_years[i]-1))$LOG_REV,
+                                          compute.sigma = TRUE)))
+      
+            tst <- rbind(tst, as.data.frame(list(EIN = rep(ein, length(likelihoods)),
+                         year = rep(all_years[i]-1, length(likelihoods)),
+                         nu = combos$nu,
+                         nugget = combos$nugget,
+                         likelihood = likelihoods)))     
+      }
+      tst
+}
+
+print(Sys.time() - start.time) # time
+stopCluster(cl = cluster) 
+
+
+#best_combos <- combos[as.vector(unlist(max_likelihoods_idx)),]
+#row.names(best_combos) <- names(max_likelihoods_idx)
+
+#best_combos
+```
+
+```{r}
+maxes.grid.par <- likelihoods.grid.par |> group_by(EIN, year) |> summarise(MAX = max(likelihood)) 
+
+saveRDS(likelihoods.grid.par |> inner_join(maxes.grid.par, by = c("EIN", "year")) |> filter(likelihood == MAX) |> select(-MAX), 
+        "MODEL/outlier_detection/par_grid_results.rds")
+```
+
+```{r}
+res <- readRDS("MODEL/outlier_detection/par_grid_results.rds")
+res <- res |> mutate(sigma.squared = 0)
+
+all_predictions = list()
+all_candidates = list()
+all_se = list()
+
+mu_1 <- 0
+# Looping over all organizations
+start.time <- Sys.time()
+for (ein in unique(df$EIN2)){
+      df.sub <- filter(df, EIN2==ein)
+      all_years <- df.sub$YEAR + 1 # all the years we have data for that org
+      mu_2 <- numeric(nrow(df.sub) - 1) # all zeros
+      
+      predictions <- numeric(length(all_years)) # initialize
+      standard_errors <- numeric(length(all_years)) # initialize
+      
+      for(i in 1:length(all_years)){
+            # Leave out i-th year
+            log_revenue <- (df.sub |> filter(YEAR != all_years[i]-1))$LOG_REV
+            
+            # Generate Matern covariance matrix using "best" hyperparameters
+            mat_cov <- Matern(d = dist_mat, 
+                              smoothness = (res |> filter(EIN == ein, year == all_years[i]-1))$nu, 
+                              range = rho, 
+                              phi = 1) + diag((res |> filter(EIN == ein, year == all_years[i]-1))$nugget, dim(dist_mat)[1])
+            
+            sigma.squared <- (1/length(log_revenue)) * (log_revenue %*% solve(mat_cov[all_years[-i], all_years[-i]]) %*% log_revenue)[1,1]
+            mat_cov <- sigma.squared * mat_cov
+            
+            res[(res$EIN == ein & res$year == all_years[i]-1),]$sigma.squared <- sigma.squared
+            
+            SIGMA.11 <- mat_cov[all_years[i], all_years[i]]
+            SIGMA.22.inv <- solve(mat_cov[all_years[-i], all_years[-i]])
+            SIGMA.12 <- mat_cov[all_years[i], all_years[-i], drop = FALSE]
+            
+            predictions[i] <- mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (log_revenue - mu_2)) #mu_bar
+            standard_errors[i] <- sqrt(as.numeric(SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
+      }
+      
+      residuals <- abs(df.sub$LOG_REV - predictions) / standard_errors # standardized residuals
+      
+      all_predictions[[ein]] <- predictions
+      all_se[[ein]] <- standard_errors
+      all_candidates[[ein]] <-  all_years[which(residuals > 3)] - 1 + 1989
+      
+      p <- plot_true_vs_pred(df = df, 
+                             ein = ein, 
+                             predictions = predictions, 
+                             standard_errors = standard_errors, 
+                             all_years = all_years, 
+                             candidate_outliers = all_candidates[ein], 
+                             label = ein)
+      print(p)
+}
+
+print(Sys.time() - start.time)
+```
+
+```{r}
+saveRDS(res, "MODEL/outlier_detection/par_grid_results.rds")
+saveRDS(all_predictions, "MODEL/outlier_detection/par_grid_predictions.rds")
+saveRDS(all_se, "MODEL/outlier_detection/par_grid_standard_errors.rds")
+saveRDS(all_candidates, "MODEL/outlier_detection/par_grid_candidates.rds")
+```
+
+
+
+
+# Hyperparameter Tuning Code - one best set of params per org
 ## Nelder Mead
 ```{r, message = FALSE}
 library(fields)
