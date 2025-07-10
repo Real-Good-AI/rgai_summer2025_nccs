@@ -9,8 +9,714 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE, eval = FALSE)
 ```
 
+# Outlier Analysis
+
+```{r, eval = TRUE, message = FALSE}
+library(fields)
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+library(mvtnorm)
+library(pracma)
+library(doParallel)
+library(lhs)
+source("SCRIPTS/outlier_detection_helper.R")
+```
+
+
+```{r, eval = TRUE, message = FALSE}
+df <- as.data.table(read_csv("MODEL/training.csv", show_col_types = FALSE)) |>
+      group_by(EIN2) |>
+      filter(!is.na(LOG_REV)) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV), DATA_COUNT = n()) |>
+      ungroup()
+
+df <- df |> filter(DATA_COUNT >= 5)
+```
+
+
+```{r, eval = TRUE, message = FALSE, results='hide'}
+orgs.no.change <- readRDS("MODEL/outlier_detection/full/orgs_reported_same.rds")
+all.orgs <- unique(df$EIN2) 
+all.orgs <- setdiff(all.orgs, orgs.no.change)
+
+candidates.1 <- readRDS("MODEL/outlier_detection/full/full_candidates_1.rds")
+tst <- readRDS("MODEL/outlier_detection/full/full_sigmas_1.rds")
+res.out2 <- readRDS("MODEL/outlier_detection/full/outlier_res_2.rds")
+res.out3 <- readRDS("MODEL/outlier_detection/full/outlier_res_3.rds")
+
+# get vector of all years
+sapply(res.out2, function(x){x[["candidates"]]})
+all.years <- c(unlist(candidates.1), unlist(sapply(res.out2, function(x){unlist(x[["candidates"]])})), unlist(sapply(res.out3, function(x){unlist(x[["candidates"]])})))
+
+# get number of years identified per org
+num.per.org <- c(sapply(candidates.1, function(x){length(x)}), sapply(res.out2, function(x){length(x[["candidates"]])}), sapply(res.out3, function(x){length(x[["candidates"]])}))
+
+# get number of years total per org (i.e. size of time series)
+len.per.org <- c(sapply(tst, function(x){length(x)}), sapply(res.out2, function(x){length(x[["sigs"]])}), sapply(res.out3, function(x){length(x[["sigs"]])}))
+
+# rename 
+# names(res.out2) <- all.orgs[100001:200000]
+# names(res.out3) <- all.orgs[200001:length(all.orgs)]
+
+# list of candidates?
+# candidates.2 <- lapply(res.out2, function(x){x[["candidates"]]})
+# candidates.3 <- lapply(res.out3, function(x){x[["candidates"]]})
+
+# saveRDS(candidates.2, "MODEL/outlier_detection/full_candidates_2.rds")
+# saveRDS(candidates.3, "MODEL/outlier_detection/full_candidates_3.rds")
+# saveRDS(res.out2, "MODEL/outlier_detection/outlier_res_2.rds")
+# saveRDS(res.out3, "MODEL/outlier_detection/outlier_res_3.rds")
+
+candidates <- c(candidates.1, readRDS("MODEL/outlier_detection/full/full_candidates_2.rds"), readRDS("MODEL/outlier_detection/full/full_candidates_3.rds"))
+
+rm(candidates.1, tst, res.out2, res.out3)
+```
+
+
+How many outliers do we identify per org? If we removed all candidate outliers, how much data would we lose?
+```{r, echo=FALSE, eval=TRUE}
+table(num.per.org)
+barplot(table(num.per.org), main = "Number of Outliers Detected per Org", xlab = "Number of Outliers", ylab = "Number of Orgs")
+print(paste("Total # of records:", nrow(df), ", Outliers identified:", length(all.years), ", # of records left:", nrow(df) - length(all.years), "Data loss:", length(all.years)/nrow(df)))
+```
+
+How many outliers do we identify per year? How many are positive versus negative?
+```{r, echo=FALSE, eval=TRUE}
+df.stres <- readRDS("MODEL/outlier_detection/full/outlier_resids_DF.rds")
+table(df.stres$SIGN)
+df.stres |> mutate(SIGN = factor(SIGN, levels = c(1, -1))) |>
+      ggplot() +
+      geom_histogram(mapping = aes(x = Value, group = factor(SIGN), fill = factor(SIGN)), color = "black", bins = length(unique(all.years))) +
+      scale_fill_manual(values = c("#1796D2", "#FDC010"), labels = c("Positive", "Negative")) +
+      labs(x = "Year", title = "Outliers per Year", fill = "Outlier Type")
+```
+
+```{r}
+df.stres |> 
+      filter(SIGN == -1) |> 
+      ggplot() +
+      geom_histogram(mapping = aes(x = Value), fill = "#1796D2", color = "black", bins = length(unique(all.years))) +
+      labs(x = "Year", title = "Negative Outliers per Year")
+
+df.stres |> 
+      filter(SIGN == 1) |> 
+      ggplot() +
+      geom_histogram(mapping = aes(x = Value), fill = "#FDC010", color = "black", bins = length(unique(all.years))) +
+      labs(x = "Year", title = "Positive Outliers per Year")
+```
+
+
+What proportion of the records each year are identified as outliers, positive versus negative?
+```{r, eval = TRUE}
+per.year.df <- readRDS("MODEL/outlier_detection/full/per_year_DF.rds")
+
+# Reshape data to long format
+df.long <- per.year.df |> 
+  select(year, prop.pos, prop.neg) |> 
+  pivot_longer(cols = c(prop.pos, prop.neg), 
+               names_to = "outlier_type", 
+               values_to = "proportion") |> 
+  mutate(outlier_type = recode(outlier_type, 
+                               prop.pos = "Positive", 
+                               prop.neg = "Negative"))
+df.long <- df.long |> mutate(outlier_type = factor(outlier_type, levels = c("Positive", "Negative")))
+
+ggplot(df.long, aes(x = factor(year), y = proportion, fill = outlier_type)) +
+      geom_bar(stat = "identity", color = "black") +
+      labs(x = "Year", y = "Proportion", fill = "Outlier Type", title = "Proportion of Outliers per Year") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010"))
+
+ggplot(df.long |> filter(outlier_type == "Negative"), aes(x = factor(year), y = proportion)) +
+      geom_bar(stat = "identity", color = "black", fill = "#FDC010") +
+      labs(x = "Year", y = "Proportion", title = "Proportion of Negative Outliers per Year") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1))
+```
+
+What is the distribution of the standardized residuals of outliers per year?
+```{r, eval = TRUE}
+quantile(df.stres$STDRES, probs = seq(0,1,0.01))[c(1,2,3,51,76,99,100,101)]
+
+# Create alternating color labels
+df.stres <- df.stres %>%
+  mutate(Year = factor(Value),
+         ColorGroup = ifelse(as.numeric(Year) %% 2 == 0, "Even", "Odd"))
+
+# Plot with alternating fill
+ggplot(df.stres, aes(x = Year, y = STDRES, fill = ColorGroup)) +
+  geom_boxplot(outlier.shape = NA) +  # remove outlier dots if too cluttered
+  theme_minimal() +
+  scale_fill_manual(values = c("Even" = "white", "Odd" =  "grey")) +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1),
+        legend.position = "none") +  # remove legend if color is just for readability
+  labs(x = "Year", title = "Standardized Residuals of Outliers per Year") +
+  ylim(-15, 8)
+```
+```{r}
+ggplot(df.stres, mapping = aes(x = factor(Value), y = STDRES, group = factor(Value))) +
+      geom_boxplot() +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+      labs(x = "Year", title = "Standardized Residuals of Outliers per Year") +
+      ylim(-15, 8)
+```
+
+
+```{r, eval=TRUE}
+candidates <- Filter(function(x) length(x) > 0, candidates)
+df.sub <- df |> filter(EIN2 %in% names(candidates)) |> rename(EIN = EIN2)
+df.sub <- left_join(df.sub, as.data.table(num.per.org, keep.rownames=TRUE) |> rename(EIN = rn), by = "EIN")
+
+# pivot from long to a wider format so that each record corresponds to a single EIN
+df.stres.wide <- df.stres |> 
+      group_by(EIN, SIGN) |> 
+      summarize(count = n()) |>
+      mutate(SIGN = ifelse(SIGN == 1, "count.positive", "count.negative")) |>
+      pivot_wider(names_from = SIGN, values_from = count, values_fill = 0) |>
+      ungroup()
+
+df.sub <- left_join(df.sub, df.stres.wide, by = "EIN")
+
+# Every record for a particular EIN will have the same values for num.per.org, count.positive, and count.negative, so I just need to grab one record from each EIN
+tst <- df.sub |> 
+      group_by(EIN) |>
+      slice(1) |>
+      ungroup()
+
+n.outliers <- sum(tst$num.per.org)
+
+# Compute proportion of outliers per NTEE category
+tst <- tst |>
+      group_by(NTEE) |>
+      summarize(prop = sum(num.per.org)/n.outliers, 
+                prop.neg = sum(count.negative)/n.outliers, 
+                prop.pos = sum(count.positive)/n.outliers,
+                tot.outliers = sum(num.per.org),
+                tot.neg = sum(count.negative),
+                tot.pos = sum(count.positive)) 
+
+# Reshape data to long format
+tst <- tst |>
+      select(NTEE, prop.pos, prop.neg, tot.pos, tot.neg) |>
+      pivot_longer(cols = c(prop.pos, prop.neg, tot.pos, tot.neg), 
+                   names_to = c(".value", "outlier_type"), 
+                   names_pattern = "(prop|tot)\\.(pos|neg)") |>
+      mutate(outlier_type = recode(outlier_type,
+                                   pos = "Positive",
+                                   neg = "Negative"))
+
+tst <- tst |> mutate(outlier_type = factor(outlier_type, levels = c("Positive", "Negative")))
+ntee_labs <- c("Arts, Culture, & Humanities", "Education (minus Universities)", "Environment & Animals", "Health (minus Hospitals)", "Human Services", "Hospitals", "International, Foreign Affairs", "Mutual/Membership Benefit", "Public, Societal Benefit", "Religion Related", "Universities", "Other")
+```
+
+What proportion of the overall data do each of the subsectors share? What proportion of outliers do each of the subsectors share?
+```{r, eval = TRUE}
+df |> group_by(NTEE) |> 
+      summarize(data.count = n(), data.prop = n()/nrow(df)) |>
+      ggplot(aes(x = NTEE, y = data.prop)) +
+      geom_bar(stat = "identity", color = "black") + 
+      labs(x = "NTEE", y = "Proportion", title = "Proportion of total data by subsector") +
+      scale_x_discrete(labels = ntee_labs) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=0.9))
+
+tst |>
+      ggplot(aes(x = factor(NTEE), y = prop, fill = outlier_type)) +
+      geom_bar(stat = "identity", color = "black") + 
+      labs(x = "NTEE", y = "Proportion", title = "Proportion of TOTAL outliers by subsector and type", fill = "Outlier Type") +
+      scale_x_discrete(labels = ntee_labs) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=0.9)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010"))
+```
+
+What about the spread of outliers within each group? 
+```{r, eval = TRUE}
+left_join(tst, df |> group_by(NTEE) |> summarize(data.count = n()), by = "NTEE") |>
+      ggplot(aes(x = factor(NTEE), y = tot/data.count, fill = outlier_type)) +
+      geom_bar(stat = "identity", color = "black") + 
+      labs(x = "NTEE", y = "Proportion", 
+           title = "Proportion of outlier in each subsector & type (from total data in that group)",
+           fill = "Outlier Type") +
+      scale_x_discrete(labels = ntee_labs) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=0.9)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010"))
+```
+
+```{r, eval=TRUE}
+# Per year, per category, I want the proportion of positive and negative outliers
+
+# First, I need to get df.sub where instead of num.per.org, count.positive, and count.negative, for that record I have to have a count of the number of positive and negative outliers
+df.stres <- df.stres |> rename(TAX_YEAR = Value)
+df.sub <- df.sub |> left_join(df.stres |> select(EIN, TAX_YEAR, SIGN), by = c("EIN", "TAX_YEAR")) |>
+      mutate(positive = ifelse(SIGN == 1, 1, 0),
+             negative = ifelse(SIGN == -1, 1, 0)) |>
+      mutate(positive = replace_na(positive, 0),
+             negative = replace_na(negative, 0)) |>
+      select(-SIGN) 
+
+
+tst <- df.sub |> 
+      group_by(NTEE, TAX_YEAR) |>
+      summarize(tot.neg = sum(negative),
+                tot.pos = sum(positive),
+                total = n())
+
+# Reshape data to long format
+tst <- tst |>
+      pivot_longer(cols = c(tot.pos, tot.neg), 
+                   names_to = "outlier_type", 
+                   values_to = "outlier") |>
+      mutate(outlier_type = recode(outlier_type,
+                                   tot.pos = "Positive",
+                                   tot.neg = "Negative"))
+
+tst <- left_join(x = tst, 
+          y = per.year.df |> mutate(TAX_YEAR = as.numeric(as.character(year))) |> select(TAX_YEAR, total.outliers), 
+          by = "TAX_YEAR")
+
+tst <- tst |> mutate(outlier_type = factor(outlier_type, levels = c("Positive", "Negative")))
+```
+
+What proportion of outliers does each subsector take up per year out of the total number of outliers in that year?
+```{r, eval = TRUE}
+ntee_labs <- c("Arts, Culture, & Humanities", "Education (minus Universities)", "Environment & Animals", "Health (minus Hospitals)", "Human Services", "Hospitals", "International, Foreign Affairs", "Mutual/Membership Benefit", "Public, Societal Benefit", "Religion Related", "Universities", "Other")
+
+ggplot(tst |> filter(NTEE != "NA"), aes(x = TAX_YEAR, y = outlier/total.outliers, fill = outlier_type)) +
+      geom_bar(stat = "identity") +
+      facet_wrap(~NTEE, nrow = 4) +
+      labs(x = "Year", y = "Proportion", fill = "Outlier Type", title = "Proportion of Outliers per Year, by subsector (out of total # of outliers that year)") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010")) +
+      scale_x_continuous(breaks=seq(1989,2021,5))
+```
+What about the proportion of outliers per year per subsector, but out of the total number of outliers in that year-subsector pair?
+```{r, eval=TRUE}
+ggplot(tst |> filter(NTEE != "NA"), aes(x = TAX_YEAR, y = outlier/total, fill = outlier_type)) +
+      geom_bar(stat = "identity") +
+      facet_wrap(~NTEE, nrow = 4) +
+      labs(x = "Year", y = "Proportion", fill = "Outlier Type", title = "Proportion of Outliers per Year, NTEE (from total # of outliers in ntee-year pair)") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010")) +
+      scale_x_continuous(breaks=seq(1989,2021,5))
+```
+
+
+```{r,eval=TRUE}
+# Every record for a particular EIN will have the same values for num.per.org, count.positive, and count.negative, so I just need to grab one record from each EIN
+tst <- df.sub |> 
+      group_by(EIN) |>
+      slice(1) |>
+      ungroup()
+
+n.outliers <- sum(tst$num.per.org)
+
+# Compute proportion of outliers per DIVISION category
+tst <- tst |>
+      group_by(DIVISION) |>
+      summarize(prop = sum(num.per.org)/n.outliers, 
+                prop.neg = sum(count.negative)/n.outliers, 
+                prop.pos = sum(count.positive)/n.outliers,
+                tot.outliers = sum(num.per.org),
+                tot.neg = sum(count.negative),
+                tot.pos = sum(count.positive)) 
+
+# Reshape data to long format
+tst <- tst |>
+      select(DIVISION, prop.pos, prop.neg, tot.pos, tot.neg) |>
+      pivot_longer(cols = c(prop.pos, prop.neg, tot.pos, tot.neg), 
+                   names_to = c(".value", "outlier_type"), 
+                   names_pattern = "(prop|tot)\\.(pos|neg)") |>
+      mutate(outlier_type = recode(outlier_type,
+                                   pos = "Positive",
+                                   neg = "Negative"))
+
+tst <- tst |> mutate(outlier_type = factor(outlier_type, levels = c("Positive", "Negative")))
+```
+
+
+
+What proportion of the overall data do each of the divisions share? What proportion of outliers do each of the divisions share?
+```{r, eval = TRUE}
+df |> group_by(DIVISION) |> 
+      summarize(data.count = n(), data.prop = n()/nrow(df)) |>
+      ggplot(aes(x = DIVISION, y = data.prop)) +
+      geom_bar(stat = "identity", color = "black") + 
+      labs(x = "Division", y = "Proportion", title = "Proportion of total data by division") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=0.9))
+
+tst |> ggplot(aes(x = DIVISION, y = prop, fill = outlier_type)) +
+      geom_bar(stat = "identity", color = "black") + 
+      labs(x = "Division", y = "Proportion", title = "Proportion of TOTAL outliers by division and type", fill = "Outlier Type") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=0.9)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010"))
+```
+What about the spread of outliers within each group? 
+```{r, eval = TRUE}
+left_join(tst, df |> group_by(DIVISION) |> summarize(data.count = n()), by = "DIVISION") |>
+      ggplot(aes(x = DIVISION, y = tot/data.count, fill = outlier_type)) +
+      geom_bar(stat = "identity", color = "black") + 
+      labs(x = "Division", y = "Proportion", 
+           title = "Proportion of outlier in each division & type (from total data in that group)",
+           fill = "Outlier Type") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=0.9)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010"))
+```
+
+
+```{r, eval = TRUE}
+tst <- df.sub |> 
+      group_by(DIVISION, TAX_YEAR) |>
+      summarize(tot.neg = sum(negative),
+                tot.pos = sum(positive),
+                total = n())
+
+# Reshape data to long format
+tst <- tst |>
+      pivot_longer(cols = c(tot.pos, tot.neg), 
+                   names_to = "outlier_type", 
+                   values_to = "outlier") |>
+      mutate(outlier_type = recode(outlier_type,
+                                   tot.pos = "Positive",
+                                   tot.neg = "Negative"))
+
+tst <- left_join(x = tst, 
+          y = per.year.df |> mutate(TAX_YEAR = as.numeric(as.character(year))) |> select(TAX_YEAR, total.outliers), 
+          by = "TAX_YEAR")
+
+tst <- tst |> mutate(outlier_type = factor(outlier_type, levels = c("Positive", "Negative")))
+
+ggplot(tst |> filter(DIVISION != "NA"), aes(x = TAX_YEAR, y = outlier/total.outliers, fill = outlier_type)) +
+      geom_bar(stat = "identity") +
+      facet_wrap(~DIVISION, nrow = 4) +
+      labs(x = "Year", y = "Proportion", fill = "Outlier Type", title = "Proportion of Outliers per Year, Division (out of total # of outliers that year)") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010")) +
+      scale_x_continuous(breaks=seq(1989,2021,5))
+
+ggplot(tst |> filter(DIVISION != "NA"), aes(x = TAX_YEAR, y = outlier/total, fill = outlier_type)) +
+      geom_bar(stat = "identity") +
+      facet_wrap(~DIVISION, nrow = 4) +
+      labs(x = "Year", y = "Proportion", fill = "Outlier Type", title = "Proportion of Outliers per Year, Division (from total # of outliers in ntee-year pair)") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010")) +
+      scale_x_continuous(breaks=seq(1989,2021,5))
+```
+
+
+```{r,eval=TRUE}
+# Every record for a particular EIN will have the same values for num.per.org, count.positive, and count.negative, so I just need to grab one record from each EIN
+tst <- df.sub |> 
+      group_by(EIN) |>
+      slice(1) |>
+      ungroup()
+
+# Compute proportion of outliers per DIVISION category
+tst <- tst |>
+      group_by(SIZE.CAT) |>
+      summarize(prop = sum(num.per.org)/n.outliers, 
+                prop.neg = sum(count.negative)/n.outliers, 
+                prop.pos = sum(count.positive)/n.outliers,
+                tot.outliers = sum(num.per.org),
+                tot.neg = sum(count.negative),
+                tot.pos = sum(count.positive)) 
+
+# Reshape data to long format
+tst <- tst |>
+      select(SIZE.CAT, prop.pos, prop.neg, tot.pos, tot.neg) |>
+      pivot_longer(cols = c(prop.pos, prop.neg, tot.pos, tot.neg), 
+                   names_to = c(".value", "outlier_type"), 
+                   names_pattern = "(prop|tot)\\.(pos|neg)") |>
+      mutate(outlier_type = recode(outlier_type,
+                                   pos = "Positive",
+                                   neg = "Negative"))
+
+tst <- tst |> mutate(outlier_type = factor(outlier_type, levels = c("Positive", "Negative")))
+
+size_labs <- c("Under $100,000", "$100,000 - $499,999", "$500,000 - $999,999", "$1 Million - $4.99 Million", "$5 Million - $9.99 Million", "Above $10 Million")
+
+df |> group_by(SIZE.CAT) |> 
+      summarize(data.count = n(), data.prop = n()/nrow(df)) |>
+      ggplot(aes(x = factor(SIZE.CAT), y = data.prop)) +
+      geom_bar(stat = "identity", color = "black") + 
+      labs(x = "Size", y = "Proportion", title = "Proportion of total data by size") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=0.9)) +
+      scale_x_discrete(labels = size_labs)
+
+tst |> ggplot(aes(x = factor(SIZE.CAT), y = prop, fill = outlier_type)) +
+      geom_bar(stat = "identity", color = "black") + 
+      labs(x = "Size", y = "Proportion", title = "Proportion of TOTAL outliers by size and type", fill = "Outlier Type") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=0.9)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010")) +
+      scale_x_discrete(labels = size_labs)
+
+left_join(tst, df |> group_by(SIZE.CAT) |> summarize(data.count = n()), by = "SIZE.CAT") |>
+      ggplot(aes(x = factor(SIZE.CAT), y = tot/data.count, fill = outlier_type)) +
+      geom_bar(stat = "identity", color = "black") + 
+      labs(x = "Size", y = "Proportion", 
+           title = "Proportion of outlier in each size & type (from total data in that group)",
+           fill = "Outlier Type") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=0.9)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010")) +
+      scale_x_discrete(labels = size_labs)
+```
+
+```{r, eval = TRUE}
+tst <- df.sub |> 
+      group_by(SIZE.CAT, TAX_YEAR) |>
+      summarize(tot.neg = sum(negative),
+                tot.pos = sum(positive),
+                total = n())
+
+# Reshape data to long format
+tst <- tst |>
+      pivot_longer(cols = c(tot.pos, tot.neg), 
+                   names_to = "outlier_type", 
+                   values_to = "outlier") |>
+      mutate(outlier_type = recode(outlier_type,
+                                   tot.pos = "Positive",
+                                   tot.neg = "Negative"))
+
+tst <- left_join(x = tst, 
+          y = per.year.df |> mutate(TAX_YEAR = as.numeric(as.character(year))) |> select(TAX_YEAR, total.outliers), 
+          by = "TAX_YEAR")
+
+tst <- tst |> mutate(outlier_type = factor(outlier_type, levels = c("Positive", "Negative")))
+
+size_labs <- c("1"="Under $100,000", "2"="$100,000 - $499,999", "3"="$500,000 - $999,999", "4"="$1 Million - $4.99 Million", "5"="$5 Million - $9.99 Million", "6"="Above $10 Million")
+
+ggplot(tst |> filter(SIZE.CAT != "NA"), aes(x = TAX_YEAR, y = outlier/total.outliers, fill = outlier_type)) +
+      geom_bar(stat = "identity") +
+      facet_wrap(~SIZE.CAT, nrow = 4, labeller = as_labeller(size_labs)) +
+      labs(x = "Year", y = "Proportion", fill = "Outlier Type", title = "Proportion of Outliers per Year, Size (out of total # of outliers that year)") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010")) +
+      scale_x_continuous(breaks=seq(1989,2021,5))
+
+ggplot(tst |> filter(SIZE.CAT != "NA"), aes(x = TAX_YEAR, y = outlier/total, fill = outlier_type)) +
+      geom_bar(stat = "identity") +
+      facet_wrap(~SIZE.CAT, nrow = 4, labeller = as_labeller(size_labs)) +
+      labs(x = "Year", y = "Proportion", fill = "Outlier Type", title = "Proportion of Outliers per Year, Size (from total # of outliers in ntee-year pair)") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010")) +
+      scale_x_continuous(breaks=seq(1989,2021,5))
+```
+
+
+
+```{r}
+hist(all.years, breaks = length(unique(all.years)))
+num.per.year <- table(all.years)
+total.per.year <- table(df$TAX_YEAR)
+
+num.per.year <- as.data.frame(num.per.year) |> rename(YEAR = all.years) 
+total.per.year <- as.data.frame(total.per.year) |> rename(YEAR = Var1)
+
+per.year.df <- full_join(num.per.year, total.per.year, by = "YEAR", suffix = c(".out", ".total")) |>
+      mutate(Percent = Freq.out/Freq.total)
+
+ggplot(per.year.df, aes(x = YEAR, y = Percent)) +
+      geom_point(size = 3) +
+      labs(y = "Proportion", title = "Number of outlier years / Total records per year") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1))
+```
+
+```{r}
+tst <- df.stres |> group_by(Value, SIGN) |> summarize(count = n())
+
+per.year.df[,"positive"] <- tst |> ungroup() |> filter(SIGN == 1) |> select(count)
+per.year.df[,"negative"] <- tst |> ungroup() |> filter(SIGN == -1) |> select(count)
+
+per.year.df <- per.year.df |> rename(year = YEAR, total.outliers = Freq.out, total.data = Freq.total, prop.outliers = Percent, total.pos = positive, total.neg = negative) |> mutate(prop.pos = total.pos/total.data, prop.neg = total.neg/total.data)
+
+#saveRDS(per.year.df, "MODEL/outlier_detection/full/per_year_DF.rds")
+
+# Reshape data to long format
+df.long <- per.year.df |> 
+  select(year, prop.pos, prop.neg) |> 
+  pivot_longer(cols = c(prop.pos, prop.neg), 
+               names_to = "outlier_type", 
+               values_to = "proportion") |> 
+  mutate(outlier_type = recode(outlier_type, 
+                               prop.pos = "Positive", 
+                               prop.neg = "Negative"))
+
+ggplot(df.long, aes(x = factor(year), y = proportion, fill = outlier_type)) +
+      geom_bar(stat = "identity") +
+      labs(x = "Year", y = "Proportion of Outliers", fill = "Outlier Type") +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010"))
+```
+
+
+
+```{r}
+pred.1 <- readRDS("MODEL/outlier_detection/full/full_predictions_1.rds")
+se.1 <- readRDS("MODEL/outlier_detection/full/full_se_1.rds")
+res.out2 <- readRDS("MODEL/outlier_detection/full/outlier_res_2.rds")
+res.out3 <- readRDS("MODEL/outlier_detection/full/outlier_res_3.rds")
+
+# list of standard errors and predictions
+pred.2 <- lapply(res.out2, function(x){x[["predictions"]]})
+se.2 <- lapply(res.out2, function(x){x[["standard_errors"]]})
+
+pred.3 <- lapply(res.out3, function(x){x[["predictions"]]})
+se.3 <- lapply(res.out3, function(x){x[["standard_errors"]]})
+
+#saveRDS(se.2, "MODEL/outlier_detection/full/full_se_2.rds")
+```
+
+
+```{r}
+predictions <- c(readRDS("MODEL/outlier_detection/full/full_predictions_1.rds"), readRDS("MODEL/outlier_detection/full/full_predictions_2.rds"), readRDS("MODEL/outlier_detection/full/full_predictions_3.rds"))
+standard_errors <- c(readRDS("MODEL/outlier_detection/full/full_se_1.rds"), readRDS("MODEL/outlier_detection/full/full_se_2.rds"), readRDS("MODEL/outlier_detection/full/full_se_3.rds"))
+
+# remove the orgs with no outliers
+candidates <- Filter(function(x) length(x) > 0, candidates)
+
+cluster <- makeCluster(6)
+registerDoParallel(cluster)
+
+start.time <- Sys.time() #31 min
+residuals <- foreach(ein = names(candidates), .packages = c("dplyr"), .verbose = TRUE) %dopar% {
+      df.sub <- df |> filter(EIN2==ein)
+      res <- (df.sub$LOG_REV - predictions[[ein]]) / standard_errors[[ein]] # standardized residuals
+      res[which(df.sub$TAX_YEAR %in% candidates[[ein]])]
+}
+print(Sys.time() - start.time)
+stopCluster(cl = cluster)
+
+names(residuals) <- names(candidates)
+saveRDS(residuals, "MODEL/outlier_detection/full/all_outlier_residuals.rds")
+```
+
+
+```{r}
+result_df <- do.call(rbind, lapply(names(candidates), function(id) {
+  data.frame(EIN = id, Value = candidates[[id]], STDRES = residuals[[id]])
+}))
+
+rownames(result_df) <- NULL
+print(result_df)
+
+result_df <- result_df |> mutate(SIGN = sign(STDRES), DIFF.abs = abs(STDRES - 3), DIFF.rel = (STDRES-3)/3) |> select(-DIFF)
+result_df
+
+saveRDS(result_df, "MODEL/outlier_detection/full/outlier_resids_DF.rds")
+```
+
+```{r}
+my.palette <- c("#1796D2", "#D2D2D2", "#000000", "#FDC010", "#ED028B", "#55B748")
+result_df |> ggplot() +
+      geom_histogram(mapping = aes(x = Value, group = factor(SIGN), fill = factor(SIGN)), color = "black", bins = length(unique(all.years))) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010")) +
+      labs(x = "Year", title = "Outliers per Year")
+
+result_df |> 
+      filter(SIGN == -1) |> 
+      ggplot() +
+      geom_histogram(mapping = aes(x = Value), fill = "#1796D2", color = "black", bins = length(unique(all.years))) +
+      labs(x = "Year", title = "Negative Outliers")
+
+ggplot(df.stres, mapping = aes(x = factor(Value), y = STDRES, group = factor(Value))) +
+      geom_boxplot() +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+      labs(x = "Year", title = "Standardized Residuals of Outliers per Year") +
+      ylim(-10, 10)
+```
+
+```{r}
+titles <- list("1994", "2000", "2000", "2012 & 2014", "2021", "2011 & 2013")
+names(titles) <- eins_to_check
+
+for (ein in eins_to_check){
+      p <- ggplot(df |> filter(EIN2==ein), aes(x = TAX_YEAR, y = TOT_REV)) +
+            geom_line() +
+            geom_point(size=3) +
+            labs(title = paste(ein, titles[[ein]])) +
+            scale_x_continuous(breaks = 1989:2021) +
+            theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+      print(p)
+}
+```
+Descriptive: What are the types of nonprofits that get spikes versus dips (NTEE, geographic region, overall size)?
+```{r}
+
+```
+
+
+# Latest Results
+
+- 96 organizations, each has between 5 and 28 years worth of data (4 orgs per number of years)
+- Constrained Nelder Mead with constraints $\nu \in (0.001, 3.5),\ \tau^2 \in (0,\infty)$ with 5 starting points based on centroids of $k$-means clustering of the 30-org test set
+- When comparing with 15 Latin Hyper Cube samples (in terms of likelihoods), centroids is not always higher (though sometimes it is). However, the difference when LHS does better is tiny (like 0.001)
+- Computation time: For 96 orgs, on 6 cores on my Macbook Pro took about 10s (total) to do the optimization
+
+```{r, message = FALSE}
+library(fields)
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+library(mvtnorm)
+library(pracma)
+library(doParallel)
+library(lhs)
+source("SCRIPTS/outlier_detection_helper.R")
+
+df <- as.data.table(read_csv("MODEL/small_test_96.csv", show_col_types = FALSE)) 
+
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+```
+
+```{r}
+all_candidates <- readRDS("MODEL/outlier_detection/cNM_96_candidates.rds")
+all_predictions <- readRDS("MODEL/outlier_detection/cNM_96_predictions.rds")
+all_se <- readRDS("MODEL/outlier_detection/cNM_96_se.rds")
+all.sigma.squared <- readRDS("MODEL/outlier_detection/cNM_96_sigmas.rds")
+
+for (x in unique(sort(df$DATA_COUNT))){
+      pList <- list()
+      i <- 1
+      outlier.flag <- FALSE
+      for (ein in unique((df |> filter(DATA_COUNT == x))$EIN2) ){
+            df.sub <- df |> filter(EIN2 == ein)
+            pList[[i]] <- plot_true_vs_pred(df = df.sub,
+                             ein = ein,
+                             predictions = all_predictions[[ein]],
+                             standard_errors = all_se[[ein]],
+                             all_years = df.sub$YEAR + 1,
+                             candidate_outliers = all_candidates[[ein]],
+                             label = ein) + theme(legend.position = "bottom")
+            if (length(all_candidates[[ein]]) > 0){
+                  outlier.flag <- TRUE
+                  leg <- get_plot_component(pList[[i]], "guide-box-bottom", return_all=TRUE)
+            }
+            i <- i+1
+      }
+      
+      if (!outlier.flag) {leg <- get_plot_component(pList[[4]], "guide-box-bottom", return_all=TRUE)}
+      
+      p <- plot_grid(pList[[1]] + theme(legend.position = "none"), 
+                     pList[[2]] + theme(legend.position = "none"), 
+                     pList[[3]] + theme(legend.position = "none"), 
+                     pList[[4]] + theme(legend.position = "none"), nrow = 2, ncol = 2)
+
+      title <- ggdraw() + draw_label(paste("Number of data points:", x), fontface = 'bold', x = 0, hjust = 0) +
+            theme(plot.margin = margin(l=10))
+      print(plot_grid(title, p, leg, ncol = 1, rel_heights = c(0.1,1,0.1)))
+}
+```
+
 # Results: Side by Side comparison
-```{r, message=F, echo = TRUE, eval = TRUE}
+```{r, message=F}
 library(fields)
 library(readr)
 library(tidyverse, warn.conflicts = FALSE)
@@ -26,7 +732,7 @@ source("SCRIPTS/outlier_detection_helper.R")
 ```
 
 ## Nelder-Mead (per org) versus Nelder-Mead (per org, year pair)
-```{r, eval = TRUE, echo = FALSE}
+```{r}
 df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
 
 # center the data
@@ -49,7 +755,7 @@ candidates.par.constrainNM <- readRDS("MODEL/outlier_detection/par_constrainNM_c
 ```
 
 
-```{r, eval = TRUE, echo = FALSE}
+```{r}
 for (ein in unique(df$EIN2)){
       df.sub <- df |> filter(EIN2 == ein)
       zScore <- qt(0.95, df = length(df.sub$YEAR)-1)
@@ -97,7 +803,7 @@ for (ein in unique(df$EIN2)){
 
 
 ## Grid versus Nelder-Mead, per org per year
-```{r, eval = TRUE, echo = FALSE}
+```{r}
 df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
 
 # center the data
@@ -124,13 +830,13 @@ best_combos <- full_join(res.Grid, res.constrainNM, by = c("EIN", "year"), suffi
 best_combos <- best_combos |> mutate(across(where(is.numeric), \(x) round(x, digits=4))) |> select(-trial, -nu.init, -nugg.init)
 ```
 
-```{r, echo = TRUE, eval = TRUE}
+```{r}
 head(best_combos |> select(-likelihood.grid, -likelihood.CNM, -sigma.squared.grid, -sigma.squared.CNM), 20)
 
 print(paste("Out of ", nrow(best_combos), " org-year pairs, constrained Nelder-Mead got the higher likelihood (compared to grid search) for ", sum(best_combos$likelihood.grid <= best_combos$likelihood.CNM), " pairs.", sep = ""))
 ```
 
-```{r, eval = TRUE, echo = FALSE}
+```{r}
 mean_L.grid <- column_to_rownames(res.Grid |> group_by(EIN) |> summarize(MEAN = mean(likelihood)), var = "EIN")
 mean_L.contrainNM <- column_to_rownames(res.constrainNM |> group_by(EIN) |> summarize(MEAN = mean(likelihood)), var = "EIN")
 
@@ -465,6 +1171,476 @@ for (ein in unique(df$EIN2)){
 ```
 
 
+
+# Hyperparameter Tuning Code - one best set of params per org, but recompute sigma^2 each year
+## Nelder-Mead
+```{r, message = FALSE}
+library(fields)
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+library(mvtnorm)
+library(pracma)
+library(doParallel)
+library(lhs)
+source("SCRIPTS/outlier_detection_helper.R")
+```
+
+```{r}
+df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
+
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+# distance matrix of years
+dist_mat <- as.matrix(dist(sort(unique(df$YEAR)), diag=TRUE, upper=TRUE))
+
+# normalize
+dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
+
+# Set up ranges for Matern covariance matrix hyperparameters
+rho <- 1
+
+# All possible combinations of hyperparameters
+#combos <- expand.grid(nu = seq(from = 0.05, to = 2.5, by = 0.1225), nugget = seq(from = 0, to = 2, by = 0.1)+0.001)
+initial.conds <- readRDS("MODEL/outlier_detection/centroids5_30orgs.rds")$centers
+```
+
+```{r}
+cluster <- makeCluster(6)
+registerDoParallel(cluster)
+
+# initial.conds <- randomLHS(10,2)
+# initial.conds[, 1] <- 0.05 + initial.conds[, 1] * (2.5 - 0.05) # nu in [0.05,2.5)
+# initial.conds[, 2] <- 0 + initial.conds[, 2] * (2 - 0) # nugget in [0,2]
+
+# non-parallel: 1.09min , parallel (6): 14.01 s, parallel (6, 10 LHS): 10s, parallel (6, 5 centroids): 5s
+# parallel (6, 5 centroids, nu upper bdd, chol): 4.3s, with solve: 4.5s
+
+start.time <- Sys.time() 
+res <- foreach(ein = unique(df$EIN2), .combine = 'rbind', .packages = c("dplyr", "fields", "mvtnorm")) %dopar% {
+      df.sub <- filter(df, EIN2==ein)
+      tst <- setNames(data.frame(matrix(ncol = 7, nrow = 0)), c("EIN", "nu.init", "nugg.init", "nu", "nugget", "likelihood", "trial"))
+      likelihood_wrapper <- function(pars.vec){
+            return(-1 * get_likelihood_sigma(row = pars.vec,
+                                  dist_mat = dist_mat,
+                                  rho = rho,
+                                  all_years = df.sub$YEAR + 1,
+                                  data = df.sub$LOG_REV))
+      }
+      
+      for (i in 1:nrow(initial.conds)){
+            res <- constrOptim(theta = initial.conds[i,], 
+                               f = likelihood_wrapper,
+                               grad = NULL,
+                               ui = rbind(c(1,0),c(-1,0),c(0,1)), #rbind(c(1,0),c(-1,0),c(0,1))
+                               ci = c(0.001,-3.5,0)) #c(0.001,-3.5, 0)
+            tst[nrow(tst)+1,1] <- ein
+            tst[nrow(tst),2:ncol(tst)] <- c(c(initial.conds[i,1], initial.conds[i,2], res$par[1], res$par[2], -1*res$value, i))
+      }
+      tst
+}
+print(Sys.time() - start.time)
+stopCluster(cl = cluster) 
+```
+
+
+```{r}
+max_L.Grid <- readRDS("MODEL/outlier_detection/grid_max_likelihoods.rds")
+max_L.Grid <- rownames_to_column(as.data.frame(do.call(rbind, lapply(X = max_L.Grid, FUN = unlist))), var = "EIN")
+max_L.constrainNM <- res |> group_by(EIN) |> summarise(MAX = max(likelihood)) 
+full_join(max_L.Grid, max_L.constrainNM, by = "EIN", suffix = c(".grid", ".NM")) |> mutate(BIGGER = (V1 <= MAX))
+
+res <- res |> inner_join(max_L.constrainNM, by = "EIN") |> filter(likelihood == MAX) |> select(-MAX)
+```
+
+
+```{r}
+all.sigma.squared <- list()
+
+all_predictions <- list()
+all_candidates <- list()
+all_se <- list()
+
+mu_1 <- 0
+# Looping over all organizations, 1.1 s without parallelization
+start.time <- Sys.time()
+for (ein in unique(df$EIN2)){
+      df.sub <- filter(df, EIN2==ein)
+      all_years <- df.sub$YEAR + 1 # all the years we have data for that org
+      mu_2 <- numeric(nrow(df.sub) - 1) # all zeros
+      
+      predictions <- numeric(length(all_years)) # initialize
+      standard_errors <- numeric(length(all_years)) # initialize
+      
+      sigs <- list()
+      for(i in 1:length(all_years)){
+            # Leave out i-th year
+            log_revenue <- (df.sub |> filter(YEAR != all_years[i]-1))$LOG_REV
+            
+            # Generate Matern covariance matrix using "best" hyperparameters
+            mat_cov <- Matern(d = dist_mat, 
+                              smoothness = (res |> filter(EIN == ein))$nu, 
+                              range = rho, 
+                              phi = 1) + diag((res |> filter(EIN == ein))$nugget, dim(dist_mat)[1])
+            
+            sigma.squared <- (1/length(log_revenue)) * (log_revenue %*% chol2inv(chol(mat_cov[all_years[-i], all_years[-i]])) %*% log_revenue)[1,1]
+            mat_cov <- sigma.squared * mat_cov
+            
+            sigs <- c(sigs, sigma.squared)
+            
+            SIGMA.11 <- mat_cov[all_years[i], all_years[i]]
+            SIGMA.22.inv <- chol2inv(chol(mat_cov[all_years[-i], all_years[-i]]))
+            SIGMA.12 <- mat_cov[all_years[i], all_years[-i], drop = FALSE]
+            
+            predictions[i] <- mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (log_revenue - mu_2)) #mu_bar
+            standard_errors[i] <- sqrt(as.numeric(SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
+      }
+      all.sigma.squared[[ein]] <- sigs
+      
+      residuals <- abs(df.sub$LOG_REV - predictions) / standard_errors # standardized residuals
+      
+      all_predictions[[ein]] <- predictions
+      all_se[[ein]] <- standard_errors
+      all_candidates[[ein]] <-  all_years[which(residuals > 3)] - 1 + 1989
+}
+
+print(Sys.time() - start.time)
+```
+
+```{r}
+for (ein in unique(df$EIN2)){
+      df.sub <- filter(df, EIN2==ein)
+      p <- plot_true_vs_pred(df = df.sub,
+                             ein = ein,
+                             predictions = all_predictions[[ein]],
+                             standard_errors = all_se[[ein]],
+                             all_years = df.sub$YEAR + 1,
+                             candidate_outliers = all_candidates[[ein]],
+                             label = ein)
+      print(p)
+}
+```
+
+
+## Slightly larger dataset (96)
+```{r, message = FALSE}
+library(fields)
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+library(mvtnorm)
+library(pracma)
+library(doParallel)
+library(lhs)
+source("SCRIPTS/outlier_detection_helper.R")
+```
+
+
+```{r}
+df <- as.data.table(read_csv("MODEL/small_test_96.csv", show_col_types = FALSE)) 
+
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+# distance matrix of years
+dist_mat <- as.matrix(dist(sort(unique(df$YEAR)), diag=TRUE, upper=TRUE))
+
+# normalize
+dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
+
+# Set up ranges for Matern covariance matrix hyperparameters
+rho <- 1
+
+# All possible combinations of hyperparameters
+#combos <- expand.grid(nu = seq(from = 0.05, to = 2.5, by = 0.1225), nugget = seq(from = 0, to = 2, by = 0.1)+0.001)
+initial.conds <- readRDS("MODEL/outlier_detection/centroids5_30orgs.rds")$centers
+```
+
+
+```{r}
+cluster <- makeCluster(6)
+registerDoParallel(cluster)
+
+# 102: 17.5 secs (Google Meet was open), 14s (Google Meet not open)
+# 96:  10.2 secs
+start.time <- Sys.time() 
+res.centroids <- foreach(ein = unique(df$EIN2), .combine = 'rbind', .packages = c("dplyr", "fields", "mvtnorm")) %dopar% {
+      df.sub <- filter(df, EIN2==ein)
+      tst <- setNames(data.frame(matrix(ncol = 7, nrow = 0)), c("EIN", "nu.init", "nugg.init", "nu", "nugget", "likelihood", "trial"))
+      likelihood_wrapper <- function(pars.vec){
+            return(-1 * get_likelihood_sigma(row = pars.vec,
+                                  dist_mat = dist_mat,
+                                  rho = rho,
+                                  all_years = df.sub$YEAR + 1,
+                                  data = df.sub$LOG_REV))
+      }
+      
+      for (i in 1:nrow(initial.conds)){
+            res <- constrOptim(theta = initial.conds[i,], 
+                               f = likelihood_wrapper,
+                               grad = NULL,
+                               ui = rbind(c(1,0),c(-1,0),c(0,1)), #rbind(c(1,0),c(-1,0),c(0,1))
+                               ci = c(0.001,-3.5,0)) #c(0.001,-3.5, 0)
+            tst[nrow(tst)+1,1] <- ein
+            tst[nrow(tst),2:ncol(tst)] <- c(c(initial.conds[i,1], initial.conds[i,2], res$par[1], res$par[2], -1*res$value, i))
+      }
+      tst[which.max(tst$likelihood),]
+}
+print(Sys.time() - start.time)
+stopCluster(cl = cluster)
+```
+
+
+### Training the GPs and Detecting the Outliers
+```{r}
+res <- readRDS("MODEL/outlier_detection/cNM_96_results.rds")
+
+all.sigma.squared <- list()
+all_predictions <- list()
+all_candidates <- list()
+all_se <- list()
+
+mu_1 <- 0
+# Looping over all organizations, 3 s without parallelization
+start.time <- Sys.time()
+for (ein in unique(df$EIN2)){
+      df.sub <- filter(df, EIN2==ein)
+      all_years <- df.sub$YEAR + 1 # all the years we have data for that org
+      mu_2 <- numeric(nrow(df.sub) - 1) # all zeros
+      
+      predictions <- numeric(length(all_years)) # initialize
+      standard_errors <- numeric(length(all_years)) # initialize
+      
+      sigs <- list()
+      for(i in 1:length(all_years)){
+            # Leave out i-th year
+            log_revenue <- (df.sub |> filter(YEAR != all_years[i]-1))$LOG_REV
+            
+            # Generate Matern covariance matrix using "best" hyperparameters
+            mat_cov <- Matern(d = dist_mat, 
+                              smoothness = (res |> filter(EIN == ein))$nu, 
+                              range = rho, 
+                              phi = 1) + diag((res |> filter(EIN == ein))$nugget, dim(dist_mat)[1])
+            
+            sigma.squared <- (1/length(log_revenue)) * (log_revenue %*% chol2inv(chol(mat_cov[all_years[-i], all_years[-i]])) %*% log_revenue)[1,1]
+            mat_cov <- sigma.squared * mat_cov
+            
+            sigs <- c(sigs, sigma.squared)
+            
+            SIGMA.11 <- mat_cov[all_years[i], all_years[i]]
+            SIGMA.22.inv <- chol2inv(chol(mat_cov[all_years[-i], all_years[-i]]))
+            SIGMA.12 <- mat_cov[all_years[i], all_years[-i], drop = FALSE]
+            
+            predictions[i] <- mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (log_revenue - mu_2)) #mu_bar
+            standard_errors[i] <- sqrt(as.numeric(SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
+      }
+      all.sigma.squared[[ein]] <- sigs
+      
+      residuals <- abs(df.sub$LOG_REV - predictions) / standard_errors # standardized residuals
+      
+      all_predictions[[ein]] <- predictions
+      all_se[[ein]] <- standard_errors
+      all_candidates[[ein]] <-  all_years[which(residuals > 3)] - 1 + 1989
+}
+
+print(Sys.time() - start.time)
+
+saveRDS(all_candidates, "MODEL/outlier_detection/cNM_96_candidates.rds")
+saveRDS(all_predictions, "MODEL/outlier_detection/cNM_96_predictions.rds")
+saveRDS(all_se, "MODEL/outlier_detection/cNM_96_se.rds")
+saveRDS(all.sigma.squared, "MODEL/outlier_detection/cNM_96_sigmas.rds")
+```
+
+
+```{r}
+for (x in unique(sort(df$DATA_COUNT))){
+      pList <- list()
+      i <- 1
+      outlier.flag <- FALSE
+      for (ein in unique((df |> filter(DATA_COUNT == x))$EIN2) ){
+            df.sub <- df |> filter(EIN2 == ein)
+            pList[[i]] <- plot_true_vs_pred(df = df.sub,
+                             ein = ein,
+                             predictions = all_predictions[[ein]],
+                             standard_errors = all_se[[ein]],
+                             all_years = df.sub$YEAR + 1,
+                             candidate_outliers = all_candidates[[ein]],
+                             label = ein) + theme(legend.position = "bottom")
+            if (length(all_candidates[[ein]]) > 0){
+                  outlier.flag <- TRUE
+                  leg <- get_plot_component(pList[[i]], "guide-box-bottom", return_all=TRUE)
+            }
+            i <- i+1
+      }
+      
+      if (!outlier.flag) {leg <- get_plot_component(pList[[4]], "guide-box-bottom", return_all=TRUE)}
+      
+      p <- plot_grid(pList[[1]] + theme(legend.position = "none"), 
+                     pList[[2]] + theme(legend.position = "none"), 
+                     pList[[3]] + theme(legend.position = "none"), 
+                     pList[[4]] + theme(legend.position = "none"), nrow = 2, ncol = 2)
+
+      title <- ggdraw() + draw_label(paste("Number of data points:", x), fontface = 'bold', x = 0, hjust = 0) +
+            theme(plot.margin = margin(l=10))
+      print(plot_grid(title, p, leg, ncol = 1, rel_heights = c(0.1,1,0.1)))
+}
+```
+
+
+
+
+
+## Even larger (414)
+```{r, message = FALSE}
+library(fields)
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(tidyr)
+library(mvtnorm)
+library(pracma)
+library(doParallel)
+library(lhs)
+source("SCRIPTS/outlier_detection_helper.R")
+```
+
+
+```{r}
+df <- as.data.table(read_csv("MODEL/small_test_414.csv", show_col_types = FALSE)) 
+
+# center the data
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+# distance matrix of years
+dist_mat <- as.matrix(dist(sort(unique(df$YEAR)), diag=TRUE, upper=TRUE))
+
+# normalize
+dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
+
+# Set up ranges for Matern covariance matrix hyperparameters
+rho <- 1
+
+# All possible combinations of hyperparameters
+#combos <- expand.grid(nu = seq(from = 0.05, to = 2.5, by = 0.1225), nugget = seq(from = 0, to = 2, by = 0.1)+0.001)
+initial.conds <- readRDS("MODEL/outlier_detection/centroids5_96orgs.rds")$centers
+```
+
+
+```{r}
+cluster <- makeCluster(6)
+registerDoParallel(cluster)
+
+# 414: 48s
+start.time <- Sys.time() 
+res <- foreach(ein = unique(df$EIN2), .combine = 'rbind', .packages = c("dplyr", "fields", "mvtnorm")) %dopar% {
+      df.sub <- filter(df, EIN2==ein)
+      tst <- setNames(data.frame(matrix(ncol = 5, nrow = 0)), c("EIN", "nu", "nugget", "likelihood", "trial"))
+      likelihood_wrapper <- function(pars.vec){
+            return(-1 * get_likelihood_sigma(row = pars.vec,
+                                  dist_mat = dist_mat,
+                                  rho = rho,
+                                  all_years = df.sub$YEAR + 1,
+                                  data = df.sub$LOG_REV))
+      }
+      
+      for (i in 1:nrow(initial.conds)){
+            res <- constrOptim(theta = initial.conds[i,], 
+                               f = likelihood_wrapper,
+                               grad = NULL,
+                               ui = rbind(c(1,0),c(-1,0),c(0,1)), #rbind(c(1,0),c(-1,0),c(0,1))
+                               ci = c(0.001,-3.5,0)) #c(0.001,-3.5, 0)
+            tst[nrow(tst)+1,1] <- ein
+            tst[nrow(tst),2:ncol(tst)] <- c(c(res$par[1], res$par[2], -1*res$value, i))
+      }
+      tst[which.max(tst$likelihood),]
+}
+print(Sys.time() - start.time)
+stopCluster(cl = cluster)
+
+#saveRDS(res, "MODEL/outlier_detection/cNM_414_results.rds")
+```
+
+
+```{r}
+                                                                                                    
+cl <- kmeans(res |> select(nu,nugget), 5, iter.max = 20, nstart = 3)
+cl$size
+cl$centers
+initial.conds
+
+saveRDS(cl, "MODEL/outlier_detection/centroids5_414orgs.rds")
+```
+
+
+```{r}
+all.sigma.squared <- list()
+all_predictions <- list()
+all_candidates <- list()
+all_se <- list()
+
+mu_1 <- 0
+# Looping over all organizations, 3 s without parallelization
+start.time <- Sys.time()
+for (ein in unique(df$EIN2)){
+      df.sub <- filter(df, EIN2==ein)
+      all_years <- df.sub$YEAR + 1 # all the years we have data for that org
+      mu_2 <- numeric(nrow(df.sub) - 1) # all zeros
+      
+      predictions <- numeric(length(all_years)) # initialize
+      standard_errors <- numeric(length(all_years)) # initialize
+      
+      sigs <- list()
+      for(i in 1:length(all_years)){
+            # Leave out i-th year
+            log_revenue <- (df.sub |> filter(YEAR != all_years[i]-1))$LOG_REV
+            
+            # Generate Matern covariance matrix using "best" hyperparameters
+            mat_cov <- Matern(d = dist_mat, 
+                              smoothness = (res |> filter(EIN == ein))$nu, 
+                              range = rho, 
+                              phi = 1) + diag((res |> filter(EIN == ein))$nugget, dim(dist_mat)[1])
+            
+            sigma.squared <- (1/length(log_revenue)) * (log_revenue %*% chol2inv(chol(mat_cov[all_years[-i], all_years[-i]])) %*% log_revenue)[1,1]
+            mat_cov <- sigma.squared * mat_cov
+            
+            sigs <- c(sigs, sigma.squared)
+            
+            SIGMA.11 <- mat_cov[all_years[i], all_years[i]]
+            SIGMA.22.inv <- chol2inv(chol(mat_cov[all_years[-i], all_years[-i]]))
+            SIGMA.12 <- mat_cov[all_years[i], all_years[-i], drop = FALSE]
+            
+            predictions[i] <- mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (log_revenue - mu_2)) #mu_bar
+            standard_errors[i] <- sqrt(as.numeric(SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
+      }
+      all.sigma.squared[[ein]] <- sigs
+      
+      residuals <- abs(df.sub$LOG_REV - predictions) / standard_errors # standardized residuals
+      
+      all_predictions[[ein]] <- predictions
+      all_se[[ein]] <- standard_errors
+      all_candidates[[ein]] <-  all_years[which(residuals > 3)] - 1 + 1989
+}
+
+print(Sys.time() - start.time)
+```
 
 # Hyperparameter Tuning Code - one best set of params per org per year
 ## Nelder Mead
@@ -876,19 +2052,18 @@ for (ein in unique(df$EIN2)){
 }
 print(Sys.time() - start.time)
 
-max_L.Grid <- readRDS("MODEL/outlier_detection/grid_max_likelihoods.rds")
-max_L.Grid <- rownames_to_column(as.data.frame(do.call(rbind, lapply(X = max_L.Grid, FUN = unlist))), var = "EIN") 
-maxes.constrainNM <- max_L.constrainNM |> group_by(EIN) |> summarise(MAX = max(likelihood)) 
-saveRDS(maxes.constrainNM, "MODEL/outlier_detection/constrainNM_max_likelihoods.rds")
+#max_L.Grid <- readRDS("MODEL/outlier_detection/grid_max_likelihoods.rds")
+#max_L.Grid <- rownames_to_column(as.data.frame(do.call(rbind, lapply(X = max_L.Grid, FUN = unlist))), var = "EIN") 
+#maxes.constrainNM <- max_L.constrainNM |> group_by(EIN) |> summarise(MAX = max(likelihood)) 
+#saveRDS(maxes.constrainNM, "MODEL/outlier_detection/constrainNM_max_likelihoods.rds")
 
-full_join(max_L.Grid, maxes.constrainNM, by = "EIN", suffix = c(".grid", ".NM")) |> mutate(BIGGER = (V1 <= MAX))
+#full_join(max_L.Grid, maxes.constrainNM, by = "EIN", suffix = c(".grid", ".NM")) |> mutate(BIGGER = (V1 <= MAX))
 
-saveRDS(max_L.constrainNM |> inner_join(maxes.constrainNM, by = "EIN") |> filter(likelihood == MAX) |> select(-MAX), 
-        "MODEL/outlier_detection/constrainNM_results.rds")
+#saveRDS(max_L.constrainNM |> inner_join(maxes.constrainNM, by = "EIN") |> filter(likelihood == MAX) |> select(-MAX), "MODEL/outlier_detection/constrainNM_results.rds")
 ```
 
 
-```{r, echo = TRUE, eval = FALSE}
+```{r, echo = FALSE, eval = FALSE}
 res <- readRDS("MODEL/outlier_detection/constrainNM_results.rds")
 rownames(res) <- res[,"EIN"]
 res <- res |> mutate(sigma.squared = 0)
@@ -974,7 +2149,7 @@ load_all('ParBayesianOptimization')
 source("SCRIPTS/outlier_detection_helper.R")
 ```
 
-```{r, eval = FALSE, echo = TRUE}
+```{r, eval = FALSE, echo = FALSE}
 df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
 
 # center the data
@@ -991,7 +2166,7 @@ dist_mat <- as.matrix(dist_mat)
 dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
 ```
 
-```{r, eval = FALSE, echo = TRUE}
+```{r, eval = FALSE, echo = FALSE}
 bounds <- list(nu = c(0.025,2.5), nugget = c(0,2.5), sigma.squared = c(0.025, 1.5))
 opt_info <- list()
 
@@ -1080,7 +2255,7 @@ for (ein in names(opt_info)){
 ```
 
 
-```{r, echo = TRUE, eval = FALSE}
+```{r, echo = FALSE, eval = FALSE}
 all_predictions = list()
 all_candidates = list()
 all_se = list()
@@ -1154,7 +2329,7 @@ source("SCRIPTS/outlier_detection_helper.R")
 ```
 
 
-```{r, echo = TRUE, eval = FALSE}
+```{r, echo = FALSE, eval = FALSE}
 df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) 
 
 # center the data
@@ -1213,7 +2388,7 @@ row.names(best_combos) <- names(max_likelihoods_idx)
 best_combos
 ```
 
-```{r, echo = TRUE, eval = FALSE}
+```{r, echo = FALSE, eval = FALSE}
 all_predictions = list()
 all_candidates = list()
 all_se = list()
@@ -1265,6 +2440,24 @@ saveRDS(all_se, "MODEL/outlier_detection/grid_standard_errors.rds")
 saveRDS(all_candidates, "MODEL/outlier_detection/grid_candidates.rds")
 saveRDS(best_combos, "MODEL/outlier_detection/grid_best_params.rds")
 saveRDS(max_likelihoods, "MODEL/outlier_detection/grid_max_likelihoods.rds")
+```
+
+```{r, echo = FALSE}
+df <- as.data.table(read_csv("small_test.csv", show_col_types = FALSE)) |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+predictions <- readRDS("MODEL/outlier_detection/grid_predictions.rds")
+standard_errors <- readRDS("MODEL/outlier_detection/grid_standard_errors.rds")
+all_candidates <- readRDS("MODEL/outlier_detection/grid_candidates.rds")
+best_combos <- readRDS("MODEL/outlier_detection/grid_best_params.rds")
+
+for (ein in unique(df$EIN2)){
+      all_years <- (df |> filter(EIN2 == ein))$YEAR + 1
+      p <- plot_true_vs_pred(df, ein, predictions[[ein]], standard_errors[[ein]], all_years, all_candidates[[ein]], best_combos[ein,], label = ein)
+      print(p)
+}
 ```
 
 

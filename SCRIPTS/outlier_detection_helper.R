@@ -28,7 +28,7 @@ get_likelihood <- function(row, dist_mat, rho, all_years, data, compute.sigma = 
             mat_cov <- Matern(d = dist_mat, smoothness = row[1], range = rho, phi = 1) + diag(row[2], dim(dist_mat)[1])
             
             #Compute sigma^2
-            sigma.squared <- (1/length(data)) * (data %*% solve(mat_cov[all_years, all_years]) %*% data)[1,1]
+            sigma.squared <- (1/length(data)) * (data %*% solve(mat_cov[all_years, all_years]) %*% data)[1,1] #chol2inv(chol(mat_cov[all_years, all_years])) solve(mat_cov[all_years, all_years])
             
             # Compute likelihood
             likelihood <- dmvnorm(data, 
@@ -46,6 +46,21 @@ get_likelihood <- function(row, dist_mat, rho, all_years, data, compute.sigma = 
                                   log = TRUE)
       }
       
+      return(likelihood)
+}
+
+get_likelihood_sigma <- function(row, dist_mat, rho, all_years, data){
+      # Compute Matérn Covariance Matrix
+      mat_cov <- Matern(d = dist_mat, smoothness = row[1], range = rho, phi = 1) + diag(row[2], dim(dist_mat)[1])
+      
+      #Compute sigma^2
+      sigma.squared <- (1/length(data)) * (data %*% chol2inv(chol(mat_cov[all_years, all_years])) %*% data)[1,1] #chol2inv(chol(mat_cov[all_years, all_years])) solve(mat_cov[all_years, all_years])
+      
+      # Compute likelihood
+      likelihood <- dmvnorm(data, 
+                            mean = rep(0, length(data)), 
+                            sigma = sigma.squared * mat_cov[all_years, all_years],
+                            log = TRUE)
       return(likelihood)
 }
 
