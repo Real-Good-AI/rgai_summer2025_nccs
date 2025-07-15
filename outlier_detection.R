@@ -12,22 +12,23 @@ source("SCRIPTS/outlier_detection_helper.R")
 #############################################################################################
 # Preparing data
 #############################################################################################
-df <- as.data.table(read_csv("MODEL/validate.csv", show_col_types = FALSE)) |>
+df <- readRDS("MODEL/df.rds") |>
       group_by(EIN2) |>
-      filter(!is.na(LOG_REV)) |>
-      mutate(LOG_REV = LOG_REV - mean(LOG_REV), DATA_COUNT = n()) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
       ungroup()
 
 df <- df |> filter(DATA_COUNT >= 5)
 
-orgs.no.change <- readRDS("MODEL/outlier_detection/full_validation/orgs_reported_same.rds")
+orgs.no.change <- readRDS("MODEL/orgs_reported_same.rds")
 all.orgs <- unique(df$EIN2) 
 all.orgs <- setdiff(all.orgs, orgs.no.change) #1:100000, 100001:200000, 200001:length(all.orgs)
 
-df <- df |> filter(EIN2 %in% all.orgs)
-df.1 <- df |> filter(EIN2 %in% all.orgs[1:100000]) # 3.05 hours
-df.2 <- df |> filter(EIN2 %in% all.orgs[100001:200000]) # 3.54 hours
-df.3 <- df |> filter(EIN2 %in% all.orgs[200001:length(all.orgs)]) # 11.06 hours
+# Previous times: 3hrs, 3.5hrs, 11 hrs 
+df <- df |> filter(EIN2 %in% all.orgs[1:100000]) 
+# df <- df |> filter(EIN2 %in% all.orgs[100001:200000]) 
+# df <- df |> filter(EIN2 %in% all.orgs[200001:300000]) 
+# df <- df |> filter(EIN2 %in% all.orgs[300001:400000]) 
+# df <- df |> filter(EIN2 %in% all.orgs[400001:length(all.orgs)]) 
 
 # distance matrix of years
 dist_mat <- as.matrix(dist(sort(unique(df$YEAR)), diag=TRUE, upper=TRUE))
@@ -44,7 +45,7 @@ rm(df)
 #############################################################################################
 # Hyperparameter Optimization
 #############################################################################################
-cluster <- makeCluster(6)
+cluster <- makeCluster(7)
 registerDoParallel(cluster)
 
 start.time <- Sys.time() # Total: 17.65 hrs
@@ -73,7 +74,7 @@ res <- foreach(ein = unique(df$EIN2), .combine = 'rbind', .packages = c("dplyr",
 print(Sys.time() - start.time)
 stopCluster(cl = cluster)
 
-# saveRDS(res, "MODEL/outlier_detection/full_results_3.rds")
+# saveRDS(res, "PREPROCESSING/outlier_results_1.rds")
 
 #############################################################################################
 # Outlier Detection
@@ -88,7 +89,7 @@ stopCluster(cl = cluster)
 # res <- readRDS("MODEL/outlier_detection/full_results_3.rds")
 
 # Looping over all organizations; 100K took 1.5 hrs w/out parallel, 18min w/ parallel; 42min for #3  
-cluster <- makeCluster(6)
+cluster <- makeCluster(7)
 registerDoParallel(cluster)
 
 mu_1 <- 0
