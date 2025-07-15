@@ -640,10 +640,7 @@ for (ein in eins_to_check){
       print(p)
 }
 ```
-Descriptive: What are the types of nonprofits that get spikes versus dips (NTEE, geographic region, overall size)?
-```{r}
 
-```
 
 
 # Latest Results

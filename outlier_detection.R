@@ -12,7 +12,7 @@ source("SCRIPTS/outlier_detection_helper.R")
 #############################################################################################
 # Preparing data
 #############################################################################################
-df <- as.data.table(read_csv("MODEL/training.csv", show_col_types = FALSE)) |>
+df <- as.data.table(read_csv("MODEL/validate.csv", show_col_types = FALSE)) |>
       group_by(EIN2) |>
       filter(!is.na(LOG_REV)) |>
       mutate(LOG_REV = LOG_REV - mean(LOG_REV), DATA_COUNT = n()) |>
@@ -20,10 +20,11 @@ df <- as.data.table(read_csv("MODEL/training.csv", show_col_types = FALSE)) |>
 
 df <- df |> filter(DATA_COUNT >= 5)
 
-orgs.no.change <- readRDS("MODEL/outlier_detection/orgs_reported_same.rds")
+orgs.no.change <- readRDS("MODEL/outlier_detection/full_validation/orgs_reported_same.rds")
 all.orgs <- unique(df$EIN2) 
 all.orgs <- setdiff(all.orgs, orgs.no.change) #1:100000, 100001:200000, 200001:length(all.orgs)
 
+df <- df |> filter(EIN2 %in% all.orgs)
 df.1 <- df |> filter(EIN2 %in% all.orgs[1:100000]) # 3.05 hours
 df.2 <- df |> filter(EIN2 %in% all.orgs[100001:200000]) # 3.54 hours
 df.3 <- df |> filter(EIN2 %in% all.orgs[200001:length(all.orgs)]) # 11.06 hours
@@ -47,8 +48,8 @@ cluster <- makeCluster(6)
 registerDoParallel(cluster)
 
 start.time <- Sys.time() # Total: 17.65 hrs
-res <- foreach(ein = unique(df.3$EIN2), .combine = 'rbind', .packages = c("dplyr", "fields", "mvtnorm"), .verbose = TRUE) %dopar% {
-      df.sub <- filter(df.3, EIN2==ein)
+res <- foreach(ein = unique(df$EIN2), .combine = 'rbind', .packages = c("dplyr", "fields", "mvtnorm"), .verbose = TRUE) %dopar% {
+      df.sub <- filter(df, EIN2==ein)
       tst <- setNames(data.frame(matrix(ncol = 5, nrow = 0)), c("EIN", "nu", "nugget", "likelihood", "trial"))
       likelihood_wrapper <- function(pars.vec){
             return(-1 * get_likelihood_sigma(row = pars.vec,
