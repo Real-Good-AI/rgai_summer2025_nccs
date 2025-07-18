@@ -1,0 +1,1074 @@
+---
+title: "Data Cleaning and Pre-Processing"
+author: "Mayleen"
+date: "2025-07-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, eval = FALSE)
+```
+
+# Downloading Data
+```{r}
+source("download_data.R")
+tscope_values <- c("501ce") # Download files from Tax Exempt Types in this list; possible values: "501c3", "501ce" 
+fscope_values <- c("-pz") # Download files from IRS 990 Form Scope in this list; possible values: "-pz", "-pc", "-pf"
+year_values <- seq(from = 1989, to = 2022, by = 1) # Download files from years in this list
+download_CORE(tscope_values, fscope_values, year_values)
+```
+
+# Loading Data 
+```{r}
+data_dict <- read.csv("DATA_DICTS/CORE-HRMN_dd.csv")
+head(data_dict)
+#glimpse(data_dict)
+#summarise(data_dict)
+```
+
+## Unified BMF Data
+```{r}
+unified_bmf <- read_csv("CORE/BMF_UNIFIED_V1.1.csv")
+head(unified_bmf)
+#glimpse(unified_bmf)
+#summarise(unified_bmf)
+```
+
+# Cleaning: Checking for duplicates
+- in bmf, how many of those duplicates have the same organization name? 
+- in bmf duplicates, what are the patterns in which columns they differ in value?
+- figure out if we care about that info--if its not info we care about, then we can keep one of the two without worry?
+- do I need to merge right now? How important is the info in BMF file to current task?
+
+## Exploring duplicates: BMF
+Goal: Script to check what kinds of columns are different in duplicate rows
+
+Return a data frame with the following variables:
+     - col_name : variable name from data file
+     - instances : number of times that a duplicate row differs in this column
+
+SEE FILE: reviewing_duplicate_EIN.R for this script
+
+```{r, eval = FALSE}
+library(cchsflow) # gives is_equal function
+
+# differences in logical comparison operators
+test1 <- c(NA, TRUE, FALSE, TRUE, FALSE, TRUE)
+test2 <- c(NA, NA, NA, TRUE, FALSE, FALSE)
+test3 <- c(NA, NA, NA, TRUE, FALSE, FALSE)
+test_compare2 <- test1 == test2
+test_compare3 <- ((test1 == test2) & (test1 == test3) & (test2 == test3))
+
+test_compare2_is <- is_equal(test1, test2)
+test_compare3_is <- (is_equal(test1, test2) & is_equal(test1, test3) & is_equal(test2,test3))
+```
+
+
+```{r, eval = FALSE}
+library(tidyverse)
+library(data.table)
+library(dplyr)
+source("reviewing_duplicate_EIN.R")
+
+unified_bmf <- read.csv("CORE/BMF_UNIFIED_V1.1.csv")
+  
+vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_REVENUE_RECENT", "F990_TOTAL_INCOME_RECENT", "F990_TOTAL_ASSETS_RECENT", "CENSUS_STATE_ABBR", "CENSUS_COUNTY_NAME", "ORG_YEAR_FIRST", "ORG_YEAR_LAST") # "NTEE_IRS", "NCCS_LEVEL_2", "NCCS_LEVEL_3", "ORG_NAME_SEC", "ORG_NAME_CURRENT", "ORG_YEAR_FIRST", "ORG_YEAR_LAST", "ORG_YEAR_COUNT"
+
+# Replace any empty strings '' with NA values
+unified_bmf <- unified_bmf |> mutate_if(is.character, ~na_if(.,''))
+
+# Remove any records corresponding to "EIN-00-0000000" since that's an impossible EIN
+unified_bmf <- unified_bmf[!(unified_bmf$EIN2 %in% "EIN-00-0000000"),]
+
+# Information about the repeated EIN2 values
+info_unified_bmf <- duplicateEIN2_info(unified_bmf)
+info_unified_bmf_tab <- info_unified_bmf$info
+head(info_unified_bmf_tab)
+
+bmf_subset <- unified_bmf[vars_to_keep]
+bmf_subset$NTEEV2 <- substr(bmf_subset$NTEEV2, 1, 3)
+
+```
+
+
+```{r, eval = FALSE}
+# drop rows with EIN = 00-0000000 
+bmf_subset <- bmf_subset[!(bmf_subset$EIN2 %in% "EIN-00-0000000"),]
+n_before_removing_dupes <- nrow(bmf_subset)
+
+# get list of EIN2 that are repeated
+dupe_list <- bmf_subset |>
+  count(EIN2) |>
+  filter(n > 1)
+
+n_dupes <- nrow(dupe_list)
+
+# info on repeated EINs before dropping duplicated rows
+# bmf_dupe_info_before_rem_dup <- duplicateEIN2_info(bmf_subset)
+# head(bmf_dupe_info_before_rem_dup, 10)
+
+# remove any rows that are exactly duplicated
+bmf_sub_table <- data.table(bmf_subset)
+setkeyv(bmf_sub_table, "EIN2")
+uniq_bmf_subset <- subset(unique(bmf_sub_table))
+n_after_removing_dupes <- nrow(uniq_bmf_subset)
+
+# info on repeated EINs after dropping duplicated rows
+bmf_dupe_info <- duplicateEIN2_info(uniq_bmf_subset)
+head(bmf_dupe_info, 10)
+```
+
+```{r, eval = FALSE}
+library(dplyr)
+
+# Find duplicates and only keep rows with duplicate EIN2
+ein2_dups <- uniq_bmf_subset %>%
+  group_by(EIN2) %>%
+  filter(n() > 1)
+```
+
+## Exploring duplicates: CORE-PZ
+
+Download the data and get info on duplicate EIN
+```{r, eval = FALSE}
+library(tidyverse)
+library(data.table)
+library(dplyr)
+source("reviewing_duplicate_EIN.R")
+source("clean_helper.R")
+
+CORE_1989 <- as.data.frame(read_csv("CORE/CORE-1989-501C3-CHARITIES-PZ-HRMN.csv"))
+CORE_2014 <- as.data.frame(read_csv("CORE/CORE-2014-501C3-CHARITIES-PZ-HRMN.csv"))
+CORE_2021 <- as.data.frame(read_csv("CORE/CORE-2021-501C3-CHARITIES-PZ-HRMN.csv"))
+CORE_2022 <- as.data.frame(read_csv("CORE/CORE-2022-501C3-CHARITIES-PZ-HRMN.csv"))
+
+CORE_1989 <- CORE_1989 |> mutate_if(is.character, ~na_if(.,''))
+dupes_CORE_1989 <- dupes(CORE_1989)
+info1989 <- duplicateEIN2_info(CORE_1989, dupes_CORE_1989$dupes_groups) |> filter(num_differences != 0)
+
+CORE_2014 <- CORE_2014 |> mutate_if(is.character, ~na_if(.,''))
+dupes_CORE_2014 <- dupes(CORE_2014)
+info2014 <- duplicateEIN2_info(CORE_2014, dupes_CORE_2014$dupes_groups) |> filter(num_differences != 0)
+
+CORE_2021 <- CORE_2021 |> mutate_if(is.character, ~na_if(.,''))
+dupes_CORE_2021 <- dupes(CORE_2021)
+info2021 <- duplicateEIN2_info(CORE_2021, dupes_CORE_2021$dupes_groups) |> filter(num_differences != 0)
+
+CORE_2022 <- CORE_2022 |> mutate_if(is.character, ~na_if(.,''))
+dupes_CORE_2022 <- dupes(CORE_2022)
+info2022 <- duplicateEIN2_info(CORE_2022, dupes_CORE_2022$dupes_groups) |> filter(num_differences != 0)
+```
+
+Get information on missing data
+```{r}
+# How much data is missing and where?
+na1989 <- na_counts_df(CORE_1989)
+na2014 <- na_counts_df(CORE_2014)
+na2021 <- na_counts_df(CORE_2021)
+na2022 <- na_counts_df(CORE_2022)
+
+# how many duplicate EIN2?
+nrow(dupes_CORE_1989$dupes) / nrow(CORE_1989) # ~15K, 0.1091
+nrow(dupes_CORE_2014$dupes) / nrow(CORE_2014) # ~13K, 0.0369
+nrow(dupes_CORE_2021$dupes) / nrow(CORE_2021) # 361, 0.00096
+nrow(dupes_CORE_2022$dupes) / nrow(CORE_2022) # 6, 0.00012
+```
+
+Which variables correspond to too much missing data? Which variables are relevant outcomes?
+```{r}
+# Create list of variable names where data is missing for more than half the records in any dataframe
+data_list <- list(na1989, na2014, na2021, na2022)
+cols_to_drop <- c()
+num_records <- c()
+
+for (dat in data_list){
+    gt50 <- dat |> filter(percent > 0.5)
+    cols_to_drop <- union(cols_to_drop, gt50[,1])
+    num_records <- c(num_records, c(nrow(gt50)))
+}
+
+# 990EZ: Part 2 line 25
+# 990: Part 1 line 20 & Part 10 line 16
+asset_vars <- c("F9_10_ASSET_TOT_BOY", "F9_10_ASSET_TOT_EOY")
+
+# 990EZ: Part 1 line 9
+# 990: Part 1 line 12
+revenue_vars <- c("F9_01_REV_TOT_CY", "F9_08_REV_TOT_TOT")
+
+# 990EZ: Part 1 line 17
+# 990: Part 1 line 18
+expenses_vars <- c("F9_01_EXP_TOT_CY")
+
+# 990EZ: Part 1 lines 11-12 & Part 6 line 50 cols c-e
+# 990: Part 1 lines 14-15 & Part 9 lines 4-10
+# Note, could not find vars corresponding to EZ-Part01-12, EZ-Part06-50-d, 990-Part01-15
+benefits_vars <- c("F9_01_EXP_BEN_PAID_MEMB_CY","F9_07_COMP_DTK_COMP_ORG", "F9_07_COMP_DTK_COMP_OTH", "F9_09_EXP_BEN_PAID_MEMB_TOT", "F9_09_EXP_COMP_DTK_TOT", "F9_09_EXP_COMP_DSQ_PERS_TOT", "F9_09_EXP_OTH_SAL_WAGE_TOT", "F9_09_EXP_PENSION_CONTR_TOT", "F9_09_EXP_OTH_EMPL_BEN_TOT", "F9_09_EXP_PAYROLL_TAX_TOT")
+
+all_outcome_vars <- c(asset_vars, revenue_vars, expenses_vars, benefits_vars)
+
+# 
+intersect(all_outcome_vars, cols_to_drop)
+```
+
+## Exploring Duplicates: CORE-PC
+Download data
+```{r}
+source("download_data.R")
+tscope_values <- c("501c3") # Download files from Tax Exempt Types in this list; possible values: "501c3", "501ce" 
+fscope_values <- c("-pc") # Download files from IRS 990 Form Scope in this list; possible values: "-pz", "-pc", "-pf"
+year_values <- seq(from = 2012, to = 2022, by = 1) # Download files from years in this list
+download_CORE(tscope_values, fscope_values, year_values)
+```
+
+Load data
+```{r}
+library(readr)
+library(tidyverse)
+library(data.table)
+library(dplyr)
+source("reviewing_duplicate_EIN.R")
+source("clean_helper.R")
+
+year_values <- seq(from = 2018, to = 2021, by = 1)
+file_name_tag <- "-501C3-CHARITIES-PC-HRMN.csv"
+file_dir <- "CORE/pc/CORE-"
+
+# load data into environment
+for (i in year_values){
+  filename <- paste(file_dir, i, file_name_tag, sep = "")
+  varname <- paste("core", i, sep = "")
+  assign(varname, as.data.frame(read_csv(filename)))
+}
+
+# replace empty strings with NAs
+for (i in year_values){
+  varname <- paste("core", i, sep = "")
+  dat <- get(varname) |> mutate_if(is.character, ~na_if(.,''))
+  assign(varname, dat)
+}
+```
+
+Get info on duplicate EIN
+```{r}
+# get list of duplicate EIN plus data frame grouped by each EIN dupe
+for (i in year_values){
+  varname_load <- paste("core", i, sep = "")
+  dat <- dupes(get(varname_load)) 
+  varname <- paste("dupes", i, sep = "")
+  assign(varname, dat)
+}
+
+# get information about duplicates
+for (i in year_values){
+  varname_load <- paste("core", i, sep = "")
+  varname_dupes <- paste("dupes", i, sep = "")
+  dat <- duplicateEIN2_info(get(varname_load), get(varname_dupes)$dupes_groups) |>
+    filter(num_differences != 0)
+  varname <- paste("info", i, sep = "")
+  assign(varname, dat)
+}
+```
+
+Information on missing values
+```{r}
+# How much data is missing and where?
+for (i in year_values){
+  varname_load <- paste("core", i, sep = "")
+  varname <- paste("na", i, sep = "")
+  assign(varname, na_counts_df(get(varname_load)))
+}
+
+
+# how many duplicate EIN2? 
+for (i in year_values){
+  varname_load <- paste("dupes", i, sep = "")
+  varname <- paste("core", i, sep = "")
+  n1 <- nrow(get(varname_load)$dupes)
+  n2 <- nrow(get(varname))
+  print(paste("Year:", i, ", Num dupes:", n1, ", Total num:", n2, ", Prop:", n1/n2, sep = " "))
+}
+```
+
+```{r}
+# Create list of variable names where data is missing for more than half the records in any dataframe
+cols_to_drop <- c()
+num_records <- c()
+
+for (i in year_values){
+  varname_load <- paste("na", i, sep = "")
+  dat <- get(varname_load) |> filter(percent > 0.5)
+  cols_to_drop <- union(cols_to_drop, dat[,1])
+  num_records <- c(num_records, c(nrow(dat)))
+}
+```
+
+Columns corresponding to outcome variables
+```{r}
+# 990EZ: Part 2 line 25
+# 990: Part 1 line 20 & Part 10 line 16
+asset_vars <- c("F9_10_ASSET_TOT_BOY") # "F9_10_ASSET_TOT_EOY" missing too often
+
+# 990EZ: Part 1 line 9
+# 990: Part 1 line 12
+revenue_vars <- c("F9_01_REV_TOT_CY") # "F9_08_REV_TOT_TOT" missing too often
+
+# 990EZ: Part 1 line 17
+# 990: Part 1 line 18
+expenses_vars <- c("F9_01_EXP_TOT_CY")
+
+# 990EZ: Part 1 lines 11-12 & Part 6 line 50 cols c-e
+# 990: Part 1 lines 14-15 & Part 9 lines 4-10
+# Note, could not find vars corresponding to EZ-Part01-12, EZ-Part06-50-d, 990-Part01-15
+benefits_vars <- c("F9_01_EXP_BEN_PAID_MEMB_CY","F9_07_COMP_DTK_COMP_ORG", "F9_07_COMP_DTK_COMP_OTH", "F9_09_EXP_BEN_PAID_MEMB_TOT", "F9_09_EXP_COMP_DTK_TOT", "F9_09_EXP_COMP_DSQ_PERS_TOT", "F9_09_EXP_OTH_SAL_WAGE_TOT", "F9_09_EXP_PENSION_CONTR_TOT", "F9_09_EXP_OTH_EMPL_BEN_TOT", "F9_09_EXP_PAYROLL_TAX_TOT")
+
+all_outcome_vars <- c(asset_vars, revenue_vars, expenses_vars, benefits_vars)
+
+# Are any outcome variables missing in over 50% of the data from one of the years?
+intersect(all_outcome_vars, cols_to_drop) #F9_09_EXP_COMP_DTK_TOT : Part9Line5, F9_09_EXP_OTH_SAL_WAGE_TOT : Part9Line7, F9_09_EXP_PAYROLL_TAX_TOT : Part9Line10
+```
+
+Data cleaning: drop some missing values & duplicates
+```{r}
+# drop columns that have too much missing data
+for (i in year_values){
+  varname <- paste("core", i, sep = "")
+  dat <- get(varname) 
+  assign(varname, dat[, !(names(dat) %in% cols_to_drop)])
+}
+
+# remove any duplicate rows
+for (i in year_values){
+  varname <- paste("core", i, sep = "")
+  assign(varname, get(varname) |> distinct())
+}
+
+# How much data is missing and where?
+for (i in year_values){
+  varname_load <- paste("core", i, sep = "")
+  varname <- paste("na", i, sep = "")
+  assign(varname, na_counts_df(get(varname_load)))
+}
+```
+
+```{r}
+# For any repeated EIN2 rows, keep row with highest/latest F9_00_TAX_PERIOD_END_DATE
+# Reasoning: most repeated EIN2 have a discrepancy in this column, should take the one filed with latest date! About 12 have the same date, in which case one is chosen arbitrarily (due to the "tie")
+for (i in year_values){
+  varname <- paste("core", i, sep = "")
+  dat <- get(varname) %>%
+    arrange(desc(F9_00_TAX_PERIOD_END_DATE)) %>% # sort rows by date in descending order (latest to oldest)
+    distinct(EIN2, .keep_all = TRUE)   # keep first row per EIN2 only
+  assign(varname, dat)
+}
+```
+Double check if we removed all the duplicates!
+```{r}
+# get list of duplicate EIN plus data frame grouped by each EIN dupe
+for (i in year_values){
+  varname_load <- paste("core", i, sep = "")
+  dat <- dupes(get(varname_load)) 
+  varname <- paste("dupes", i, sep = "")
+  assign(varname, dat)
+}
+
+# how many duplicate EIN2? 
+for (i in year_values){
+  varname_load <- paste("dupes", i, sep = "")
+  varname <- paste("core", i, sep = "")
+  n1 <- nrow(get(varname_load)$dupes)
+  n2 <- nrow(get(varname))
+  print(paste("Year:", i, ", Num dupes:", n1, ", Total num:", n2, ", Prop:", n1/n2, sep = " "))
+}
+```
+Which columns are not common across all data files?
+```{r}
+col_set_diff <- setdiff(names(core2018), names(core2021))
+intersect(all_outcome_vars, col_set_diff)
+
+# drop columns that are not represented in each dataset
+for (i in year_values){
+  varname <- paste("core", i, sep = "")
+  dat <- get(varname) 
+  assign(varname, dat[, !(names(dat) %in% col_set_diff)])
+}
+
+# add year column to each datafile
+for (i in year_values){
+  varname <- paste("core", i, sep = "")
+  dat <- get(varname)
+  dat$year <- i
+  assign(varname, dat)
+}
+
+# add a year column to each data frame
+long_core <- lapply(year_values, function(yr) {
+  df <- get(paste("core", yr, sep=""))  # Get the data frame from the environment
+  df$year <- yr
+  return(df)
+})
+
+# stack the rows from each data frame on top of each other (to keep in long format)
+long_core <- as.data.table(bind_rows(long_core))
+
+# Merge with metadata from Business Master File (BMF)
+bmf <- as.data.table(read_csv("CLEAN/cleanBMF.csv"))
+merged_df <- long_core |> left_join(bmf, join_by(EIN2))
+```
+
+# Cleaning BMF files using script
+```{r}
+# Clean Business Master File (BMF)
+vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_ASSETS_RECENT", "CENSUS_STATE_ABBR", "CENSUS_COUNTY_NAME", "ORG_YEAR_FIRST", "ORG_YEAR_LAST", "LATITUDE", "LONGITUDE", "CENSUS_CBSA_FIPS")
+thresh <- 0.5*length(vars_to_keep) # Any rows with more NA values than this threshold will be dropped
+clean_BMF(vars_to_keep, thresh)
+```
+
+# Cleaning CORE files using script
+```{r, warning=FALSE}
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+source("SCRIPTS/clean_CORE.R")
+source("SCRIPTS/clean_helper.R")
+
+outcome_vars <- c("F9_01_EXP_TOT_CY", "F9_01_REV_TOT_CY", "F9_08_REV_TOT_TOT")
+predictor_vars <- c("F9_00_EXEMPT_STAT_501C3_X", "TAX_YEAR")
+all_relevant_vars <- c(outcome_vars, predictor_vars, "EIN2", "F9_00_TAX_PERIOD_END_DATE")
+
+prop_NA <- 0.5 # If a column has more than this fraction of missing values, warning message prints
+year_values <- seq(from = 1989, to = 2022, by = 1)
+file_name_tag <- "-501C3-CHARITIES-PZ-HRMN.csv" 
+file_dir <- "CORE/pz/CORE-"
+save_dir <- "CLEAN/pz/"
+
+#clean_CORE(all_relevant_vars, year_values, file_name_tag, file_dir, save_dir, prop_NA)
+
+filename <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[length(year_values)], ".csv", sep="")
+df <- as.data.table(read_csv(filename, show_col_types = FALSE)) %>% mutate_if(is.character, ~na_if(.,''))
+df_na <- na_counts_df(df)
+
+df <- df |> mutate(LOG_TOT_REV = log(TOT_REV))
+```
+
+If later you need to rework the final merged df but are okay with how the CORE files were saved after being cleaned
+```{r}
+year_values <- seq(from = 1989, to = 2022, by = 1)
+save_dir <- "CLEAN/pz/"
+
+long_core <- as.data.frame(read_csv("CLEAN/pz/core1989.csv", show_col_types = FALSE))
+for (i in year_values){
+      varname <- paste("core", i, sep = "")
+      filename <- paste(save_dir, varname, ".csv", sep = "")
+      print(filename)
+      long_core <- as.data.table(bind_rows(long_core, as.data.frame(read_csv(filename, show_col_types = FALSE))))
+}
+```
+
+# Pre-processing
+```{r, echo=FALSE, eval=TRUE, message=FALSE}
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(ggthemes)
+library(ggplot2)
+library(purrr)
+```
+
+## Load Data, add Log revenue, shifted year, data count columns and drop records with missing revenue values
+```{r, echo=TRUE, message=FALSE}
+#outcome_vars <- c("F9_10_ASSET_TOT_BOY", "F9_10_ASSET_TOT_EOY", "F9_01_REV_TOT_CY", "F9_08_REV_TOT_TOT")
+#predictor_vars <- c("F9_00_EXEMPT_STAT_501C3_X", "TAX_YEAR")
+#all_relevant_vars <- c(outcome_vars, predictor_vars, "EIN2", "F9_00_TAX_PERIOD_END_DATE")
+
+year_values <- seq(from = 1989, to = 2022, by = 1)
+save_dir <- "CLEAN/pz/"
+
+filename <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[length(year_values)], ".csv", sep="")
+
+# Read in data and do some preprocessing
+df <- as.data.table(read_csv(filename, show_col_types = FALSE)) %>% 
+      mutate_if(is.character, ~na_if(.,'')) |> 
+      filter(TAX_YEAR != 2022) |> 
+      distinct()
+
+df <- df |> mutate(LOG_REV = log(TOT_REV + 1),
+             YEAR = TAX_YEAR - 1989,
+             TOT_REV = TOT_REV+1)
+
+
+df <- df |> group_by(EIN2) |>
+      filter(!is.na(LOG_REV)) |> # drops ~45K records
+      mutate(DATA_COUNT = n()) |>
+      ungroup()
+
+saveRDS(df, "PREPROCESSING/df.rds")
+```
+
+
+## Finding Orgs that reported same log_rev every year
+```{r}
+table(df$DATA_COUNT)
+quantile(df$DATA_COUNT, probs = seq(0,1,0.1))
+
+df <- df |> filter(DATA_COUNT >= 5) # Drops about 600K records - at some point should do analysis on this
+
+# center the log revenue
+df <- df |>
+      group_by(EIN2) |>
+      mutate(LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+# For each org, get indicator of whether or not they reported same log_rev value each year
+df.sub <- df |> group_by(EIN2) |> summarize(all0 = all(LOG_REV == 0))
+
+df <- left_join(df, df.sub, by = "EIN2")
+
+table(df.sub$all0)
+
+df.sub <- df |> filter(all0 == TRUE)
+
+orgs.no.change <- unique(df.sub$EIN2)
+
+saveRDS(orgs.no.change, "PREPROCESSING/orgs_reported_same.rds")
+```
+
+## Dropping Orgs with less than 4 records - Analysis (TODO - shift to less than 5 and do analysis on full data)
+```{r}
+# Add data_count column, which for an organization is the length of their time series, i.e. the number of years of data we have for them
+train.set <- as.data.table(read_csv("MODEL/training.csv", show_col_types = FALSE)) |>
+      group_by(EIN2) |>
+      mutate(DATA_COUNT = n()) |>
+      ungroup()
+
+# Since there is only one DATA_COUNT per org, we only need to keep one record per org
+df <- train.set |> group_by(EIN2) |> slice(1) |> ungroup()
+```
+
+```{r}
+# Spread of records corresponding to a particular data count
+quantile(train.set$DATA_COUNT, probs = seq(0,1,0.1))
+
+# Spread of organizations with a particular data count
+quantile(df$DATA_COUNT, probs = seq(0,1,0.1))
+
+df |> ggplot(mapping = aes(x = DATA_COUNT)) +
+      geom_bar() +
+      labs(x = "Length of Time Series", y = "Number of Organizations", title = "How many years of data do we have for each org?") +
+      scale_x_continuous(breaks=seq(0,30,2))
+```
+
+```{r}
+source("SCRIPTS/plotting_helper.R")
+ntee_labs <- c("Arts, Culture, & Humanities", "Education (minus Universities)", "Environment & Animals", "Health (minus Hospitals)", "Human Services", "Hospitals", "International, Foreign Affairs", "Mutual/Membership Benefit", "Public, Societal Benefit", "Religion Related", "Universities", "Other")
+
+print(plot_data_distributions(df = train.set, column = NTEE, tot = nrow(train.set), 
+                              title = "Proportion of total RECORDS by subsector") + scale_x_discrete(labels = ntee_labs) +
+            theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
+      )
+print(plot_data_distributions(df = df, column = NTEE, tot = nrow(df), title = "Proportion of total ORGANIZATIONS by subsector") + scale_x_discrete(labels = ntee_labs) +
+                  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
+      )
+print(plot_data_distributions(df = train.set |> filter(DATA_COUNT < 5), column = NTEE, tot = nrow(train.set), 
+                              title = "Proportion of total RECORDS by subsector, from Time Series with < 5 years") + scale_x_discrete(labels = ntee_labs) +
+                  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
+      )
+print(plot_data_distributions(df = df |> filter(DATA_COUNT < 5), column = NTEE, tot = nrow(df),
+                              title = "Proportion of total ORGANIZATIONS by subsector, from Time Series with < 5 years") + scale_x_discrete(labels = ntee_labs) +
+                  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
+      )
+```
+
+```{r}
+size_labs <- c("Under $100,000", "$100,000 - $499,999", "$500,000 - $999,999", "$1 Million - $4.99 Million", "$5 Million - $9.99 Million", "Above $10 Million")
+
+print(plot_data_distributions(df = train.set |> mutate(SIZE.CAT = factor(SIZE.CAT)), column = SIZE.CAT, tot = nrow(train.set),
+                              title = "Proportion of total RECORDS by size") + scale_x_discrete(labels = size_labs) +
+                  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
+      )
+print(plot_data_distributions(df = df |> mutate(SIZE.CAT = factor(SIZE.CAT)), column = SIZE.CAT, tot = nrow(df),
+                              title = "Proportion of total ORGANIZATIONS by size") + scale_x_discrete(labels = size_labs) +
+                  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
+      )
+print(plot_data_distributions(df = train.set |> mutate(SIZE.CAT = factor(SIZE.CAT)) |> filter(DATA_COUNT < 5), column = SIZE.CAT, tot = nrow(train.set),
+                              title = "Proportion of total RECORDS by size, from Time Series with < 5 years") + scale_x_discrete(labels = size_labs) +
+                  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
+      )
+print(plot_data_distributions(df = df |> mutate(SIZE.CAT = factor(SIZE.CAT)) |> filter(DATA_COUNT < 5), column = SIZE.CAT, tot = nrow(df),
+                              title = "Proportion of total ORGANIZATIONS by size, from Time Series with < 5 years") + scale_x_discrete(labels = size_labs) +
+                  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
+      )
+```
+
+
+```{r}
+size_labs <- c("Under $100,000", "$100,000 - $499,999", "$500,000 - $999,999", "$1 Million - $4.99 Million", "$5 Million - $9.99 Million", "Above $10 Million")
+
+print(plot_data_distributions(df = train.set |> mutate(SIZE.CAT = factor(SIZE.CAT)) |> filter(DATA_COUNT < 4), column = SIZE.CAT, tot = nrow(train.set),
+                              title = "Proportion of total RECORDS by size, from Time Series with < 4 years") + scale_x_discrete(labels = size_labs) +
+                  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
+      )
+print(plot_data_distributions(df = df |> mutate(SIZE.CAT = factor(SIZE.CAT)) |> filter(DATA_COUNT < 4), column = SIZE.CAT, tot = nrow(df),
+                              title = "Proportion of total ORGANIZATIONS by size, from Time Series with < 4 years") + scale_x_discrete(labels = size_labs) +
+                  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
+      )
+```
+
+```{r}
+print(plot_data_distributions(df = train.set, column = DIVISION, tot = nrow(train.set), 
+                              title = "Proportion of total RECORDS by Division") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9)))
+print(plot_data_distributions(df = df, column = DIVISION, tot = nrow(df), 
+                              title = "Proportion of total ORGANIZATIONS by Division") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9)))
+print(plot_data_distributions(df = train.set |> filter(DATA_COUNT < 5), column = DIVISION, tot = nrow(train.set), 
+                              title = "Proportion of total RECORDS by Division, from Time Series with < 5 years") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
+      )
+print(plot_data_distributions(df = df |> filter(DATA_COUNT < 5), column = DIVISION, tot = nrow(df),
+                              title = "Proportion of total ORGANIZATIONS by Division, from Time Series with < 5 years") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
+      )
+```
+
+
+### Final Preprossing: Outlier Removal and Removal of orgs with less than 4 years of data
+```{r}
+train.set <- as.data.table(read_csv("MODEL/training.csv", show_col_types = FALSE)) |>
+      group_by(EIN2) |>
+      mutate(DATA_COUNT = n()) |>
+      ungroup() |>
+      filter(DATA_COUNT >= 4)
+
+df.outliers <- readRDS("MODEL/outlier_detection/full/outlier_resids_DF.rds") |> select(EIN, Value, SIGN) |> rename(EIN2 = EIN, TAX_YEAR = Value)
+
+train.set <- train.set |> left_join(df.outliers, by = c("EIN2", "TAX_YEAR")) |>
+      mutate(pos.outlier = ifelse(SIGN == 1, 1, 0),
+             neg.outlier = ifelse(SIGN == -1, 1, 0)) |>
+      mutate(pos.outlier = replace_na(pos.outlier, 0),
+             neg.outlier = replace_na(neg.outlier, 0)) |>
+      select(-SIGN) 
+
+train.set <- train.set |> mutate(outlier = (pos.outlier + neg.outlier > 0))
+
+train.set <- train.set |> filter(outlier == FALSE) |> select(-pos.outlier, -neg.outlier, -outlier)
+
+# Redo the baseline/percent change calculation since outlier removal messed some of it up
+train.set <- train.set |>
+  group_by(EIN2) |>
+  arrange(TAX_YEAR) |>  # ensure years are sorted within group
+  mutate(BASELINE = last(TOT_REV)) |>
+  ungroup()
+
+# Add percent change column
+train.set <- train.set |> mutate(PER_CHANGE = (TOT_REV - BASELINE)/BASELINE)
+
+write_csv(train.set, "MODEL/training_processed.csv")
+```
+
+
+### Splitting data into training, validation, and test set
+```{r}
+# Split data into training, validation, and test sets
+# https://stackoverflow.com/questions/36068963/r-how-to-split-a-data-frame-into-training-validation-and-test-sets
+spec = c(train = .6, test = .2, validate = .2)
+
+g = sample(cut(
+  seq(nrow(df)), 
+  nrow(df)*cumsum(c(0,spec)),
+  labels = names(spec)
+))
+
+res = split(df, g)
+write_csv(as.data.table(res$train), "MODEL/training.csv")
+write_csv(as.data.table(res$test), "MODEL/test.csv")
+write_csv(as.data.table(res$validate), "MODEL/validate.csv")
+```
+## Outlier Flagging and Removal
+```{r}
+df <- readRDS("PREPROCESSING/df.rds")
+
+df <- df |> filter(DATA_COUNT >= 5) |>
+      group_by(EIN2) |>
+      mutate(LOG_REV.original = LOG_REV, LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+# Best Hyperparameters for each org
+res.parameters <- rbind(readRDS("PREPROCESSING/outlier_results_1.rds"),
+                        readRDS("PREPROCESSING/outlier_results_2.rds"),
+                        readRDS("PREPROCESSING/outlier_results_3.rds"),
+                        readRDS("PREPROCESSING/outlier_results_4.rds"),
+                        readRDS("PREPROCESSING/outlier_results_5.rds"), make.row.names = FALSE)
+saveRDS(res.parameters, "PREPROCESSING/best_parameters.rds")
+all.orgs.gp <-res.parameters$EIN
+
+# Results of Outlier Detection Scheme with Best Hyperparameters
+res.out.1 <- readRDS("PREPROCESSING/gp_res_1.rds")
+res.out.2 <- readRDS("PREPROCESSING/gp_res_2.rds")
+res.out.3 <- readRDS("PREPROCESSING/gp_res_3.rds")
+res.out.4 <- readRDS("PREPROCESSING/gp_res_4.rds")
+res.out.5 <- readRDS("PREPROCESSING/gp_res_5.rds")
+
+# Rename
+names(res.out.1) <- all.orgs.gp[1:100000]
+names(res.out.2) <- all.orgs.gp[100001:200000]
+names(res.out.3) <- all.orgs.gp[200001:300000]
+names(res.out.4) <- all.orgs.gp[300001:399999]
+names(res.out.5) <- all.orgs.gp[400000:length(all.orgs.gp)]
+
+# Get all candidates, first I have to extract the candidates sublist from each res.out object
+candidates <- c(lapply(res.out.1, function(x){x[["candidates"]]}),
+                lapply(res.out.2, function(x){x[["candidates"]]}),
+                lapply(res.out.3, function(x){x[["candidates"]]}),
+                lapply(res.out.4, function(x){x[["candidates"]]}),
+                lapply(res.out.5, function(x){x[["candidates"]]})
+                )
+
+# Filter out any orgs with no detected outliers
+candidates <- Filter(function(x) length(x) > 0, candidates)
+
+# Put into data frame
+df.candidates <- do.call(rbind, lapply(names(candidates), function(id) {
+  data.frame(EIN2 = id, TAX_YEAR = candidates[[id]])
+}))
+
+df.candidates <- df.candidates |> mutate(outlier = TRUE)
+saveRDS(df.candidates, "PREPROCESSING/candidate_outliers_df.rds")
+
+df <- df |> left_join(df.candidates , by = c("EIN2", "TAX_YEAR")) |>
+      mutate(outlier = replace_na(outlier, FALSE))
+
+table(df$outlier)
+
+# Remove outliers
+# df <- df |> filter(outlier == FALSE)
+
+saveRDS(df, "PREPROCESSING/df_orginal_processed.rds")
+```
+
+```{r}
+# Get all predictions
+predictions <- c(lapply(res.out.1, function(x){x[["predictions"]]}),
+                lapply(res.out.2, function(x){x[["predictions"]]}),
+                lapply(res.out.3, function(x){x[["predictions"]]}),
+                lapply(res.out.4, function(x){x[["predictions"]]}),
+                lapply(res.out.5, function(x){x[["predictions"]]})
+                )
+saveRDS(predictions, "PREPROCESSING/all_predictions.rds")
+
+rm(candidates, res.out.1, res.out.2, res.out.3, res.out.4, res.out.5)
+```
+
+
+## Creating "Full" Dataset
+```{r}
+# Step 1: Create full dataset skeleton 
+
+# Remove F9_10_ASSET_TOT_EOY because we aren't using it and don't have a way (right now) to impute for missing years
+df <- df |> select(-F9_10_ASSET_TOT_EOY)
+
+# Add in a flag to signal that this was data we originally had (i.e. not imputed)
+df <- df |> mutate(IMPUTE_STATUS = ifelse(!outlier, "original", "outlier"))
+
+# Create a sequence of all years
+all.years <- tibble(TAX_YEAR = 1989:2021)
+
+# Create all combinations of EIN and year
+df.full <- crossing(unique(df$EIN2), all.years) |> rename(EIN2 = "unique(df$EIN2)")
+
+# Join with the original dataframe
+df.full <- df.full |>
+  left_join(df |> select(EIN2, TAX_YEAR, TOT_REV, LOG_REV, LOG_REV.original), 
+            by = c("EIN2", "TAX_YEAR"))
+
+# Add in the other information, like NTEE Code, SIZE, location, etc; note this is invariant to year (in theory)
+org.info <- df |> select(-TOT_REV, -LOG_REV, -LOG_REV.original, -TAX_YEAR, -YEAR, -outlier, -IMPUTE_STATUS) |> distinct(.keep_all = FALSE)
+
+# For any repeated EIN2 rows, keep row with fewest NA values; when there are ties, it keeps the first one
+org.info <- org.info %>% arrange(rowSums(is.na(.))) |> distinct(EIN2, .keep_all = TRUE)
+    
+# Merge this with df.full to get those remaining columns
+df.full <- left_join(df.full, org.info, by = "EIN2")
+df.full <- left_join(df.full, df |> select(EIN2, TAX_YEAR, IMPUTE_STATUS), by = c("EIN2", "TAX_YEAR")) # get impute status
+df.full <- df.full |> mutate(IMPUTE_STATUS = replace_na(IMPUTE_STATUS, "imputed")) # replace missing impute status with "imputed" since we'll fill those in
+
+rm(all.years, org.info, df)
+```
+
+```{r}
+# Step 2: Impute missing years using the GP 
+
+# Get list where names are EIN and entry is list of years.to.predict, but ignore orgs that reported the same values each year (since prediction will just be that value)
+df <- readRDS("PREPROCESSING/df_orginal_processed.rds")
+df <- df |> select(EIN2, TAX_YEAR, ORG_YEAR_FIRST, ORG_YEAR_LAST, LOG_REV, LOG_REV.original)
+
+# Get observed years per organization
+years.observed <- df |>
+      distinct(EIN2, TAX_YEAR) |>
+      group_by(EIN2) |>
+      summarize(YEARS_OBSERVED = list(TAX_YEAR), .groups = "drop") |>
+      deframe()
+
+# Get first and last year per organization
+org_bounds <- df |>
+      group_by(EIN2) |>
+      summarize(FIRST_APPEARED = min(TAX_YEAR),
+                LAST_APPEARED = max(TAX_YEAR),
+                .groups = "drop")
+
+# Create a named list where each element is FIRST_APPEARED:LAST_APPEARED for that org
+full.range <- with(org_bounds, setNames(Map(`:`, FIRST_APPEARED, LAST_APPEARED), EIN2))
+
+# Compute missing years by taking the set difference
+missing.years.list <- Map(setdiff, full.range, years.observed)
+
+# If the org has no missing years, no need to impute so remove
+missing.years.list <- Filter(function(x) length(x) > 0, missing.years.list)
+saveRDS(missing.years.list, "PREPROCESSING/years_to_predict.rds")
+```
+
+```{r}
+library(data.table)
+
+# Convert to data.table
+df <- as.data.table(readRDS("PREPROCESSING/df_orginal_processed.rds"))
+
+# Convert orgs.to.keep to a data.table for fast joins
+orgs <- data.table(EIN2 = names(missing.years.list))
+
+# Use a semi-join to only keep orgs we need to predict on
+df <- df[data.table(EIN2 = names(missing.years.list)), on = .(EIN2)]
+
+# length(unique(df$EIN2))
+# setequal(unique(df$EIN2), names(missing.years.list))
+
+df |> filter(EIN2 == tst[1])
+
+```
+
+
+
+```{r}
+saveRDS(df, "PREPROCESSING/df_full_processed.rds")
+```
+
+
+
+```{r}
+orgs.with.dupes <- as.vector(org.info |> group_by(EIN2) |> summarize(n = n()) |> filter(n > 1) |> select(EIN2))
+orgs.with.dupes <- unlist(orgs.with.dupes)
+
+# https://stackoverflow.com/questions/71053949/how-can-i-identify-the-column-where-two-or-more-rows-are-different-same-id
+func <- function(X) {
+  paste(names(
+    Filter(function(z) length(z) > 1,
+           lapply(X, unique))
+  ), collapse = ";")
+}
+
+tst <- org.info |> filter(EIN2 %in% orgs.with.dupes[1:50000]) 
+tst <- tst |> group_by(EIN2) |> mutate(col_diff = func(cur_data()))
+unique(tst$col_diff) # For all of these, the difference was in ORG_TYPE column!
+```
+
+## Predict Missing Values with GP
+```{r}
+cluster <- makeCluster(7)
+registerDoParallel(cluster)
+
+
+start.time <- Sys.time() # 100 orgs: 40s, 500 orgs: 43s, 1000 orgs: 50s
+res.predictions <- foreach(ein = all.orgs.gp[1:1000], .packages = c("dplyr", "fields", "mvtnorm"), .verbose = TRUE) %dopar% {
+      df.sub <- filter(df, EIN2==ein) # get subset of data for this organization
+      years.to.predict <- missing.years.list[[ein]] # the years we will need to predict on TODO: shift to match up with YEAR
+      years.original <- df.sub$YEAR + 1 # all the years we have data for that org
+      
+      my.list <- list(EIN = ein, 
+                      TAX_YEAR = years.to.predict,
+                      sig.sqd = numeric(), 
+                      LOG_REV = numeric(length(years.to.predict)), 
+                      standard_errors = matrix(0,ncol=length(years.to.predict),nrow=length(years.to.predict)))
+      
+      years.to.predict <- years.to.predict - 1989 + 1 # shift to match with YEAR variable instead of TAX_YEAR
+      mu_1 <- numeric(length(years.to.predict)) # all zeros
+      mu_2 <- numeric(nrow(df.sub)) # all zeros
+      
+      # Generate Matern covariance matrix using "best" hyperparameters
+      mat_cov <- Matern(d = dist_mat, 
+                        smoothness = (res |> filter(EIN == ein))$nu, 
+                        range = 1, 
+                        phi = 1) + diag((res |> filter(EIN == ein))$nugget, dim(dist_mat)[1])
+      
+      sigma.squared <- (1/length(df.sub$LOG_REV)) * (df.sub$LOG_REV %*% chol2inv(chol(mat_cov[years.original, years.original])) %*% df.sub$LOG_REV)[1,1]
+      mat_cov <- sigma.squared * mat_cov
+      
+      my.list[["sig.sqd"]] <- sigma.squared
+      
+      SIGMA.11 <- mat_cov[years.to.predict, years.to.predict]
+      SIGMA.22.inv <- chol2inv(chol(mat_cov[years.original, years.original]))
+      SIGMA.12 <- mat_cov[years.to.predict, years.original, drop = FALSE]
+      
+      my.list[["LOG_REV"]] <- (mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (df.sub$LOG_REV - mu_2)))[,1] #mu_bar
+      my.list[["standard_errors"]]<- sqrt((SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
+      
+      my.list
+}
+print(Sys.time() - start.time)
+stopCluster(cl = cluster)
+```
+
+
+## Percent Change
+```{r}
+df <- df |>
+  group_by(EIN2) |>
+  arrange(TAX_YEAR) |>  # ensure years are sorted within group
+  mutate(BASELINE = last(TOT_REV), DATA_COUNT.post = n()) |> # DATA_COUNT should be recomputed now that we've removed outliers
+  ungroup()
+
+# Add percent change column
+df <- df |> mutate(PER_CHANGE = (TOT_REV - BASELINE)/BASELINE) |> select(-all0, -outlier)
+
+saveRDS(df, "PREPROCESSING/df_processed.rds")
+```
+
+# Splitting data into training, validation, and test set
+
+## Original Direction (before July 17)
+### Outlier Removal
+```{r}
+df <- readRDS("PREPROCESSING/df.rds")
+
+df <- df |> filter(DATA_COUNT >= 5) |>
+      group_by(EIN2) |>
+      mutate(LOG_REV.original = LOG_REV, LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      ungroup()
+
+# Best Hyperparameters for each org
+res.parameters <- rbind(readRDS("PREPROCESSING/outlier_results_1.rds"),
+                        readRDS("PREPROCESSING/outlier_results_2.rds"),
+                        readRDS("PREPROCESSING/outlier_results_3.rds"),
+                        readRDS("PREPROCESSING/outlier_results_4.rds"),
+                        readRDS("PREPROCESSING/outlier_results_5.rds"), make.row.names = FALSE)
+all.orgs <-res.parameters$EIN
+
+# Results of Outlier Detection Scheme with Best Hyperparameters
+res.out.1 <- readRDS("PREPROCESSING/gp_res_1.rds")
+res.out.2 <- readRDS("PREPROCESSING/gp_res_2.rds")
+res.out.3 <- readRDS("PREPROCESSING/gp_res_3.rds")
+res.out.4 <- readRDS("PREPROCESSING/gp_res_4.rds")
+res.out.5 <- readRDS("PREPROCESSING/gp_res_5.rds")
+
+# Rename
+names(res.out.1) <- all.orgs[1:100000]
+names(res.out.2) <- all.orgs[100001:200000]
+names(res.out.3) <- all.orgs[200001:300000]
+names(res.out.4) <- all.orgs[300001:399999]
+names(res.out.5) <- all.orgs[400000:length(all.orgs)]
+
+# Get all candidates, first I have to extract the candidates sublist from each res.out object
+candidates <- c(lapply(res.out.1, function(x){x[["candidates"]]}),
+                lapply(res.out.2, function(x){x[["candidates"]]}),
+                lapply(res.out.3, function(x){x[["candidates"]]}),
+                lapply(res.out.4, function(x){x[["candidates"]]}),
+                lapply(res.out.5, function(x){x[["candidates"]]})
+                )
+
+# Filter out any orgs with no detected outliers
+candidates <- Filter(function(x) length(x) > 0, candidates)
+
+# Put into data frame
+df.candidates <- do.call(rbind, lapply(names(candidates), function(id) {
+  data.frame(EIN2 = id, TAX_YEAR = candidates[[id]])
+}))
+
+df.candidates <- df.candidates |> mutate(outlier = TRUE)
+saveRDS(df.candidates, "PREPROCESSING/candidate_outliers_df.rds")
+
+df <- df |> left_join(df.candidates , by = c("EIN2", "TAX_YEAR")) |>
+      mutate(outlier = replace_na(outlier, FALSE))
+
+table(df$outlier)
+
+# Remove outliers
+df <- df |> filter(outlier == FALSE)
+```
+
+### Percent Change
+```{r}
+df <- df |>
+  group_by(EIN2) |>
+  arrange(TAX_YEAR) |>  # ensure years are sorted within group
+  mutate(BASELINE = last(TOT_REV), DATA_COUNT.post = n()) |> # DATA_COUNT should be recomputed now that we've removed outliers
+  ungroup()
+
+# Add percent change column
+df <- df |> mutate(PER_CHANGE = (TOT_REV - BASELINE)/BASELINE) |> select(-all0, -outlier)
+
+saveRDS(df, "PREPROCESSING/df_processed.rds")
+```
+### Random Splits without thinking about time order
+
+```{r}
+# Split data into training, validation, and test sets
+# https://stackoverflow.com/questions/36068963/r-how-to-split-a-data-frame-into-training-validation-and-test-sets
+spec = c(train = .6, test = .2, validate = .2)
+
+g = sample(cut(
+  seq(nrow(df)), 
+  nrow(df)*cumsum(c(0,spec)),
+  labels = names(spec)
+))
+
+res = split(df, g)
+write_csv(as.data.table(res$train), "MODEL/training_random.csv")
+write_csv(as.data.table(res$test), "MODEL/test_random.csv")
+write_csv(as.data.table(res$validate), "MODEL/validate_random.csv")
+```
+
+### Splits Respecting Time
+```{r}
+# ChatGPT
+library(dplyr)
+
+# Define your split proportions
+train_prop <- 0.6
+val_prop <- 0.2
+test_prop <- 0.2
+
+# Make sure the proportions sum to 1
+stopifnot(all.equal(train_prop + val_prop + test_prop, 1))
+
+# Sort and split the data
+df_split <- df |>
+  arrange(EIN2, YEAR) |>
+  group_by(EIN2) |>
+  mutate(row_num = row_number(),
+         train_cutoff = floor(DATA_COUNT.post * train_prop),
+         val_cutoff = floor(DATA_COUNT.post * (train_prop + val_prop)),
+         set = case_when(
+           row_num <= train_cutoff ~ "train",
+           row_num <= val_cutoff ~ "validate",
+           TRUE ~ "test"
+         )) |>
+  ungroup()
+
+# Now split into three datasets
+train.set <- df_split |> filter(set == "train") |> select(-row_num, -train_cutoff, -val_cutoff, -set)
+val.set   <- df_split |> filter(set == "validate") |> select(-row_num, -train_cutoff, -val_cutoff, -set)
+test.set  <- df_split |> filter(set == "test") |> select(-row_num, -train_cutoff, -val_cutoff, -set)
+
+tst.train <- train.set |> group_by(EIN2) |> 
+      arrange(TAX_YEAR) |> 
+      summarise(last = last(TAX_YEAR))
+tst.val <- val.set |> group_by(EIN2) |> 
+      arrange(TAX_YEAR) |> 
+      summarise(last.val = last(TAX_YEAR))
+tst.test <- test.set |> group_by(EIN2) |> 
+      arrange(TAX_YEAR) |> 
+      summarise(last.test = last(TAX_YEAR))
+
+tst <- left_join(tst.train, tst.val, by = "EIN2")
+tst <- left_join(tst, tst.test, by = "EIN2")
+
+# PAUSING ON THIS FOR NOW, was about to test that this actually does what I want it to do, have to modify the lines above a bit, I need to make sure the first year in the later sets is not smaller than the last year in the earlier set but right now I'm only getting latest years for all sets
+# Plan is to do a sanity logical check
+```
+

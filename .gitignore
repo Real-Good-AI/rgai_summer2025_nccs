@@ -30,3 +30,4 @@ MODEL/linear_models/*.rds
 MODEL/plots/*
 MODEL/
 ParBayesianOptimization/
+PREPROCESSING/
