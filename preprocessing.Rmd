@@ -11,16 +11,22 @@ knitr::opts_chunk$set(echo = FALSE, eval = FALSE)
 
 # Downloading Data
 ```{r}
-source("download_data.R")
+source("SCRIPTS/download_data.R")
 tscope_values <- c("501ce") # Download files from Tax Exempt Types in this list; possible values: "501c3", "501ce" 
 fscope_values <- c("-pz") # Download files from IRS 990 Form Scope in this list; possible values: "-pz", "-pc", "-pf"
 year_values <- seq(from = 1989, to = 2022, by = 1) # Download files from years in this list
 download_CORE(tscope_values, fscope_values, year_values)
 ```
 
-# Loading Data 
 ```{r}
-data_dict <- read.csv("DATA_DICTS/CORE-HRMN_dd.csv")
+download_dicts()
+download_bmf()
+```
+
+# Loading Data 
+## Dictionary
+```{r}
+data_dict <- read.csv("CORE/CORE-HRMN_dd.csv")
 head(data_dict)
 #glimpse(data_dict)
 #summarise(data_dict)
@@ -34,11 +40,14 @@ head(unified_bmf)
 #summarise(unified_bmf)
 ```
 
-# Cleaning: Checking for duplicates
-- in bmf, how many of those duplicates have the same organization name? 
-- in bmf duplicates, what are the patterns in which columns they differ in value?
-- figure out if we care about that info--if its not info we care about, then we can keep one of the two without worry?
-- do I need to merge right now? How important is the info in BMF file to current task?
+# Cleaning: Checking for duplicates (TODO: review CORE code sections)
+We noticed that sometimes there is more than one record in the BMF tied to the same organization. Why do these duplicates occur?
+
+- How many of those duplicates have the same organization name? 
+- In the duplicates, what are the patterns in which columns they differ in value?
+- If its not on variables we care about, then we can probably arbitrarily keep one of the two without worry
+
+This matters because there is some information we would like to pull from the BMF file and merge with the CORE files, but the merge key should be "EIN2" which currently is not unique in the BMF sometimes.
 
 ## Exploring duplicates: BMF
 Goal: Script to check what kinds of columns are different in duplicate rows
@@ -47,31 +56,17 @@ Return a data frame with the following variables:
      - col_name : variable name from data file
      - instances : number of times that a duplicate row differs in this column
 
-SEE FILE: reviewing_duplicate_EIN.R for this script
-
-```{r, eval = FALSE}
-library(cchsflow) # gives is_equal function
-
-# differences in logical comparison operators
-test1 <- c(NA, TRUE, FALSE, TRUE, FALSE, TRUE)
-test2 <- c(NA, NA, NA, TRUE, FALSE, FALSE)
-test3 <- c(NA, NA, NA, TRUE, FALSE, FALSE)
-test_compare2 <- test1 == test2
-test_compare3 <- ((test1 == test2) & (test1 == test3) & (test2 == test3))
-
-test_compare2_is <- is_equal(test1, test2)
-test_compare3_is <- (is_equal(test1, test2) & is_equal(test1, test3) & is_equal(test2,test3))
-```
-
+SEE FILE: reviewing_duplicate_EIN.R for the script that helps with the analysis
 
 ```{r, eval = FALSE}
 library(tidyverse)
 library(data.table)
 library(dplyr)
-source("reviewing_duplicate_EIN.R")
+source("SCRIPTS/reviewing_duplicate_EIN.R")
 
 unified_bmf <- read.csv("CORE/BMF_UNIFIED_V1.1.csv")
-  
+
+# These are the variables in the data set that we are currently interested in keeping to potentially use for modeling!
 vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_REVENUE_RECENT", "F990_TOTAL_INCOME_RECENT", "F990_TOTAL_ASSETS_RECENT", "CENSUS_STATE_ABBR", "CENSUS_COUNTY_NAME", "ORG_YEAR_FIRST", "ORG_YEAR_LAST") # "NTEE_IRS", "NCCS_LEVEL_2", "NCCS_LEVEL_3", "ORG_NAME_SEC", "ORG_NAME_CURRENT", "ORG_YEAR_FIRST", "ORG_YEAR_LAST", "ORG_YEAR_COUNT"
 
 # Replace any empty strings '' with NA values
@@ -81,9 +76,9 @@ unified_bmf <- unified_bmf |> mutate_if(is.character, ~na_if(.,''))
 unified_bmf <- unified_bmf[!(unified_bmf$EIN2 %in% "EIN-00-0000000"),]
 
 # Information about the repeated EIN2 values
-info_unified_bmf <- duplicateEIN2_info(unified_bmf)
-info_unified_bmf_tab <- info_unified_bmf$info
-head(info_unified_bmf_tab)
+dupesBMF <- dupes(unified_bmf)
+info_unified_bmf <- duplicateEIN2_info(unified_bmf, dupesBMF$dupes_groups)
+head(info_unified_bmf,10)
 
 bmf_subset <- unified_bmf[vars_to_keep]
 bmf_subset$NTEEV2 <- substr(bmf_subset$NTEEV2, 1, 3)
@@ -95,17 +90,7 @@ bmf_subset$NTEEV2 <- substr(bmf_subset$NTEEV2, 1, 3)
 # drop rows with EIN = 00-0000000 
 bmf_subset <- bmf_subset[!(bmf_subset$EIN2 %in% "EIN-00-0000000"),]
 n_before_removing_dupes <- nrow(bmf_subset)
-
-# get list of EIN2 that are repeated
-dupe_list <- bmf_subset |>
-  count(EIN2) |>
-  filter(n > 1)
-
-n_dupes <- nrow(dupe_list)
-
-# info on repeated EINs before dropping duplicated rows
-# bmf_dupe_info_before_rem_dup <- duplicateEIN2_info(bmf_subset)
-# head(bmf_dupe_info_before_rem_dup, 10)
+n_dupes <- nrow(dupesBMF$dupes)
 
 # remove any rows that are exactly duplicated
 bmf_sub_table <- data.table(bmf_subset)
@@ -114,18 +99,10 @@ uniq_bmf_subset <- subset(unique(bmf_sub_table))
 n_after_removing_dupes <- nrow(uniq_bmf_subset)
 
 # info on repeated EINs after dropping duplicated rows
-bmf_dupe_info <- duplicateEIN2_info(uniq_bmf_subset)
+dupesBMF.sub <- dupes(uniq_bmf_subset)
+bmf_dupe_info <- duplicateEIN2_info(uniq_bmf_subset, dupesBMF.sub$dupes_groups)
 head(bmf_dupe_info, 10)
-```
-
-```{r, eval = FALSE}
-library(dplyr)
-
-# Find duplicates and only keep rows with duplicate EIN2
-ein2_dups <- uniq_bmf_subset %>%
-  group_by(EIN2) %>%
-  filter(n() > 1)
-```
+``` 
 
 ## Exploring duplicates: CORE-PZ
 
