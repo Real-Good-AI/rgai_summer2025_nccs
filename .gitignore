@@ -31,3 +31,4 @@ MODEL/plots/*
 MODEL/
 ParBayesianOptimization/
 PREPROCESSING/
+CORE/harmonized_data_dictionary.xlsx
