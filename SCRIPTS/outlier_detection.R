@@ -19,38 +19,52 @@ df <- readRDS("MODEL/df.rds") |>
 
 df <- df |> filter(DATA_COUNT >= 5)
 
-orgs.no.change <- readRDS("MODEL/orgs_reported_same.rds")
-all.orgs <- unique(df$EIN2) 
-all.orgs <- setdiff(all.orgs, orgs.no.change) #1:100000, 100001:200000, 200001:length(all.orgs)
-
-# Previous times: 3hrs, 3.5hrs, 11 hrs 
-df <- df |> filter(EIN2 %in% all.orgs[1:100000]) 
-# df <- df |> filter(EIN2 %in% all.orgs[100001:200000]) 
-# df <- df |> filter(EIN2 %in% all.orgs[200001:300000]) 
-# df <- df |> filter(EIN2 %in% all.orgs[300001:400000]) 
-# df <- df |> filter(EIN2 %in% all.orgs[400001:length(all.orgs)]) 
-
 # distance matrix of years
 dist_mat <- as.matrix(dist(sort(unique(df$YEAR)), diag=TRUE, upper=TRUE))
 
 # normalize
 dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
 
+# Get only run scheme on orgs that reported some different data 
+orgs.no.change <- readRDS("MODEL/orgs_reported_same.rds")
+all.orgs <- unique(df$EIN2) 
+all.orgs <- setdiff(all.orgs, orgs.no.change) #1:100000, 100001:200000, 200001:length(all.orgs)
+
+# Previous times: 3hrs, 3.5hrs, 11 hrs 
+# df.1 <- df |> filter(EIN2 %in% all.orgs[1:100000])
+# df.2 <- df |> filter(EIN2 %in% all.orgs[100001:200000])
+df.3 <- df |> filter(EIN2 %in% all.orgs[200001:300000])
+df.4 <- df |> filter(EIN2 %in% all.orgs[300001:400000])
+df.5 <- df |> filter(EIN2 %in% all.orgs[400001:length(all.orgs)])
+
+# So when I made "orgs_reported_same" I did not center the LOG_REV so I didn't catch all the orgs that reported the same number each year, just the orgs that reported 0 each year
+# removes 1 org
+# df.sub <- df.4 |> group_by(EIN2) |> summarize(all0 = all(LOG_REV == 0))
+# df.4 <- left_join(df.4, df.sub, by = "EIN2")
+# df.sub <- df.4 |> filter(all0 == TRUE)
+# df.4 <- df.4 |> filter(all0 == FALSE)
+
+# Removes 29 orgs
+# df.sub <- df.5 |> group_by(EIN2) |> summarize(all0 = all(LOG_REV == 0))
+# df.5 <- left_join(df.5, df.sub, by = "EIN2")
+# df.sub <- df.5 |> filter(all0 == TRUE)
+# df.5 <- df.5 |> filter(all0 == FALSE)
+
 # Matern covariance matrix hyperparameters
 rho <- 1
 initial.conds <- readRDS("MODEL/outlier_detection/centroids5_96orgs.rds")$centers # nu and nugget
 
-rm(df)
+#rm(df)
 
 #############################################################################################
 # Hyperparameter Optimization
 #############################################################################################
 cluster <- makeCluster(7)
 registerDoParallel(cluster)
-
-start.time <- Sys.time() # Total: 17.65 hrs
-res <- foreach(ein = unique(df$EIN2), .combine = 'rbind', .packages = c("dplyr", "fields", "mvtnorm"), .verbose = TRUE) %dopar% {
-      df.sub <- filter(df, EIN2==ein)
+# 1: 2.65 hours, 2: 3.15 hours, 3: 3.65 hours, 
+start.time <- Sys.time() 
+res <- foreach(ein = unique(df.4$EIN2), .combine = 'rbind', .packages = c("dplyr", "fields", "mvtnorm"), .verbose = FALSE) %dopar% {
+      df.sub <- filter(df.4, EIN2==ein)
       tst <- setNames(data.frame(matrix(ncol = 5, nrow = 0)), c("EIN", "nu", "nugget", "likelihood", "trial"))
       likelihood_wrapper <- function(pars.vec){
             return(-1 * get_likelihood_sigma(row = pars.vec,
@@ -71,10 +85,47 @@ res <- foreach(ein = unique(df$EIN2), .combine = 'rbind', .packages = c("dplyr",
       }
       tst[which.max(tst$likelihood),]
 }
-print(Sys.time() - start.time)
-stopCluster(cl = cluster)
+timeDiff <- Sys.time() - start.time
+print(timeDiff)
+cat("\n",paste("outlier_results_4.rds", timeDiff, attr(timeDiff, "units")), file = "PREPROCESSING/times.txt", append = TRUE)
 
-# saveRDS(res, "PREPROCESSING/outlier_results_1.rds")
+stopCluster(cl = cluster)
+saveRDS(res, "PREPROCESSING/outlier_results_4.rds")
+
+rm(res, df.4)
+cluster <- makeCluster(7)
+registerDoParallel(cluster)
+
+start.time <- Sys.time() # 
+res <- foreach(ein = unique(df.5$EIN2), .combine = 'rbind', .packages = c("dplyr", "fields", "mvtnorm"), .verbose = FALSE) %dopar% {
+      df.sub <- filter(df.5, EIN2==ein)
+      tst <- setNames(data.frame(matrix(ncol = 5, nrow = 0)), c("EIN", "nu", "nugget", "likelihood", "trial"))
+      likelihood_wrapper <- function(pars.vec){
+            return(-1 * get_likelihood_sigma(row = pars.vec,
+                                             dist_mat = dist_mat,
+                                             rho = rho,
+                                             all_years = df.sub$YEAR + 1,
+                                             data = df.sub$LOG_REV))
+      }
+      
+      for (i in 1:nrow(initial.conds)){
+            res <- constrOptim(theta = initial.conds[i,], 
+                               f = likelihood_wrapper,
+                               grad = NULL,
+                               ui = rbind(c(1,0),c(-1,0),c(0,1)), #rbind(c(1,0),c(-1,0),c(0,1))
+                               ci = c(0.001,-3.5,0)) #c(0.001,-3.5, 0)
+            tst[nrow(tst)+1,1] <- ein
+            tst[nrow(tst),2:ncol(tst)] <- c(c(res$par[1], res$par[2], -1*res$value, i))
+      }
+      tst[which.max(tst$likelihood),]
+}
+timeDiff <- Sys.time() - start.time
+print(timeDiff)
+cat("\n",paste("outlier_results_5.rds", timeDiff, attr(timeDiff, "units")), file = "PREPROCESSING/times.txt", append = TRUE)
+
+stopCluster(cl = cluster)
+saveRDS(res, "PREPROCESSING/outlier_results_5.rds")
+
 
 #############################################################################################
 # Outlier Detection
@@ -89,6 +140,7 @@ stopCluster(cl = cluster)
 # res <- readRDS("MODEL/outlier_detection/full_results_3.rds")
 
 # Looping over all organizations; 100K took 1.5 hrs w/out parallel, 18min w/ parallel; 42min for #3  
+# 26 min, 26 min, 20 min, 15 min, 11 min
 cluster <- makeCluster(7)
 registerDoParallel(cluster)
 
@@ -134,7 +186,7 @@ stopCluster(cl = cluster)
 #############################################################################################
 # Save Data
 #############################################################################################
-# saveRDS(res.outliers, "MODEL/outlier_detection/outlier_res_3.rds")
+saveRDS(res.outliers, "MODEL/outlier_detection/outlier_res_3.rds")
 # saveRDS(all_candidates, "MODEL/outlier_detection/full_candidates_1.rds")
 # saveRDS(all_predictions, "MODEL/outlier_detection/full_predictions_1.rds")
 # saveRDS(all_se, "MODEL/outlier_detection/full_se_1.rds")
