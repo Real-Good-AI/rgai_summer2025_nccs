@@ -665,6 +665,7 @@ df <- readRDS("PREPROCESSING/df.rds")
 df <- df |> filter(DATA_COUNT >= 5) |>
       group_by(EIN2) |>
       mutate(LOG_REV.original = LOG_REV, LOG_REV = LOG_REV - mean(LOG_REV)) |>
+      mutate(LOG_REV.mean = mean(LOG_REV.original))
       ungroup()
 
 # Best Hyperparameters for each org
@@ -735,8 +736,10 @@ rm(candidates, res.out.1, res.out.2, res.out.3, res.out.4, res.out.5)
 
 
 ## Creating "Full" Dataset
+### Step 1: Create the skeleton
 ```{r}
 # Step 1: Create full dataset skeleton 
+df <- as.data.table(readRDS("PREPROCESSING/df_orginal_processed.rds"))
 
 # Remove F9_10_ASSET_TOT_EOY because we aren't using it and don't have a way (right now) to impute for missing years
 df <- df |> select(-F9_10_ASSET_TOT_EOY)
@@ -752,11 +755,11 @@ df.full <- crossing(unique(df$EIN2), all.years) |> rename(EIN2 = "unique(df$EIN2
 
 # Join with the original dataframe
 df.full <- df.full |>
-  left_join(df |> select(EIN2, TAX_YEAR, TOT_REV, LOG_REV, LOG_REV.original), 
+  left_join(df |> select(EIN2, TAX_YEAR, TOT_REV, LOG_REV, LOG_REV.original, LOG_REV.mean), 
             by = c("EIN2", "TAX_YEAR"))
 
 # Add in the other information, like NTEE Code, SIZE, location, etc; note this is invariant to year (in theory)
-org.info <- df |> select(-TOT_REV, -LOG_REV, -LOG_REV.original, -TAX_YEAR, -YEAR, -outlier, -IMPUTE_STATUS) |> distinct(.keep_all = FALSE)
+org.info <- df |> select(-TOT_REV, -LOG_REV, -LOG_REV.original, -LOG_REV.mean,-TAX_YEAR, -YEAR, -outlier, -IMPUTE_STATUS) |> distinct(.keep_all = FALSE)
 
 # For any repeated EIN2 rows, keep row with fewest NA values; when there are ties, it keeps the first one
 org.info <- org.info %>% arrange(rowSums(is.na(.))) |> distinct(EIN2, .keep_all = TRUE)
@@ -769,8 +772,9 @@ df.full <- df.full |> mutate(IMPUTE_STATUS = replace_na(IMPUTE_STATUS, "imputed"
 rm(all.years, org.info, df)
 ```
 
+### Step 2: Get predictions for missing years
 ```{r}
-# Step 2: Impute missing years using the GP 
+# Find the missing years
 
 # Get list where names are EIN and entry is list of years.to.predict, but ignore orgs that reported the same values each year (since prediction will just be that value)
 df <- readRDS("PREPROCESSING/df_orginal_processed.rds")
@@ -789,6 +793,7 @@ org_bounds <- df |>
       summarize(FIRST_APPEARED = min(TAX_YEAR),
                 LAST_APPEARED = max(TAX_YEAR),
                 .groups = "drop")
+saveRDS(org_bounds, "PREPROCESSING/orgs_first_last_appearance.rds")
 
 # Create a named list where each element is FIRST_APPEARED:LAST_APPEARED for that org
 full.range <- with(org_bounds, setNames(Map(`:`, FIRST_APPEARED, LAST_APPEARED), EIN2))
@@ -801,95 +806,140 @@ missing.years.list <- Filter(function(x) length(x) > 0, missing.years.list)
 saveRDS(missing.years.list, "PREPROCESSING/years_to_predict.rds")
 ```
 
+Refer to the file imputation_GP.R for the script that predicts missing values using GPs!
+
 ```{r}
-library(data.table)
+# BONUS: How often is there a discrepancy between (ORG_YEAR_FIRST,ORG_YEAR_LAST) and (FIRST_APPEARED, LAST_APPEARED)
+df <- df |> select(-TAX_YEAR, -LOG_REV, -LOG_REV.original) |> distinct()
+df <- full_join(df, org_bounds, by = "EIN2")
+df <- df |> mutate(DIFF_FIRST = (ORG_YEAR_FIRST != FIRST_APPEARED),
+                   DIFF_LAST = (ORG_YEAR_LAST != LAST_APPEARED))
 
-# Convert to data.table
-df <- as.data.table(readRDS("PREPROCESSING/df_orginal_processed.rds"))
+df <- df |> mutate(BMF_FIRST = (ORG_YEAR_FIRST < FIRST_APPEARED),
+                   BMF_LAST = (ORG_YEAR_LAST > LAST_APPEARED))
 
-# Convert orgs.to.keep to a data.table for fast joins
-orgs <- data.table(EIN2 = names(missing.years.list))
+df <- df |> mutate(ORG_YEAR_LAST.mod = if_else(ORG_YEAR_LAST %in% c(2022, 2023, 2024), 2021L, ORG_YEAR_LAST))
 
-# Use a semi-join to only keep orgs we need to predict on
-df <- df[data.table(EIN2 = names(missing.years.list)), on = .(EIN2)]
+df <- df |> mutate(DIFF_LAST.mod = (ORG_YEAR_LAST.mod != LAST_APPEARED), 
+                   BMF_LAST.mod = (ORG_YEAR_LAST.mod > LAST_APPEARED))
 
-# length(unique(df$EIN2))
-# setequal(unique(df$EIN2), names(missing.years.list))
 
-df |> filter(EIN2 == tst[1])
+table(df$DIFF_FIRST)
+table(df$BMF_FIRST)
 
+table(df$DIFF_LAST)
+table(df$BMF_LAST)
+
+table(df$DIFF_LAST.mod)
+table(df$BMF_LAST.mod)
 ```
 
-
-
+### Step 3: Fill in the missing values in the skeleton
 ```{r}
-saveRDS(df, "PREPROCESSING/df_full_processed.rds")
-```
+# Step 3: Add missing data to the full dataset skeleton
+missing.years.list <- readRDS("PREPROCESSING/years_to_predict.rds")
 
+# First, let's put in the "imputed" values for orgs that didn't change, by filling in that value
+orgs.no.change <- readRDS("PREPROCESSING/orgs_reported_same.rds")
+orgs.no.change <- missing.years.list[intersect(names(missing.years.list), orgs.no.change)] # the ones that need values imputed
 
+# Get a data table with the values I will want to fill in for the orgs that reported no changes
+df.sub <- data.table(df.full) 
+df.sub <- df.sub[data.table(EIN2 = names(orgs.no.change)), on = .(EIN2)]
+df.sub <- df.sub |> drop_na(TOT_REV) |> select(-TAX_YEAR) |> distinct() |> select(EIN2, TOT_REV, LOG_REV, LOG_REV.original)
 
-```{r}
-orgs.with.dupes <- as.vector(org.info |> group_by(EIN2) |> summarize(n = n()) |> filter(n > 1) |> select(EIN2))
-orgs.with.dupes <- unlist(orgs.with.dupes)
+# Change df.full to data.table for faster indexing
+setDT(df.full)
 
-# https://stackoverflow.com/questions/71053949/how-can-i-identify-the-column-where-two-or-more-rows-are-different-same-id
-func <- function(X) {
-  paste(names(
-    Filter(function(z) length(z) > 1,
-           lapply(X, unique))
-  ), collapse = ";")
-}
+# Loop over EIN2s in orgs.no.change
+start.time <- Sys.time() # ~ 2 minutes
+for (ein in names(orgs.no.change)) {
+  years.to.fill <- orgs.no.change[[ein]]
+  
+  # Get the replacement values from df.sub
+  fill_values <- df.sub[EIN2 == ein, .(TOT_REV, LOG_REV, LOG_REV.original)]
+  
+  # If for some reason the EIN2 isn't found in df.sub, skip
+  if (nrow(fill_values) == 0) {next}
 
-tst <- org.info |> filter(EIN2 %in% orgs.with.dupes[1:50000]) 
-tst <- tst |> group_by(EIN2) |> mutate(col_diff = func(cur_data()))
-unique(tst$col_diff) # For all of these, the difference was in ORG_TYPE column!
-```
-
-## Predict Missing Values with GP
-```{r}
-cluster <- makeCluster(7)
-registerDoParallel(cluster)
-
-
-start.time <- Sys.time() # 100 orgs: 40s, 500 orgs: 43s, 1000 orgs: 50s
-res.predictions <- foreach(ein = all.orgs.gp[1:1000], .packages = c("dplyr", "fields", "mvtnorm"), .verbose = TRUE) %dopar% {
-      df.sub <- filter(df, EIN2==ein) # get subset of data for this organization
-      years.to.predict <- missing.years.list[[ein]] # the years we will need to predict on TODO: shift to match up with YEAR
-      years.original <- df.sub$YEAR + 1 # all the years we have data for that org
-      
-      my.list <- list(EIN = ein, 
-                      TAX_YEAR = years.to.predict,
-                      sig.sqd = numeric(), 
-                      LOG_REV = numeric(length(years.to.predict)), 
-                      standard_errors = matrix(0,ncol=length(years.to.predict),nrow=length(years.to.predict)))
-      
-      years.to.predict <- years.to.predict - 1989 + 1 # shift to match with YEAR variable instead of TAX_YEAR
-      mu_1 <- numeric(length(years.to.predict)) # all zeros
-      mu_2 <- numeric(nrow(df.sub)) # all zeros
-      
-      # Generate Matern covariance matrix using "best" hyperparameters
-      mat_cov <- Matern(d = dist_mat, 
-                        smoothness = (res |> filter(EIN == ein))$nu, 
-                        range = 1, 
-                        phi = 1) + diag((res |> filter(EIN == ein))$nugget, dim(dist_mat)[1])
-      
-      sigma.squared <- (1/length(df.sub$LOG_REV)) * (df.sub$LOG_REV %*% chol2inv(chol(mat_cov[years.original, years.original])) %*% df.sub$LOG_REV)[1,1]
-      mat_cov <- sigma.squared * mat_cov
-      
-      my.list[["sig.sqd"]] <- sigma.squared
-      
-      SIGMA.11 <- mat_cov[years.to.predict, years.to.predict]
-      SIGMA.22.inv <- chol2inv(chol(mat_cov[years.original, years.original]))
-      SIGMA.12 <- mat_cov[years.to.predict, years.original, drop = FALSE]
-      
-      my.list[["LOG_REV"]] <- (mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (df.sub$LOG_REV - mu_2)))[,1] #mu_bar
-      my.list[["standard_errors"]]<- sqrt((SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
-      
-      my.list
+  # Fill in the values in df.full for matching EIN2 and TAX_YEAR
+  df.full[(EIN2 == ein & TAX_YEAR %in% years.to.fill),
+          `:=`(TOT_REV = fill_values$TOT_REV,
+               LOG_REV = fill_values$LOG_REV,
+               LOG_REV.original = fill_values$LOG_REV.original)]
 }
 print(Sys.time() - start.time)
-stopCluster(cl = cluster)
+
+rm(fill_values, orgs.no.change, missing.years.list, df.sub, years.to.fill)
 ```
+
+```{r}
+# Next, we have to extract the predictions from the GP by putting the relevant info into a data frame
+res.predictions <- readRDS("PREPROCESSING/imputation_results.rds")
+df.predictions <- do.call(rbind, lapply(names(res.predictions), function(id) {
+  data.frame(EIN2 = id, TAX_YEAR = res.predictions[[id]]$TAX_YEAR, LOG_REV = res.predictions[[id]]$LOG_REV)
+}))
+
+# do the computation for LOG_REV.original and TOT_REV
+df <- df.full |> select(EIN2, LOG_REV.mean) |> distinct()
+df.predictions <- left_join(df.predictions, df, by = "EIN2")
+df.predictions <- df.predictions |>
+      mutate(LOG_REV.original = LOG_REV + LOG_REV.mean) |>
+      mutate(TOT_REV = exp(1) ** LOG_REV.original)
+
+saveRDS(df.predictions, "PREPROCESSING/predictions_df.rds")
+rm(res.predictions)
+
+# Now we have to merge df.predictions with df.full
+df.full <- df.full |> left_join(df.predictions, by = c("EIN2", "TAX_YEAR"), suffix = c("",".y"))
+df.full <- df.full |> mutate(LOG_REV = coalesce(LOG_REV, LOG_REV.y),
+                             LOG_REV.original = coalesce(LOG_REV.original, LOG_REV.original.y),
+                             TOT_REV = coalesce(TOT_REV, TOT_REV.y))
+df.full <- df.full |> select(-LOG_REV.y, -LOG_REV.original.y, -TOT_REV.y, -LOG_REV.mean.y)
+
+rm(df.predictions)
+# Check that we filled in the "inner" missing values 
+# Get observed years per organization
+# df.sub <- df.full |> drop_na(LOG_REV)
+# years.observed <- df.sub |>
+#       distinct(EIN2, TAX_YEAR) |>
+#       group_by(EIN2) |>
+#       summarize(YEARS_OBSERVED = list(TAX_YEAR), .groups = "drop") |>
+#       deframe()
+# 
+# # Get first and last year per organization
+# org_bounds <- df.sub |>
+#       group_by(EIN2) |>
+#       summarize(FIRST_APPEARED = min(TAX_YEAR),
+#                 LAST_APPEARED = max(TAX_YEAR),
+#                 .groups = "drop")
+# 
+# # Create a named list where each element is FIRST_APPEARED:LAST_APPEARED for that org
+# full.range <- with(org_bounds, setNames(Map(`:`, FIRST_APPEARED, LAST_APPEARED), EIN2))
+# 
+# # Compute missing years by taking the set difference
+# missing.years.list <- Map(setdiff, full.range, years.observed)
+# 
+# # If the org has no missing years, no need to impute so remove
+# missing.years.list <- Filter(function(x) length(x) > 0, missing.years.list)
+# rm(df.sub, fill_values, full.range, missing.years.list, orgs.no.change, org_bounds, years.observed)
+
+# Last, we add zeroes everywhere else!
+df.full <- df.full |> mutate(TOT_REV = replace_na(TOT_REV, 1),
+                             LOG_REV = replace_na(LOG_REV, 0),
+                             LOG_REV.original = replace_na(LOG_REV.original, 0))
+
+# For now, replace missing NTEE with "UNKNOWN" in case we want to search through them anyway
+df.full <- df.full |> mutate(NTEE = replace_na(NTEE, "UNKNOWN"))
+
+saveRDS(df.full, "PREPROCESSING/processed_mega_df.rds")
+```
+
+
+
+
+
+
 
 
 ## Percent Change
