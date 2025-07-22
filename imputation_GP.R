@@ -29,10 +29,10 @@ dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
 cluster <- makeCluster(7)
 registerDoParallel(cluster)
 
-start.time <- Sys.time() 
-res.predictions <- foreach(ein = all.orgs.gp[1:1000], .packages = c("dplyr", "fields", "mvtnorm"), .verbose = FALSE) %dopar% {
+start.time <- Sys.time() # 1.5 hours for all orgs!
+res.predictions <- foreach(ein = all.orgs.gp, .packages = c("dplyr", "fields", "mvtnorm"), .verbose = FALSE) %dopar% {
       df.sub <- filter(df, EIN2==ein) # get subset of data for this organization
-      years.to.predict <- missing.years.list[[ein]] # the years we will need to predict on TODO: shift to match up with YEAR
+      years.to.predict <- missing.years.list[[ein]] # the years we will need to predict on
       years.original <- df.sub$YEAR + 1 # all the years we have data for that org
       
       my.list <- list(EIN = ein, 
@@ -45,7 +45,7 @@ res.predictions <- foreach(ein = all.orgs.gp[1:1000], .packages = c("dplyr", "fi
       mu_1 <- numeric(length(years.to.predict)) # all zeros
       mu_2 <- numeric(nrow(df.sub)) # all zeros
       
-      # Generate Matern covariance matrix using "best" hyperparameters
+      # Generate Matern covariance matrix using "best" hyperparameters from res data.frame
       mat_cov <- Matern(d = dist_mat, 
                         smoothness = (res |> filter(EIN == ein))$nu, 
                         range = 1, 
@@ -68,4 +68,5 @@ res.predictions <- foreach(ein = all.orgs.gp[1:1000], .packages = c("dplyr", "fi
 print(Sys.time() - start.time)
 stopCluster(cl = cluster)
 
-saveRDS(res.predictions, "PREPROCESSING/imputation_test_results.rds")
+names(res.predictions) <- all.orgs.gp
+saveRDS(res.predictions, "PREPROCESSING/imputation_results.rds")
