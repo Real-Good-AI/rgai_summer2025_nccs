@@ -1,0 +1,316 @@
+---
+title: "Modeling"
+author: "Mayleen"
+date: "2025-07-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+```
+
+# Load Data and Libraries
+```{r, message = FALSE}
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(RANN)
+library(fields)
+library(ggplot2)
+library(cowplot)
+library(lhs) # for latin hypercube sampling
+
+df <- readRDS("PREPROCESSING/processed_mega_df.rds")
+```
+
+## Summary of dataset
+```{r, eval = FALSE, echo = FALSE}
+summary(df)
+colnames(df)
+table(df$NTEE)
+```
+
+
+# Nearest Neighbors
+Given an organization's NTEE category and 2-5 years of history, find other orgs within the same NTEE category that had similar pattern at any point in time.
+
+- Let `n.data` = number of data points the org gives us, must have 2 <= n.data <= 5
+- Let `n.predict` = number of years we wish to extrapolate into, must have 1 <= n.predict <= 3
+
+Starting with the window 1989-1989+`n.data`, look for `K` nearest orgs and save their EINs and distance. Move on to the next window (1990-1990+`n.data`), but stop when the end of the window is greater than 2021-`n.predict`. Once you have `K` neighbors per window, pick the top 5 (i.e. closest 5). Maybe add a check that if their own org is in there, to add in 6th neighbor. 
+
+Only columns we need (?) are: "EIN2", TAX_YEAR", "TOT_REV", "NTEE", "IMPUTE_STATUS"
+```{r}
+start.year <- 1989 # first year in the data set
+end.year <- 2021 # last year in the data set
+
+user.EIN <- "EIN-00-0000000"
+user.years <- c("2022", "2023", "2024") # user-supplied years
+user.data <- as.data.table(list(62369, 100199, 185830)) # user-supplied history
+colnames(user.data) <- user.years
+
+n.data <- length(user.data) # number of data points in user-supplied history
+n.predict <- 2 # number of years the uesr wants to predict into
+category <- c("ART") # categories the user is willing to compare with
+
+# TODO: add an option for searching through all categories (where you basically would not need to filter by NTEE)
+df.sub <- df |> filter(NTEE %in% category) |> select(EIN2, TAX_YEAR, TOT_REV, NTEE, IMPUTE_STATUS)
+
+K <- 10 # number of nearest neighbors to search for in each window
+nearest.neighbors <- setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("EIN2", "START_YEAR", "END_YEAR", "DISTANCE"))
+start.time <- Sys.time()
+for (year in seq(start.year, end.year-n.predict-n.data+1, 1)){
+      curr.interval <- year:(year+n.data-1) # Time interval to be searched for K nearest neighbors
+      if (curr.interval[length(curr.interval)] > end.year-n.predict){break} # If the interval contains years it shouldn't, exit for loop
+      
+      # Get the data corresponding to this time interval, reshape to wide format so there is a different column per year
+      df.sub.interval <- df.sub |> filter(TAX_YEAR %in% curr.interval) |> select(EIN2, TAX_YEAR, TOT_REV) |> dcast(EIN2 ~ TAX_YEAR, value.var = "TOT_REV")
+      
+      # Get K nearest neighbors for this time window
+      nearest <- nn2(df.sub.interval |> select(-EIN2), user.data, k=K) 
+      nearest.neighbors <- rbind(nearest.neighbors, as.data.table(list("EIN2" = df.sub.interval[as.vector(nearest$nn.idx),]$EIN2,
+                                                                       "START_YEAR" = curr.interval[1],
+                                                                       "END_YEAR" = curr.interval[length(curr.interval)],
+                                                                       "DISTANCE" = as.vector(nearest$nn.dists))))
+}
+
+# Top 5 neighbors
+nearest.neighbors <- nearest.neighbors[order(DISTANCE)]
+top.neighbors <- nearest.neighbors$EIN2[1:5]
+if (user.EIN %in% top.neighbors) {top.neighbors <- c(top.neighbors, nearest.neighbors$EIN2[6])}
+comparison.orgs <- df.sub |> filter(EIN2 %in% top.neighbors) |> left_join(nearest.neighbors, by = "EIN2")
+print(Sys.time()-start.time)
+```
+## Predict with GP trained on nearest neighbors data
+```{r}
+# Data
+df.sub.interval <- comparison.orgs |> filter((TAX_YEAR >= START_YEAR & TAX_YEAR <= END_YEAR+n.predict))
+df.sub.interval <- df.sub.interval |> group_by(EIN2) |> mutate(YEAR = row_number()) |> ungroup() |> filter(IMPUTE_STATUS == "original")
+df.sub.interval <- df.sub.interval |> mutate(TOT_REV.centered = TOT_REV - mean(TOT_REV)) 
+```
+
+### Hyperparamter Optimization
+```{r}
+source("SCRIPTS/outlier_detection_helper.R")
+initial.conds <- randomLHS(15,2)
+initial.conds[, 1] <- 0.05 + initial.conds[, 1] * (2.5 - 0.05) # nu in [0.05,2.5)
+initial.conds[, 2] <- 0 + initial.conds[, 2] * (3 - 0) # nugget in [0,3]
+
+tst <- setNames(data.frame(matrix(ncol = 5, nrow = 0)), c("EIN", "nu", "nugget", "likelihood", "trial"))
+likelihood_wrapper <- function(pars.vec){
+      return(-1 * get_likelihood_sigma(row = pars.vec,
+                                       dist_mat = dist_mat,
+                                       rho = rho,
+                                       all_years = (n.predict+1):dim(dist_mat)[1],
+                                       data = df.sub.interval$TOT_REV.centered))
+}
+
+for (i in 1:nrow(initial.conds)){
+      res <- constrOptim(theta = initial.conds[i,], 
+                         f = likelihood_wrapper,
+                         grad = NULL,
+                         ui = rbind(c(1,0),c(-1,0),c(0,1)), #rbind(c(1,0),c(-1,0),c(0,1))
+                         ci = c(0.001,-3.5,0)) #c(0.001,-3.5, 0)
+      tst[nrow(tst)+1,1] <- user.EIN
+      tst[nrow(tst),2:ncol(tst)] <- c(c(res$par[1], res$par[2], -1*res$value, i))
+}
+tst[which.max(tst$likelihood),]
+```
+
+
+
+### Training a GP and predicting
+```{r}
+# Normalized distance matrix
+dist_mat <- rdist(c(2:n.data + n.predict, df.sub.interval$YEAR)) # the n.predict years we need to predict on and the years we have nearest neighbor data for
+dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
+
+# Hyperparameters
+nu <- 1.5
+nugget <- 0.19
+rho <- 1
+
+# For indexing the Matern covariance matrix
+years.to.predict <- 1:n.predict # indices (w.r.t dist_mat) of the years we need to predict on
+years.original <- (n.predict+1):dim(dist_mat)[1] # indices (w.r.t dist_mat) of the years we have nearest neighbor data for
+
+mu_1 <- numeric(length(years.to.predict)) # all zeros
+mu_2 <- numeric(nrow(df.sub.interval)) # all zeros
+
+# Generate Matern covariance matrix using "best" hyperparameters from res data.frame
+mat_cov <- Matern(d = dist_mat, 
+                  smoothness = nu, 
+                  range = rho, 
+                  phi = 1) + diag(nugget, dim(dist_mat)[1])
+
+# Compute sigma^2 and scale covariance matrix
+nn.data <- df.sub.interval$TOT_REV.centered
+sigma.squared <- (1/length(nn.data)) * (nn.data %*% chol2inv(chol(mat_cov[years.original,years.original])) %*% nn.data)[1,1]
+mat_cov <- sigma.squared * mat_cov
+
+# Conditional Distributions
+SIGMA.11 <- mat_cov[years.to.predict, years.to.predict]
+SIGMA.22.inv <- chol2inv(chol(mat_cov[years.original, years.original]))
+SIGMA.12 <- mat_cov[years.to.predict, years.original, drop = FALSE]
+
+predictions <- (mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (nn.data - mu_2)))[,1] #mu_bar
+standard_errors <- sqrt((SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
+```
+
+```{r}
+user.data <- user.data |> mutate(EIN2 = user.EIN) |> melt(id.vars = "EIN2", variable.name = "TAX_YEAR", value.name = "TOT_REV") |> 
+      mutate(TAX_YEAR = as.integer(as.character(TAX_YEAR)), IMPUTE_STATUS = "original", SE = 0) 
+
+# add in predicted values and standard errors
+user.data <- rbind(user.data, as.data.frame(list(EIN2 = user.EIN,
+                                    TAX_YEAR = 1:n.predict + max(user.data$TAX_YEAR),
+                                    TOT_REV = predictions + mean(df.sub.interval$TOT_REV),
+                                    IMPUTE_STATUS = "predicted",
+                                    SE = diag(standard_errors))))
+
+# Add in shifted year variable
+user.data <- user.data |> mutate(YEAR = row_number())
+```
+
+
+
+
+## Plot Results
+```{r, eval = FALSE, echo = FALSE}
+pal <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#E8DA1D", "#0072B2", "#D55E00", "#CC79A7")
+```
+
+
+```{r}
+# Your org 
+ggplot(user.data |> filter(IMPUTE_STATUS == "original"), mapping = aes(x = TAX_YEAR, y = TOT_REV)) +
+      geom_point(size = 3) +
+      geom_line() +
+      labs(x = "Year", y = "Total Revenue", title = "User-supplied Data (better title later?)")
+```
+
+```{r}
+# Full original trajectories
+pList <- list()
+leg.flag <- FALSE
+for (i in 1:length(top.neighbors)){
+      df.sub.plot <- comparison.orgs |> filter(EIN2 == top.neighbors[i])
+      title <- paste("#", i, ": ", substr(top.neighbors[i], start = 5, stop = nchar(top.neighbors[i])), 
+                     ", Years:", nearest.neighbors[i,"START_YEAR"], "-", nearest.neighbors[i,"END_YEAR"], sep = "")
+      p <- df.sub.plot |>
+            ggplot(user.data, mapping = aes(x = TAX_YEAR, y = TOT_REV)) +
+            geom_point(mapping = aes(shape = IMPUTE_STATUS), size = 2) + 
+            geom_line() +
+            labs(x = "Year", y = "Total Revenue", 
+                 title = title) + 
+            theme(legend.position = "bottom") +
+            scale_shape_manual(values = c(5, 19, 8)) +
+            scale_x_continuous(breaks = seq(1989, 2021, 3)) +
+            theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1))
+      pList[[i]] <- p + theme_bw()
+      
+      if (length(unique(df.sub.plot$IMPUTE_STATUS)) == 3) {
+            leg.flag <- TRUE
+            leg <- get_plot_component(p, "guide-box-bottom", return_all=TRUE)}
+}
+if (!leg.flag) {leg <- get_plot_component(pList[[1]], "guide-box-bottom", return_all=TRUE)}
+
+p <- plot_grid(pList[[1]] + theme(legend.position = "none"),
+          pList[[2]] + theme(legend.position = "none"),
+          pList[[3]] + theme(legend.position = "none"),
+          pList[[4]] + theme(legend.position = "none"),
+          pList[[5]] + theme(legend.position = "none"), ncol = 2, scale = 1.1)
+
+title <- ggdraw() + draw_label(paste("Nearest Neighbors in order of closeness, with comparison years"), fontface = 'bold', x = 0, hjust = 0) +
+            theme(plot.margin = margin(l=10))
+print(plot_grid(title, p, leg, ncol = 1, rel_heights = c(0.1,1,0.1)))
+```
+
+
+
+```{r}
+# Zoomed in to comparison trajectories
+df.sub.plot <- comparison.orgs |> filter((TAX_YEAR >= START_YEAR & TAX_YEAR <= END_YEAR+n.predict)) |> mutate(SE = NA)
+df.sub.plot <- rbind(df.sub.plot, 
+                     user.data |> select(-YEAR) |> mutate(NTEE = NA, START_YEAR = NA, END_YEAR = NA, DISTANCE = 0) |> filter(IMPUTE_STATUS == "original"))
+p <- df.sub.plot |>
+      ggplot(user.data, mapping = aes(x = TAX_YEAR, y = TOT_REV, color = EIN2)) +
+      geom_point(mapping = aes(shape = IMPUTE_STATUS), size = 2) + 
+      geom_line() +
+      scale_color_manual(values = c( "#000000", "#009E73",  "#E8DA1D", "#0072B2", "#D55E00", "#CC79A7")) +
+      scale_shape_manual(values = c(5, 19, 8)) +
+      scale_y_continuous(labels = scales::comma) +
+      labs(x = "Year", y = "Total Revenue (USD)", title = "Nearest Neighbors, Zoomed in") + 
+      scale_x_continuous(breaks = seq(min(df.sub.plot$TAX_YEAR), max(df.sub.plot$TAX_YEAR), 2)) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) + theme_bw()
+
+print(p)
+```
+
+```{r}
+# Zoomed in, years stripped, all comparison orgs + next n.predict years, your org
+df.sub.plot <- comparison.orgs |> filter((TAX_YEAR >= START_YEAR & TAX_YEAR <= END_YEAR+n.predict)) |> mutate(SE = NA)
+df.sub.plot <- df.sub.plot |> group_by(EIN2) |> mutate(YEAR = row_number()) |> ungroup()
+df.sub.plot <- rbind(df.sub.plot, user.data |> mutate(NTEE = NA, START_YEAR = NA, END_YEAR = NA, DISTANCE = 0))
+p <- df.sub.plot |>
+      ggplot(user.data, mapping = aes(x = YEAR, y = TOT_REV, color = EIN2)) +
+      geom_point(mapping = aes(shape = IMPUTE_STATUS), size = 2) + 
+      geom_line() +
+      scale_color_manual(values = c( "#000000", "#009E73",  "#E8DA1D", "#0072B2", "#D55E00", "#CC79A7")) +
+      scale_shape_manual(values = c(5, 19, 8, 1)) +
+      labs(x = "Year", y = "Total Revenue (USD)", title = "Nearest Neighbors, Zoomed in and overlapping") + 
+      scale_y_continuous(labels = scales::comma) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) + theme_bw()
+
+print(p)
+```
+
+
+
+
+```{r}
+df.sub.plot <- comparison.orgs |> 
+      filter((TAX_YEAR >= START_YEAR & TAX_YEAR <= END_YEAR+n.predict)) |> # Want the n.data + n.predict years of nearest neighbors data
+      group_by(EIN2) |> 
+      mutate(YEAR = row_number()) |> # shift the years so everyone overlaps
+      ungroup() |> 
+      filter(IMPUTE_STATUS == "original") |> # only keep non-imputed data from nearest neighbors
+      mutate(SE = 0)
+
+deg.freedom <- nrow(df.sub.plot) - 1
+
+df.sub.plot <- rbind(df.sub.plot, user.data |> mutate(EIN2 = "Your organization", NTEE = NA, START_YEAR = NA, END_YEAR = NA, DISTANCE = 0))
+
+# Confidence intervals
+df.sub.plot <- df.sub.plot |>
+      mutate(CI.LOWER = case_when(
+                  IMPUTE_STATUS == "original" ~ TOT_REV,
+                  IMPUTE_STATUS == "predicted" ~ TOT_REV - qt(0.95, df = deg.freedom) * SE)) |>
+      mutate(CI.UPPER = case_when(
+                  IMPUTE_STATUS == "original" ~ TOT_REV,
+                  IMPUTE_STATUS == "predicted" ~ TOT_REV + qt(0.95, df = deg.freedom) * SE)) |>
+      mutate(LINETYPE = case_when(
+                  EIN2 == "Your organization" ~ "your organization",
+                  .default = "similar organizations"))
+
+p <- df.sub.plot |>
+      ggplot(user.data, mapping = aes(x = YEAR, y = TOT_REV, color = EIN2)) +
+      geom_point(mapping = aes(shape = IMPUTE_STATUS, size = LINETYPE)) + 
+      geom_line(mapping = aes(linetype = LINETYPE, linewidth = LINETYPE)) +
+      geom_ribbon(data = (df.sub.plot |> filter(IMPUTE_STATUS == "predicted")),
+                        aes(ymin = CI.LOWER, ymax = CI.UPPER, group = IMPUTE_STATUS),
+                        fill = "grey",
+                        alpha = 0.25, color = "darkgrey") +
+      scale_color_manual(values = c("#009E73",  "#E8DA1D", "#0072B2", "#D55E00", "#CC79A7", "#000000"), name = "Organization ID") +
+      scale_shape_manual(values = c(19, 1.5), name = "Data Origin") +
+      scale_size_manual(values = c(2,3.5), name = "Data Origin") +
+      scale_linetype_manual(values = c("dashed", "solid"), name = "Data Origin") +
+      scale_linewidth_manual(values = c(0.8, 1), name = "Data Origin") +
+      labs(x = "Year", y = "Total Revenue (USD)", title = "Nearest Neighbors, Zoomed in and overlapping") + 
+      scale_y_continuous(labels = scales::comma) +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) + theme_bw()
+print(p)
+```
+
+
