@@ -8,14 +8,14 @@ library(mvtnorm)
 library(pracma)
 library(doParallel)
 
-
-df <- as.data.table(readRDS("PREPROCESSING/df_orginal_processed.rds"))
+# Load data and remove outliers
+df <- as.data.table(readRDS("PREPROCESSING/df_orginal_processed.rds")) |> filter(!outlier)
 
 # Use a semi-join to only keep orgs we need to predict on
-missing.years.list <- readRDS("PREPROCESSING/years_to_predict.rds")
+missing.years.list <- readRDS("PREPROCESSING/years_to_predict.rds") # named list; names correspond to orgs, element is list of years we need to impute for that org
 df <- df[data.table(EIN2 = names(missing.years.list)), on = .(EIN2)]
 
-# Get "best" hyperparameters for Matern Covariance
+# Get "best" hyperparameters for Matern Covariance for the organizations we need to impute data for
 res <- readRDS("PREPROCESSING/best_parameters.rds")
 all.orgs.gp <- intersect(unique(res$EIN), names(missing.years.list))
 

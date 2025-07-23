@@ -778,22 +778,23 @@ rm(all.years, org.info, df)
 
 # Get list where names are EIN and entry is list of years.to.predict, but ignore orgs that reported the same values each year (since prediction will just be that value)
 df <- readRDS("PREPROCESSING/df_orginal_processed.rds")
-df <- df |> select(EIN2, TAX_YEAR, ORG_YEAR_FIRST, ORG_YEAR_LAST, LOG_REV, LOG_REV.original)
+df <- df |> select(EIN2, TAX_YEAR, ORG_YEAR_FIRST, ORG_YEAR_LAST, LOG_REV, LOG_REV.original, outlier)
 
-# Get observed years per organization
-years.observed <- df |>
-      distinct(EIN2, TAX_YEAR) |>
-      group_by(EIN2) |>
-      summarize(YEARS_OBSERVED = list(TAX_YEAR), .groups = "drop") |>
-      deframe()
-
-# Get first and last year per organization
+# Get first and last year per organization (prior to dropping outliers in case first or last year is outlier)
 org_bounds <- df |>
       group_by(EIN2) |>
       summarize(FIRST_APPEARED = min(TAX_YEAR),
                 LAST_APPEARED = max(TAX_YEAR),
                 .groups = "drop")
 saveRDS(org_bounds, "PREPROCESSING/orgs_first_last_appearance.rds")
+
+# Get observed years per organization (after dropping outliers)
+years.observed <- df |>
+      filter(!outlier) |>
+      distinct(EIN2, TAX_YEAR) |>
+      group_by(EIN2) |>
+      summarize(YEARS_OBSERVED = list(TAX_YEAR), .groups = "drop") |>
+      deframe()
 
 # Create a named list where each element is FIRST_APPEARED:LAST_APPEARED for that org
 full.range <- with(org_bounds, setNames(Map(`:`, FIRST_APPEARED, LAST_APPEARED), EIN2))
