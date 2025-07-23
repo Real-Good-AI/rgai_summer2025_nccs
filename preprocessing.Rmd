@@ -844,13 +844,12 @@ missing.years.list <- readRDS("PREPROCESSING/years_to_predict.rds")
 orgs.no.change <- readRDS("PREPROCESSING/orgs_reported_same.rds")
 orgs.no.change <- missing.years.list[intersect(names(missing.years.list), orgs.no.change)] # the ones that need values imputed
 
-# Get a data table with the values I will want to fill in for the orgs that reported no changes
-df.sub <- data.table(df.full) 
-df.sub <- df.sub[data.table(EIN2 = names(orgs.no.change)), on = .(EIN2)]
-df.sub <- df.sub |> drop_na(TOT_REV) |> select(-TAX_YEAR) |> distinct() |> select(EIN2, TOT_REV, LOG_REV, LOG_REV.original)
-
 # Change df.full to data.table for faster indexing
 setDT(df.full)
+
+# Get a data table with the values I will want to fill in for the orgs that reported no changes
+df.sub <- df.full[data.table(EIN2 = names(orgs.no.change)), on = .(EIN2)]
+df.sub <- df.sub |> drop_na(TOT_REV) |> select(-TAX_YEAR) |> distinct() |> select(EIN2, TOT_REV, LOG_REV, LOG_REV.original)
 
 # Loop over EIN2s in orgs.no.change
 start.time <- Sys.time() # ~ 2 minutes

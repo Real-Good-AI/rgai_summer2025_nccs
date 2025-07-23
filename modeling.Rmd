@@ -54,7 +54,6 @@ n.data <- length(user.data) # number of data points in user-supplied history
 n.predict <- 2 # number of years the uesr wants to predict into
 category <- c("ART") # categories the user is willing to compare with
 
-# TODO: add an option for searching through all categories (where you basically would not need to filter by NTEE)
 df.sub <- df |> filter(NTEE %in% category) |> select(EIN2, TAX_YEAR, TOT_REV, NTEE, IMPUTE_STATUS)
 
 K <- 10 # number of nearest neighbors to search for in each window
@@ -312,5 +311,4 @@ p <- df.sub.plot |>
       theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) + theme_bw()
 print(p)
 ```
-
 
