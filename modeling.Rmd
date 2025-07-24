@@ -56,7 +56,7 @@ category <- c("ART") # categories the user is willing to compare with
 
 df.sub <- df |> filter(NTEE %in% category) |> select(EIN2, TAX_YEAR, TOT_REV, NTEE, IMPUTE_STATUS)
 
-K <- 10 # number of nearest neighbors to search for in each window
+K <- 5 # number of nearest neighbors to search for in each window
 nearest.neighbors <- setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("EIN2", "START_YEAR", "END_YEAR", "DISTANCE"))
 start.time <- Sys.time()
 for (year in seq(start.year, end.year-n.predict-n.data+1, 1)){
@@ -112,7 +112,14 @@ comparison.orgs <- comparison.orgs |> filter(PROP_IMPUTED <= 2/6)
 # TODO: Case where top 5 includes original org
 # TODO: Case where there are repeated orgs in top 5
 comparison.orgs <- comparison.orgs[order(DISTANCE)]
-comparison.orgs <- comparison.orgs[1:(5*(n.data + n.predict))]
+comparison.orgs <- comparison.orgs[1:(K*(n.data + n.predict))]
+
+# Give each matched neighbor an ID number
+comparison.orgs <- comparison.orgs |> 
+      left_join(comparison.orgs |> group_by(DISTANCE, EIN2) |> summarise(GROUP_ID = cur_group_id()) |> ungroup(),
+                by = c("EIN2", "DISTANCE"))
+
+rm(result, nearest, curr.interval, year, start.time)
 ```
 
 ## Predict with GP trained on nearest neighbors data
@@ -160,8 +167,8 @@ tst[which.max(tst$likelihood),]
 ### Training a GP and predicting
 ```{r}
 # Hyperparameters
-nu <- 1.503
-nugget <- 0.193
+nu <- 0.6136
+nugget <- 0.4848
 rho <- 1
 
 # For indexing the Matern covariance matrix
@@ -192,7 +199,9 @@ standard_errors <- sqrt((SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12)))
 ```
 
 ```{r}
-user.data <- user.data |> mutate(EIN2 = user.EIN) |> melt(id.vars = "EIN2", variable.name = "TAX_YEAR", value.name = "TOT_REV") |> 
+user.data <- user.data |> 
+      mutate(EIN2 = user.EIN) |> 
+      melt(id.vars = "EIN2", variable.name = "TAX_YEAR", value.name = "TOT_REV") |> 
       mutate(TAX_YEAR = as.integer(as.character(TAX_YEAR)), IMPUTE_STATUS = "original", SE = 0) 
 
 # add in predicted values and standard errors
@@ -227,10 +236,11 @@ ggplot(user.data |> filter(IMPUTE_STATUS == "original"), mapping = aes(x = TAX_Y
 # Full original trajectories
 pList <- list()
 leg.flag <- FALSE
-for (i in 1:length(top.neighbors)){
-      df.sub.plot <- comparison.orgs |> filter(EIN2 == top.neighbors[i])
-      title <- paste("#", i, ": ", substr(top.neighbors[i], start = 5, stop = nchar(top.neighbors[i])), 
-                     ", Years:", nearest.neighbors[i,"START_YEAR"], "-", nearest.neighbors[i,"END_YEAR"], sep = "")
+for (i in 1:length(unique(comparison.orgs$GROUP_ID))){
+      df.sub.plot <- comparison.orgs |> filter(GROUP_ID == i)
+      curr.ein <- df.sub.plot$EIN2[1]
+      title <- paste("#", i, ": ", substr(curr.ein, start = 5, stop = nchar(curr.ein)), 
+                     ", Years:", df.sub.plot[1,"START_YEAR"], "-", df.sub.plot[1,"END_YEAR"], sep = "")
       p <- df.sub.plot |>
             ggplot(user.data, mapping = aes(x = TAX_YEAR, y = TOT_REV)) +
             geom_point(mapping = aes(shape = IMPUTE_STATUS), size = 2) + 
@@ -268,7 +278,7 @@ df.sub.plot <- comparison.orgs |> filter((TAX_YEAR >= START_YEAR & TAX_YEAR <= E
 df.sub.plot <- rbind(df.sub.plot, 
                      user.data |> select(-YEAR) |> mutate(NTEE = NA, START_YEAR = NA, END_YEAR = NA, DISTANCE = 0) |> filter(IMPUTE_STATUS == "original"))
 p <- df.sub.plot |>
-      ggplot(user.data, mapping = aes(x = TAX_YEAR, y = TOT_REV, color = EIN2)) +
+      ggplot(user.data, mapping = aes(x = TAX_YEAR, y = log(TOT_REV), color = EIN2)) +
       geom_point(mapping = aes(shape = IMPUTE_STATUS), size = 2) + 
       geom_line() +
       scale_color_manual(values = c( "#000000", "#009E73",  "#E8DA1D", "#0072B2", "#D55E00", "#CC79A7")) +
@@ -285,7 +295,7 @@ print(p)
 # Zoomed in, years stripped, all comparison orgs + next n.predict years, your org
 df.sub.plot <- comparison.orgs |> filter((TAX_YEAR >= START_YEAR & TAX_YEAR <= END_YEAR+n.predict)) |> mutate(SE = NA)
 df.sub.plot <- df.sub.plot |> group_by(EIN2) |> mutate(YEAR = row_number()) |> ungroup()
-df.sub.plot <- rbind(df.sub.plot, user.data |> mutate(NTEE = NA, START_YEAR = NA, END_YEAR = NA, DISTANCE = 0))
+df.sub.plot <- bind_rows(df.sub.plot, user.data)
 p <- df.sub.plot |>
       ggplot(user.data, mapping = aes(x = YEAR, y = TOT_REV, color = EIN2)) +
       geom_point(mapping = aes(shape = IMPUTE_STATUS), size = 2) + 
@@ -313,7 +323,7 @@ df.sub.plot <- comparison.orgs |>
 
 deg.freedom <- nrow(df.sub.plot) - 1
 
-df.sub.plot <- rbind(df.sub.plot, user.data |> mutate(EIN2 = "Your organization", NTEE = NA, START_YEAR = NA, END_YEAR = NA, DISTANCE = 0))
+df.sub.plot <- bind_rows(df.sub.plot, user.data |> mutate(EIN2 = "Your organization"))
 
 # Confidence intervals
 df.sub.plot <- df.sub.plot |>
@@ -328,21 +338,27 @@ df.sub.plot <- df.sub.plot |>
                   .default = "similar organizations"))
 
 p <- df.sub.plot |>
-      ggplot(user.data, mapping = aes(x = YEAR, y = TOT_REV, color = EIN2)) +
-      geom_point(mapping = aes(shape = IMPUTE_STATUS, size = LINETYPE)) + 
-      geom_line(mapping = aes(linetype = LINETYPE, linewidth = LINETYPE)) +
+      ggplot(mapping = aes(x = YEAR, y = TOT_REV, color = EIN2)) +
+      geom_line(mapping = aes(linewidth = LINETYPE, alpha = LINETYPE)) + # the lines for each organization, with line width and opacity (alpha) varying by the variable LINETYPE
+      geom_line(data = (df.sub.plot |> filter(IMPUTE_STATUS == "predicted")), linetype="dashed", color="white", linewidth=1.5) + # add dashed portion of line to predictions for your org
+      geom_point(mapping = aes(shape = EIN2, size = LINETYPE)) + # add in markers, where shape varies by org and marker size varies by LINETYPE
+      geom_text(data = (df.sub.plot |> filter(IMPUTE_STATUS == "original", EIN2 == "Your organization")), # add labels to markers for the user input data
+            aes(label = TOT_REV), # Specify the label aesthetic
+            nudge_x = -0.2, # Adjust label position horizontally
+            nudge_y = 20000) +
       geom_ribbon(data = (df.sub.plot |> filter(IMPUTE_STATUS == "predicted")),
-                        aes(ymin = CI.LOWER, ymax = CI.UPPER, group = IMPUTE_STATUS),
-                        fill = "grey",
-                        alpha = 0.25, color = "darkgrey") +
+                        aes(ymin = CI.LOWER, ymax = CI.UPPER,fill = IMPUTE_STATUS),
+                        alpha = 0.25, color = "darkgrey") + # confidence interval
       scale_color_manual(values = c("#009E73",  "#E8DA1D", "#0072B2", "#D55E00", "#CC79A7", "#000000"), name = "Organization ID") +
-      scale_shape_manual(values = c(19, 1.5), name = "Data Origin") +
-      scale_size_manual(values = c(2,3.5), name = "Data Origin") +
-      scale_linetype_manual(values = c("dashed", "solid"), name = "Data Origin") +
-      scale_linewidth_manual(values = c(0.8, 1), name = "Data Origin") +
-      labs(x = "Year", y = "Total Revenue (USD)", title = "Nearest Neighbors, Zoomed in and overlapping") + 
+      scale_shape_manual(values = c(15, 17, 18, 7, 10, 19), name = "Organization ID") +
+      scale_size_manual(values = c(2.5,3.5), guide="none") +
+      scale_linewidth_manual(values = c(0.75, 1), guide="none") +
+      scale_alpha_manual(values = c(0.75, 1), guide="none") +
+      scale_fill_manual(values = "grey", labels="95% Confidence Interval", name="") +
       scale_y_continuous(labels = scales::comma) +
-      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) + theme_bw()
-print(p)
+      labs(x = "Year", y = "Total Revenue (USD)", title = "Comparing Your Organization to Similar Organizations") + 
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) + 
+      theme_bw()
+p
 ```
 
