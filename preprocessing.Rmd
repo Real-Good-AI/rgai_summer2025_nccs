@@ -849,7 +849,7 @@ setDT(df.full)
 
 # Get a data table with the values I will want to fill in for the orgs that reported no changes
 df.sub <- df.full[data.table(EIN2 = names(orgs.no.change)), on = .(EIN2)]
-df.sub <- df.sub |> drop_na(TOT_REV) |> select(-TAX_YEAR) |> distinct() |> select(EIN2, TOT_REV, LOG_REV, LOG_REV.original)
+df.sub <- df.sub |> drop_na(TOT_REV) |> select(-TAX_YEAR) |> distinct() |> select(EIN2, TOT_REV, LOG_REV, LOG_REV.original) # one row per org in orgs.no.change with their revenue values 
 
 # Loop over EIN2s in orgs.no.change
 start.time <- Sys.time() # ~ 2 minutes
@@ -862,7 +862,7 @@ for (ein in names(orgs.no.change)) {
   # If for some reason the EIN2 isn't found in df.sub, skip
   if (nrow(fill_values) == 0) {next}
 
-  # Fill in the values in df.full for matching EIN2 and TAX_YEAR
+  # Fill in the revenue values in df.full for matching EIN2 and TAX_YEAR
   df.full[(EIN2 == ein & TAX_YEAR %in% years.to.fill),
           `:=`(TOT_REV = fill_values$TOT_REV,
                LOG_REV = fill_values$LOG_REV,
@@ -881,7 +881,7 @@ df.predictions <- do.call(rbind, lapply(names(res.predictions), function(id) {
 }))
 
 # do the computation for LOG_REV.original and TOT_REV
-df <- df.full |> select(EIN2, LOG_REV.mean) |> distinct()
+df <- df.full |> select(EIN2, LOG_REV.mean) |> distinct() |> drop_na(LOG_REV.mean)
 df.predictions <- left_join(df.predictions, df, by = "EIN2")
 df.predictions <- df.predictions |>
       mutate(LOG_REV.original = LOG_REV + LOG_REV.mean) |>
@@ -890,7 +890,10 @@ df.predictions <- df.predictions |>
 saveRDS(df.predictions, "PREPROCESSING/predictions_df.rds")
 rm(res.predictions)
 
-# Now we have to merge df.predictions with df.full
+# Now we have to merge df.predictions with df.full, but first replace the outlier revenues with NA so we can replace with imputed values
+df.full <- df.full |> mutate(TOT_REV = ifelse(IMPUTE_STATUS == "outlier", NA, TOT_REV),
+                             LOG_REV = ifelse(IMPUTE_STATUS == "outlier", NA, LOG_REV),
+                             LOG_REV.original = ifelse(IMPUTE_STATUS == "outlier", NA, LOG_REV.original))
 df.full <- df.full |> left_join(df.predictions, by = c("EIN2", "TAX_YEAR"), suffix = c("",".y"))
 df.full <- df.full |> mutate(LOG_REV = coalesce(LOG_REV, LOG_REV.y),
                              LOG_REV.original = coalesce(LOG_REV.original, LOG_REV.original.y),
@@ -930,7 +933,7 @@ df.full <- df.full |> mutate(TOT_REV = replace_na(TOT_REV, 1),
                              LOG_REV.original = replace_na(LOG_REV.original, 0))
 
 # For now, replace missing NTEE with "UNKNOWN" in case we want to search through them anyway
-df.full <- df.full |> mutate(NTEE = replace_na(NTEE, "UNKNOWN"))
+df.full <- df.full |> mutate(NTEE = replace_na(NTEE, "UNU"))
 
 saveRDS(df.full, "PREPROCESSING/processed_mega_df.rds")
 ```
