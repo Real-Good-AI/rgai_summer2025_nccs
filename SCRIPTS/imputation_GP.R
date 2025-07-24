@@ -29,7 +29,7 @@ dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
 cluster <- makeCluster(7)
 registerDoParallel(cluster)
 
-start.time <- Sys.time() # 1.5 hours for all orgs!
+start.time <- Sys.time() # 1.5 hours for all orgs without imputing outliers, 2.4 hours with imputing outliers
 res.predictions <- foreach(ein = all.orgs.gp, .packages = c("dplyr", "fields", "mvtnorm"), .verbose = FALSE) %dopar% {
       df.sub <- filter(df, EIN2==ein) # get subset of data for this organization
       years.to.predict <- missing.years.list[[ein]] # the years we will need to predict on
