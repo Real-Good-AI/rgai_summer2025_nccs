@@ -11,10 +11,8 @@ library(doParallel)
 source("SCRIPTS/outlier_detection_helper.R")
 rm(plot_surface, plot_true_vs_pred, plot_heatmap, get_likelihood_bayesopt)
 
-####################################################
-# Load data and do a little bit of pre-processing
-####################################################
-df <- readRDS("PREPROCESSING/processed_mega_df.rds") |> filter(NTEE != "UNU") # UNU means unknown
+# Read in data, remove any organizations with an unknown NTEE category
+df <- readRDS("PREPROCESSING/processed_mega_df.rds") |> filter(NTEE != "UNU")
 
 # Add in the first and last year we had original data for each org
 org_bounds <- df |>
@@ -29,116 +27,124 @@ df <- left_join(df, org_bounds, by = "EIN2")
 rm(org_bounds) # remove variable since we no longer need it
 
 # Index the original data for each org
-row.numbers <- df |> 
-      filter(TAX_YEAR >= FIRST_APPEARED & TAX_YEAR <= LAST_APPEARED & IMPUTE_STATUS == "original") |>
+data.per.org <- df |> 
+      filter(IMPUTE_STATUS == "original") |>
       group_by(EIN2) |>
-      mutate(NUM_ORIGINAL = n()) |>
+      mutate(ROW_NUM = row_number(), NUM_ORIGINAL = n()) |>
       ungroup() |>
-      select(EIN2, TAX_YEAR, NUM_ORIGINAL)
+      select(EIN2, TAX_YEAR, ROW_NUM, NUM_ORIGINAL)
 
-df <- left_join(df, row.numbers, by = c("EIN2", "TAX_YEAR"))
+df <- left_join(df, data.per.org |> select(EIN2, TAX_YEAR, ROW_NUM), by = c("EIN2", "TAX_YEAR"))
+df <- left_join(df, data.per.org |> select(EIN2, NUM_ORIGINAL) |> distinct(), by = "EIN2")
 
-rm(row.numbers) # remove variable since we no longer need it
+rm(data.per.org) # remove variable since we no longer need it
+
+# Remove any orgs with less than 6 years of data
+df <- df |> filter(NUM_ORIGINAL >= 6)
 
 all.orgs.data <- readRDS("MODEL/nearest_neighbors/all_orgs_data.rds")
-orgs.no.change <- readRDS("PREPROCESSING/orgs_reported_same.rds")
 
-all.orgs <- setdiff(unique(df$EIN2), orgs.no.change) # we should not proceed for any orgs that reported the same number each year, since no need to predict
-eins <- sample(all.orgs, 300) # small test set
+eins <- sample(unique(all.orgs.data$EIN2), 1000)
 
 ####################################################
 # Get K nearest neighbors for each organization
 ####################################################
 start.year <- 1989 # first year in the entire data set
 end.year <- 2021 # last year in the entire data set
-K <- 5 # number of nearest neighbors to search for in each window
+K = 6
 
-cluster <- makeCluster(7)
-registerDoParallel(cluster)
+n.data = 3
+n.predict = 3
+
+categories <- unique(all.orgs.data$NTEE)
+all.comparison.orgs <- setNames(data.table(matrix(ncol = 12, nrow = 0)), 
+                                c("EIN2", "TAX_YEAR", "TOT_REV", "NTEE", "IMPUTE_STATUS", "NUM_ORIGINAL", "START_YEAR", "END_PLUS", "ORIGINAL_ORG", "END_YEAR", "DISTANCE", "NEIGHBOR_ID"))
 
 start.time <- Sys.time()
-res <- foreach(ein = eins, .combine = 'rbind', .packages = c("dplyr", "data.table", "RANN"), .verbose = FALSE) %dopar% { 
-      # STEP 1: Get this organization's history + info 
-      user.data <- all.orgs.data |> filter(EIN2 == ein)
-      n.predict <- sum(user.data$PREDICT)
-      n.data <- nrow(user.data) - n.predict
-      category <- unique(user.data$NTEE)
-      
-      # STEP 2: Turn user.data into usable format for next part (basically wide format where each year is a column and TOT_REV is the value in that column)
-      user.data <- user.data |> 
+res <- foreach(category = categories, .combine = 'rbind', .packages = c("dplyr", "data.table", "RANN"), .verbose = TRUE) %do% {
+      # STEP 1: get all the user.data for each org in current category
+      user.data <- all.orgs.data |> 
+            filter(NTEE == category) |>
             filter(!PREDICT) |> 
-            select(EIN2, TAX_YEAR, TOT_REV) |> 
-            dcast(EIN2 ~ TAX_YEAR, value.var = "TOT_REV") |>
-            select(-EIN2)
+            group_by(EIN2) |>
+            mutate(YEAR = row_number()) |>
+            ungroup() |>
+            select(EIN2, YEAR, TOT_REV) 
       
-      # STEP 3: Search for K nearest neighbors in each time window 
-      df.search <- df |> filter(EIN2 != ein & NTEE == category) |> select(EIN2, TAX_YEAR, TOT_REV, IMPUTE_STATUS) # Data to search through
+      setDT(user.data)
+      user.data <- user.data |> dcast(EIN2 ~ YEAR, value.var = "TOT_REV") # Reshape to wide format with years as columns
       
-      nearest.neighbors <- setNames(data.table(matrix(ncol = 4, nrow = 0)), c("EIN2", "START_YEAR", "END_YEAR", "DISTANCE")) # empty data frame that we'll fill with nearest neighbors
+      # STEP 2: Get all data from this category
+      df.search <- df |> filter(NTEE == category)
       
+      # STEP 3: Nearest Neighbor search (55s)
+      nearest.neighbors <- setNames(data.table(matrix(ncol = 5, nrow = 0)), c("EIN2", "START_YEAR", "END_YEAR", "DISTANCE", "ORIGINAL_ORG")) # empty data frame that we'll fill with nearest neighbors
       for (year in seq(start.year, end.year-n.predict-n.data+1, 1)){
             curr.interval <- year:(year+n.data-1) # Time interval to be searched for K nearest neighbors
+            
+            # Get the data to search through and filter out any orgs with too much imputed data in the current n.data+n.predict interval
+            df.search.sub <- df.search |>
+                  filter(TAX_YEAR %in% year:(year+n.data-1+n.predict)) |> 
+                  mutate(IMPUTED = (IMPUTE_STATUS != "original")) |>
+                  select(EIN2, TAX_YEAR, TOT_REV, IMPUTED) |>
+                  group_by(EIN2) |>
+                  mutate(NUM_IMPUTED = sum(IMPUTED), YEAR = row_number()) |>
+                  ungroup()
+            
+            df.search.sub <- df.search.sub |> filter(NUM_IMPUTED <= 2) |> filter(TAX_YEAR %in% curr.interval)
+            
+            # Reshape to wide format where columns are years
+            setDT(df.search.sub)
+            df.search.sub <- df.search.sub |> select(EIN2, YEAR, TOT_REV) |> dcast(EIN2 ~ YEAR, value.var = "TOT_REV")
+            
             if (curr.interval[length(curr.interval)] > end.year-n.predict){break} # If the interval contains years it shouldn't, exit for loop
             
-            # Get the data corresponding to this time interval, reshape to wide format so there is a different column per year
-            df.search.sub <- df.search |> filter(TAX_YEAR %in% curr.interval) |> select(EIN2, TAX_YEAR, TOT_REV) |> dcast(EIN2 ~ TAX_YEAR, value.var = "TOT_REV")
-            
             # Get K nearest neighbors for this time window
-            nearest <- nn2(df.search.sub |> select(-EIN2), user.data, k=K) 
+            nearest <- nn2(df.search.sub |> select(-EIN2), user.data |> select(-EIN2), k=K) 
             nearest.neighbors <- rbind(nearest.neighbors, as.data.table(list("EIN2" = df.search.sub[as.vector(nearest$nn.idx),]$EIN2,
                                                                              "START_YEAR" = curr.interval[1],
                                                                              "END_YEAR" = curr.interval[length(curr.interval)],
-                                                                             "DISTANCE" = as.vector(nearest$nn.dists))))
+                                                                             "DISTANCE" = as.vector(nearest$nn.dists),
+                                                                             "ORIGINAL_ORG" = rep(user.data$EIN2, 6))))
       }
       
-      # STEP 4: Get the top 5 neighbors for this org
+      # start.time <- Sys.time() # 30 s
+      # STEP 4: Get the top 5 neighbors for each org
+      nearest.neighbors <- nearest.neighbors |> 
+            arrange(ORIGINAL_ORG, DISTANCE) |> # Within each organization, order by distance
+            filter(!(ORIGINAL_ORG==EIN2 & DISTANCE == 0)) # since one of the matches is always exactly itself, remove it
       
-      # Create an END_YEAR + n.predict column to help with ranges
-      nearest.neighbors[, END_PLUS := END_YEAR + n.predict]
-      
-      # Get the data for the orgs in nearest.neighbors
-      comparison.orgs <- df.search |> filter(EIN2 %in% nearest.neighbors$EIN2) # full data for nearest neighbor orgs
-      
-      # Perform a non-equi join, where rows from nearest.neighbors are matched with rows in comparison.orgs based on conditions
-      comparison.orgs <- comparison.orgs |> mutate(TAX_YEAR_COMP = TAX_YEAR) # Rename TAX_YEAR in comparison.orgs before joining to avoid name conflict
-      setkey(comparison.orgs, EIN2, TAX_YEAR_COMP) # Set keys for the join
-      comparison.orgs <- comparison.orgs[nearest.neighbors,
-                                         on = .(EIN2, TAX_YEAR_COMP >= START_YEAR, TAX_YEAR_COMP <= END_PLUS),
-                                         allow.cartesian = TRUE,
-                                         nomatch = 0] # For each org in nearest.neighbors, give me the rows for that org from comparison.orgs corresponding to the TAX_YEAR values from START_YEAR through END_PLUS
-      comparison.orgs <- comparison.orgs |> rename(START_YEAR = TAX_YEAR_COMP, END_PLUS = TAX_YEAR_COMP.1)
-      
-      # Compute the proportion/number of imputed data points for each row in nearest.neighbors
-      comparison.orgs[, NON_ORIGINAL := IMPUTE_STATUS != "original"] # turn to boolean for easy counting of imputed values
-      result <- comparison.orgs |> 
-            group_by(EIN2, DISTANCE) |> 
-            summarize(PROP_IMPUTED = mean(NON_ORIGINAL), NUM_IMPUTED = sum(NON_ORIGINAL))
-      
-      # Merge back with nearest.neighbors and filter out any that have too many imputed values
-      # n.data + n.predict ranges between 3 and 8; if 3, allow no imputed values, if 4 or 5 or allow up to 1 imputed value, if 6-8 allow up to 2 imputed values
-      comparison.orgs <- left_join(comparison.orgs, result, by = c("EIN2", "DISTANCE"))
-      comparison.orgs <- comparison.orgs |> filter(PROP_IMPUTED <= 2/6)
-      
-      # Get top 5 neighbors' data
-      # TODO: Case where top 5 includes original org
-      # TODO: Case where there are repeated orgs in top 5
-      comparison.orgs <- comparison.orgs[order(DISTANCE)]
-      comparison.orgs <- comparison.orgs[1:(K*(n.data + n.predict))]
+      nearest.neighbors <- nearest.neighbors |> 
+            group_by(ORIGINAL_ORG) |>
+            group_modify(~{
+                  subset <- head(.x,5) # Keep the top 5 rows in each group (as those correspond to closest neighbors)
+                  return(subset)
+            }) |>
+            ungroup()
       
       # Give each matched neighbor an ID number
-      comparison.orgs <- comparison.orgs |> 
-            left_join(comparison.orgs |> group_by(DISTANCE, EIN2) |> summarise(GROUP_ID = cur_group_id()) |> ungroup(),
-                      by = c("EIN2", "DISTANCE"))
+      nearest.neighbors <- nearest.neighbors |> group_by(ORIGINAL_ORG) |> mutate(NEIGHBOR_ID = row_number()) |> ungroup()
       
-      comparison.orgs$ORIGINAL_ORG <- ein
+      # Create an END_YEAR + n.predict column to help with ranges
+      nearest.neighbors <- nearest.neighbors |> mutate(END_PLUS = END_YEAR + n.predict)
       
-      # STEP 5: save this, for each should merge this data table with the ones from the other loops
-      comparison.orgs
+      # STEP 5: Get the full data for each nearest neighbor
+      
+      # Perform a non-equi join, where rows from nearest.neighbors are matched with rows in comparison.orgs based on conditions
+      df.search <- df.search |> mutate(TAX_YEAR_COMP = TAX_YEAR) # Rename TAX_YEAR before joining to avoid name conflict
+      df.search <- df.search |> select(EIN2, TAX_YEAR, TOT_REV, NTEE, IMPUTE_STATUS, NUM_ORIGINAL, TAX_YEAR_COMP)
+      setkey(df.search, EIN2, TAX_YEAR_COMP) # Set keys for the join
+      comparison.orgs <- df.search[nearest.neighbors,
+                                   on = .(EIN2, TAX_YEAR_COMP >= START_YEAR, TAX_YEAR_COMP <= END_PLUS),
+                                   allow.cartesian = TRUE,
+                                   nomatch = 0] # For each org in nearest.neighbors, give me the rows for that org from comparison.orgs corresponding to the TAX_YEAR values from START_YEAR through END_PLUS
+      comparison.orgs <- comparison.orgs |> rename(START_YEAR = TAX_YEAR_COMP, END_PLUS = TAX_YEAR_COMP.1)
+      
+      all.comparison.orgs <- rbind(all.comparison.orgs, comparison.orgs)
 }
 print(Sys.time()-start.time)
-stopCluster(cl = cluster)
 
-# saveRDS(res, "MODEL/nearest_neighbors/res_nn.rds")
+saveRDS(res, "MODEL/nearest_neighbors/res_nn.rds")
 
 ####################################################
 # Hyperparamter Optimization
