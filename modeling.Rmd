@@ -8,8 +8,8 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
 ```
-
-# Load Data and Libraries
+# Test Org
+## Load Data and Libraries
 ```{r, message = FALSE}
 library(readr)
 library(tidyverse, warn.conflicts = FALSE)
@@ -32,7 +32,7 @@ table(df$NTEE)
 ```
 
 
-# Nearest Neighbors
+## Nearest Neighbors
 Given an organization's NTEE category and 2-5 years of history, find other orgs within the same NTEE category that had similar pattern at any point in time.
 
 - Let `n.data` = number of data points the org gives us, must have 2 <= n.data <= 5
@@ -275,7 +275,7 @@ print(plot_grid(title, p, leg, ncol = 1, rel_heights = c(0.1,1,0.1)))
 ```{r}
 # Zoomed in to comparison trajectories
 df.sub.plot <- comparison.orgs |> filter((TAX_YEAR >= START_YEAR & TAX_YEAR <= END_YEAR+n.predict)) |> mutate(SE = NA)
-df.sub.plot <- rbind(df.sub.plot, 
+df.sub.plot <- bind_rows(df.sub.plot, 
                      user.data |> select(-YEAR) |> mutate(NTEE = NA, START_YEAR = NA, END_YEAR = NA, DISTANCE = 0) |> filter(IMPUTE_STATUS == "original"))
 p <- df.sub.plot |>
       ggplot(user.data, mapping = aes(x = TAX_YEAR, y = log(TOT_REV), color = EIN2)) +
@@ -360,5 +360,80 @@ p <- df.sub.plot |>
       theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) + 
       theme_bw()
 p
+```
+
+
+
+# Evaluation
+## Load Data and Libraries
+```{r, message = FALSE}
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+library(RANN)
+library(fields)
+library(ggplot2)
+library(cowplot)
+library(lhs) # for latin hypercube sampling
+
+df <- readRDS("PREPROCESSING/processed_mega_df.rds")
+```
+
+```{r}
+data.all.orgs <- readRDS("MODEL/nearest_neighbors/all_orgs_data.rds")
+res.nn <- readRDS("MODEL/nearest_neighbors/res_nn_test.rds")
+res.pars <- readRDS("MODEL/nearest_neighbors/res_parameters_test.rds")
+res.preds <- readRDS("MODEL/nearest_neighbors/res_predictions_test.rds")
+```
+
+```{r}
+# End result: error between TRUE and PREDICTED values (RMSE) and indicator of whether predictions fall inside confidence interval
+
+# Add shifted YEAR variable
+data.all.orgs <- data.all.orgs |> 
+  filter(EIN2 %in% names(res.preds)) |>
+  group_by(EIN2) |>
+  mutate(YEAR = row_number()) |>
+  ungroup() |>
+  filter(PREDICT) |> 
+  select(-NTEE)
+
+# Extract predictions
+start.time <- Sys.time()
+df.predictions <- do.call(rbind, lapply(names(res.preds), function(id) {
+  data.frame(EIN2 = id, YEAR = res.preds[[id]]$YEAR, TOT_REV.pred = res.preds[[id]]$TOT_REV, SE = res.preds[[id]]$standard_errors)
+}))
+print(Sys.time() - start.time)
+
+# Merge predictions and standard errors with true data
+mean.nn <- res.nn |> 
+  filter(IMPUTE_STATUS == "original") |> 
+  group_by(ORIGINAL_ORG) |> 
+  summarize(MEAN = mean(TOT_REV),
+            DEG.FREEDOM = n()-1) |> 
+  ungroup()
+data.all.orgs <- data.all.orgs |> left_join(df.predictions, by = c("EIN2", "YEAR"))
+data.all.orgs <- data.all.orgs |> left_join(mean.nn |> rename(EIN2 = ORIGINAL_ORG), by = "EIN2")
+data.all.orgs <- data.all.orgs |> mutate(PREDICTION = TOT_REV.pred + MEAN)
+
+# Compute confidence intervals
+data.all.orgs <- data.all.orgs |> mutate(CI.LOWER = PREDICTION - qt(0.95, df = DEG.FREEDOM) * SE,
+                        CI.UPPER = PREDICTION + qt(0.95, df = DEG.FREEDOM) * SE)
+
+# Compute error between predicted and true values
+data.all.orgs <- data.all.orgs |> 
+  mutate(REL_ERROR = abs(PREDICTION - TOT_REV)/TOT_REV,
+         IN_CI = (TOT_REV >= CI.LOWER & TOT_REV <= CI.UPPER))
+
+table(data.all.orgs$IN_CI)
+quantile(data.all.orgs$REL_ERROR, probs = seq(0,1,0.2))
+sum((data.all.orgs$TOT_REV - data.all.orgs$PREDICTION)**2)/nrow(data.all.orgs)
+```
+
+
+```{r}
+df |> filter(EIN2 == "EIN-27-4007082") |> filter(IMPUTE_STATUS == "original" & TAX_YEAR!=2015) |>
+  ggplot(aes(x = TAX_YEAR, y = TOT_REV)) + geom_point() + geom_line()
 ```
 
