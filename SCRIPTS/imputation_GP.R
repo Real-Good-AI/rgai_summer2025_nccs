@@ -11,8 +11,25 @@ library(doParallel)
 # Load data and remove outliers
 df <- as.data.table(readRDS("PREPROCESSING/df_orginal_processed.rds")) |> filter(!outlier)
 
+# Redo the means / centering to exlcude the outliers
+df <- df |> mutate(LOG_REV.original = log(TOT_REV)) |> group_by(EIN2) |> mutate(LOG_REV.mean = mean(LOG_REV.original)) |> ungroup() |> mutate(LOG_REV = LOG_REV.original - LOG_REV.mean)
+
+# After removing an outlier, some of the orgs' remaining data is the same each year and will thus need to be removed since LOG_REV=0 for every year in that time series
+df <- left_join(df,
+                df |> group_by(EIN2) |> summarize(all0 = all(LOG_REV == 0)), # For each org, get indicator of whether or not they reported same log_rev value each year
+                by = "EIN2")
+
+orgs.no.change <- df |> filter(all0 == TRUE) |> select(EIN2) |> unique()
+orgs.no.change <- orgs.no.change$EIN2
+#saveRDS(orgs.no.change, "PREPROCESSING/orgs_reported_same_after_outlier_removal.rds")
+
+df <- df |> filter(all0 == FALSE)
+setDT(df)
+
 # Use a semi-join to only keep orgs we need to predict on
 missing.years.list <- readRDS("PREPROCESSING/years_to_predict.rds") # named list; names correspond to orgs, element is list of years we need to impute for that org
+missing.years.list <- missing.years.list[setdiff(names(missing.years.list), orgs.no.change)] # if an org appears in orgs.no.change, we'll take care of imputation later without the GP
+
 df <- df[data.table(EIN2 = names(missing.years.list)), on = .(EIN2)]
 
 # Get "best" hyperparameters for Matern Covariance for the organizations we need to impute data for
