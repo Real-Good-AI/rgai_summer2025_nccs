@@ -841,6 +841,7 @@ table(df$BMF_LAST.mod)
 missing.years.list <- readRDS("PREPROCESSING/years_to_predict.rds")
 
 # First, let's put in the "imputed" values for orgs that didn't change, by filling in that value
+# TODO: above after removing outliers there are some orgs that also just need same value input: "PREPROCESSING/orgs_reported_same_after_outlier_removal.rds"
 orgs.no.change <- readRDS("PREPROCESSING/orgs_reported_same.rds")
 orgs.no.change <- missing.years.list[intersect(names(missing.years.list), orgs.no.change)] # the ones that need values imputed
 
@@ -874,6 +875,20 @@ rm(fill_values, orgs.no.change, missing.years.list, df.sub, years.to.fill)
 ```
 
 ```{r}
+# Redo the means / centering to exclude the outliers
+means <- df |> 
+      filter(IMPUTE_STATUS == "original") |>
+      mutate(LOG_REV.original = log(TOT_REV)) |> 
+      roup_by(EIN2) |> 
+      mutate(LOG_REV.mean = mean(LOG_REV.original)) |> 
+      ungroup() |> 
+      mutate(LOG_REV = LOG_REV.original - LOG_REV.mean) |>
+      select(EIN2, LOG_REV.mean) |>
+      distinct()
+            
+# TODO: update the means in df to get the correct imputation
+# TODO: above after removing outliers there are some orgs that also just need same value input, "PREPROCESSING/orgs_reported_same_after_outlier_removal.rds"
+
 # Next, we have to extract the predictions from the GP by putting the relevant info into a data frame
 res.predictions <- readRDS("PREPROCESSING/imputation_results.rds")
 df.predictions <- do.call(rbind, lapply(names(res.predictions), function(id) {
