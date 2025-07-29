@@ -742,7 +742,7 @@ rm(candidates, res.out.1, res.out.2, res.out.3, res.out.4, res.out.5)
 df <- as.data.table(readRDS("PREPROCESSING/df_orginal_processed.rds"))
 
 # Remove F9_10_ASSET_TOT_EOY because we aren't using it and don't have a way (right now) to impute for missing years
-df <- df |> select(-F9_10_ASSET_TOT_EOY)
+df <- df |> select(-F9_10_ASSET_TOT_EOY, -LOG_REV.mean)
 
 # Add in a flag to signal that this was data we originally had (i.e. not imputed)
 df <- df |> mutate(IMPUTE_STATUS = ifelse(!outlier, "original", "outlier"))
@@ -755,11 +755,16 @@ df.full <- crossing(unique(df$EIN2), all.years) |> rename(EIN2 = "unique(df$EIN2
 
 # Join with the original dataframe
 df.full <- df.full |>
-  left_join(df |> select(EIN2, TAX_YEAR, TOT_REV, LOG_REV, LOG_REV.original, LOG_REV.mean), 
+  left_join(df |> select(EIN2, TAX_YEAR, TOT_REV, LOG_REV, LOG_REV.original), 
             by = c("EIN2", "TAX_YEAR"))
 
-# Add in the other information, like NTEE Code, SIZE, location, etc; note this is invariant to year (in theory)
-org.info <- df |> select(-TOT_REV, -LOG_REV, -LOG_REV.original, -LOG_REV.mean,-TAX_YEAR, -YEAR, -outlier, -IMPUTE_STATUS) |> distinct(.keep_all = FALSE)
+# Add in the other information, like NTEE Code, SIZE, location, etc; note this is invariant to year (in theory); also recompute the LOG_REV mean after outlier removal; this is for the imputation step later
+org.info <- df |> filter(!outlier) |>
+      group_by(EIN2) |> 
+      mutate(LOG_REV.mean = mean(LOG_REV.original)) |> 
+      ungroup() |>
+      select(-TOT_REV, -LOG_REV, -LOG_REV.original, -TAX_YEAR, -YEAR, -outlier, -IMPUTE_STATUS) |> 
+      distinct() #.keep_all = FALSE
 
 # For any repeated EIN2 rows, keep row with fewest NA values; when there are ties, it keeps the first one
 org.info <- org.info %>% arrange(rowSums(is.na(.))) |> distinct(EIN2, .keep_all = TRUE)
@@ -836,13 +841,18 @@ table(df$BMF_LAST.mod)
 ```
 
 ### Step 3: Fill in the missing values in the skeleton
+
 ```{r}
 # Step 3: Add missing data to the full dataset skeleton
 missing.years.list <- readRDS("PREPROCESSING/years_to_predict.rds")
 
-# First, let's put in the "imputed" values for orgs that didn't change, by filling in that value
-# TODO: above after removing outliers there are some orgs that also just need same value input: "PREPROCESSING/orgs_reported_same_after_outlier_removal.rds"
-orgs.no.change <- readRDS("PREPROCESSING/orgs_reported_same.rds")
+# First, any existing revenue values for outliers should be replaced with NA since they need to be imputed
+df.full <- df.full |> mutate(TOT_REV = ifelse(IMPUTE_STATUS == "outlier", NA, TOT_REV),
+                             LOG_REV = ifelse(IMPUTE_STATUS == "outlier", NA, LOG_REV),
+                             LOG_REV.original = ifelse(IMPUTE_STATUS == "outlier", NA, LOG_REV.original))
+
+# Next, let's put in the "imputed" values for orgs that didn't change, by filling in that value
+orgs.no.change <- readRDS("PREPROCESSING/orgs_reported_same_after_outlier_removal.rds")
 orgs.no.change <- missing.years.list[intersect(names(missing.years.list), orgs.no.change)] # the ones that need values imputed
 
 # Change df.full to data.table for faster indexing
@@ -850,50 +860,41 @@ setDT(df.full)
 
 # Get a data table with the values I will want to fill in for the orgs that reported no changes
 df.sub <- df.full[data.table(EIN2 = names(orgs.no.change)), on = .(EIN2)]
-df.sub <- df.sub |> drop_na(TOT_REV) |> select(-TAX_YEAR) |> distinct() |> select(EIN2, TOT_REV, LOG_REV, LOG_REV.original) # one row per org in orgs.no.change with their revenue values 
+df.sub <- df.sub |> drop_na(TOT_REV) |> select(-TAX_YEAR) |> distinct() |> select(EIN2, TOT_REV, LOG_REV.mean) # one row per org in orgs.no.change with their revenue values 
 
 # Loop over EIN2s in orgs.no.change
-start.time <- Sys.time() # ~ 2 minutes
+start.time <- Sys.time() # ~ 5 minutes
 for (ein in names(orgs.no.change)) {
-  years.to.fill <- orgs.no.change[[ein]]
-  
-  # Get the replacement values from df.sub
-  fill_values <- df.sub[EIN2 == ein, .(TOT_REV, LOG_REV, LOG_REV.original)]
-  
-  # If for some reason the EIN2 isn't found in df.sub, skip
-  if (nrow(fill_values) == 0) {next}
-
-  # Fill in the revenue values in df.full for matching EIN2 and TAX_YEAR
-  df.full[(EIN2 == ein & TAX_YEAR %in% years.to.fill),
+      years.to.fill <- orgs.no.change[[ein]]
+      
+      # Get the replacement values from df.sub
+      fill_values <- df.sub[EIN2 == ein, .(TOT_REV, LOG_REV.mean)]
+      
+      # If for some reason the EIN2 isn't found in df.sub, skip
+      if (nrow(fill_values) == 0) {next}
+      
+      # Fill in the revenue values in df.full for matching EIN2 and TAX_YEAR
+      df.full[(EIN2 == ein & TAX_YEAR %in% years.to.fill),
           `:=`(TOT_REV = fill_values$TOT_REV,
-               LOG_REV = fill_values$LOG_REV,
-               LOG_REV.original = fill_values$LOG_REV.original)]
+               LOG_REV.mean = fill_values$LOG_REV.mean)]
 }
 print(Sys.time() - start.time)
+
+df.full <- df.full |> mutate(LOG_REV.original = ifelse(EIN2 %in% names(orgs.no.change), log(TOT_REV), LOG_REV.original),
+       LOG_REV = ifelse(EIN2 %in% names(orgs.no.change), log(TOT_REV)-LOG_REV.mean, LOG_REV))
 
 rm(fill_values, orgs.no.change, missing.years.list, df.sub, years.to.fill)
 ```
 
 ```{r}
-# Redo the means / centering to exclude the outliers
-means <- df |> 
-      filter(IMPUTE_STATUS == "original") |>
-      mutate(LOG_REV.original = log(TOT_REV)) |> 
-      roup_by(EIN2) |> 
-      mutate(LOG_REV.mean = mean(LOG_REV.original)) |> 
-      ungroup() |> 
-      mutate(LOG_REV = LOG_REV.original - LOG_REV.mean) |>
-      select(EIN2, LOG_REV.mean) |>
-      distinct()
-            
-# TODO: update the means in df to get the correct imputation
-# TODO: above after removing outliers there are some orgs that also just need same value input, "PREPROCESSING/orgs_reported_same_after_outlier_removal.rds"
-
 # Next, we have to extract the predictions from the GP by putting the relevant info into a data frame
 res.predictions <- readRDS("PREPROCESSING/imputation_results.rds")
+
+start.time <- Sys.time() 
 df.predictions <- do.call(rbind, lapply(names(res.predictions), function(id) {
   data.frame(EIN2 = id, TAX_YEAR = res.predictions[[id]]$TAX_YEAR, LOG_REV = res.predictions[[id]]$LOG_REV)
 }))
+print(Sys.time() - start.time)
 
 # do the computation for LOG_REV.original and TOT_REV
 df <- df.full |> select(EIN2, LOG_REV.mean) |> distinct() |> drop_na(LOG_REV.mean)
@@ -905,10 +906,7 @@ df.predictions <- df.predictions |>
 saveRDS(df.predictions, "PREPROCESSING/predictions_df.rds")
 rm(res.predictions)
 
-# Now we have to merge df.predictions with df.full, but first replace the outlier revenues with NA so we can replace with imputed values
-df.full <- df.full |> mutate(TOT_REV = ifelse(IMPUTE_STATUS == "outlier", NA, TOT_REV),
-                             LOG_REV = ifelse(IMPUTE_STATUS == "outlier", NA, LOG_REV),
-                             LOG_REV.original = ifelse(IMPUTE_STATUS == "outlier", NA, LOG_REV.original))
+# Now we have to merge df.predictions with df.full
 df.full <- df.full |> left_join(df.predictions, by = c("EIN2", "TAX_YEAR"), suffix = c("",".y"))
 df.full <- df.full |> mutate(LOG_REV = coalesce(LOG_REV, LOG_REV.y),
                              LOG_REV.original = coalesce(LOG_REV.original, LOG_REV.original.y),
@@ -954,6 +952,20 @@ saveRDS(df.full, "PREPROCESSING/processed_mega_df.rds")
 ```
 
 
+### Step 4: Checking some of the imputations
+```{r}
+df <- df.full |> filter(IMPUTE_STATUS != "imputed") |> select(EIN2, TAX_YEAR, TOT_REV, LOG_REV, LOG_REV.original, IMPUTE_STATUS)
+df.outliers <- readRDS("PREPROCESSING/candidate_outliers_df.rds")
+orgs.outlier.list <- unique(df.outliers$EIN2)
+
+for (ein in sample(orgs.outlier.list, 10)){
+      p <- df |> filter(EIN2 == ein) |>
+            ggplot(aes(x = TAX_YEAR, y = LOG_REV)) +
+            geom_line() +
+            geom_point(aes(shape = IMPUTE_STATUS, color = IMPUTE_STATUS))
+      print(p)
+}
+```
 
 
 

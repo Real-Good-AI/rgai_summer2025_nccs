@@ -8,6 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
 ```
+
 # Test Org
 ## Load Data and Libraries
 ```{r, message = FALSE}
@@ -377,63 +378,185 @@ library(ggplot2)
 library(cowplot)
 library(lhs) # for latin hypercube sampling
 
-df <- readRDS("PREPROCESSING/processed_mega_df.rds")
+#df <- readRDS("PREPROCESSING/processed_mega_df.rds")
 ```
 
 ```{r}
-data.all.orgs <- readRDS("MODEL/nearest_neighbors/all_orgs_data.rds")
-res.nn <- readRDS("MODEL/nearest_neighbors/res_nn_test.rds")
-res.pars <- readRDS("MODEL/nearest_neighbors/res_parameters_test.rds")
-res.preds <- readRDS("MODEL/nearest_neighbors/res_predictions_test.rds")
+all.orgs.data <- readRDS("MODEL/nearest_neighbors/all_orgs_data.rds")
+res <- readRDS("MODEL/nearest_neighbors/res_nn.rds")
+res.pars <- readRDS("MODEL/nearest_neighbors/res_parameters.rds")
+res.predictions <- readRDS("MODEL/nearest_neighbors/res_predictions.rds")
 ```
 
 ```{r}
 # End result: error between TRUE and PREDICTED values (RMSE) and indicator of whether predictions fall inside confidence interval
 
 # Add shifted YEAR variable
-data.all.orgs <- data.all.orgs |> 
-  filter(EIN2 %in% names(res.preds)) |>
-  group_by(EIN2) |>
-  mutate(YEAR = row_number()) |>
-  ungroup() |>
-  filter(PREDICT) |> 
-  select(-NTEE)
-
+all.orgs.data <- all.orgs.data |> 
+      filter(EIN2 %in% names(res.predictions)) |>
+      group_by(EIN2) |>
+      mutate(YEAR = row_number()) |>
+      ungroup()
+      
 # Extract predictions
-start.time <- Sys.time()
-df.predictions <- do.call(rbind, lapply(names(res.preds), function(id) {
-  data.frame(EIN2 = id, YEAR = res.preds[[id]]$YEAR, TOT_REV.pred = res.preds[[id]]$TOT_REV, SE = res.preds[[id]]$standard_errors)
-}))
-print(Sys.time() - start.time)
+# start.time <- Sys.time() # 37min
+# df.predictions <- do.call(rbind, lapply(names(res.predictions), function(id) {
+#   data.frame(EIN2 = id, 
+#              YEAR = res.predictions[[id]]$YEAR, 
+#              TOT_REV.pred = res.predictions[[id]]$TOT_REV, 
+#              SE = res.predictions[[id]]$standard_errors, 
+#              MEAN = res.predictions[[id]]$MEAN)
+# }))
+# print(Sys.time() - start.time)
+
+# saveRDS(df.predictions, "MODEL/nearest_neighbors/predictions_df.rds")
+df.predictions <- readRDS("MODEL/nearest_neighbors/predictions_df.rds") |> mutate(TOT_REV.pred = TOT_REV.pred + MEAN) |> select(-MEAN)
 
 # Merge predictions and standard errors with true data
-mean.nn <- res.nn |> 
-  filter(IMPUTE_STATUS == "original") |> 
-  group_by(ORIGINAL_ORG) |> 
-  summarize(MEAN = mean(TOT_REV),
-            DEG.FREEDOM = n()-1) |> 
-  ungroup()
-data.all.orgs <- data.all.orgs |> left_join(df.predictions, by = c("EIN2", "YEAR"))
-data.all.orgs <- data.all.orgs |> left_join(mean.nn |> rename(EIN2 = ORIGINAL_ORG), by = "EIN2")
-data.all.orgs <- data.all.orgs |> mutate(PREDICTION = TOT_REV.pred + MEAN)
+df.predictions <- df.predictions |> left_join(all.orgs.data |> filter(PREDICT), by = c("EIN2", "YEAR")) # get true and predicted values
+df.predictions <- df.predictions |> select(-PREDICT)  |> 
+      left_join(res |> filter(IMPUTE_STATUS == "original") |> 
+                      group_by(ORIGINAL_ORG) |>
+                      summarize(DEG.FREEDOM = n()-1) |> 
+                      ungroup() |> rename(EIN2 = ORIGINAL_ORG), 
+                by = "EIN2") # compute degrees of freedom (number of original records for neighbors - 1)
 
 # Compute confidence intervals
-data.all.orgs <- data.all.orgs |> mutate(CI.LOWER = PREDICTION - qt(0.95, df = DEG.FREEDOM) * SE,
-                        CI.UPPER = PREDICTION + qt(0.95, df = DEG.FREEDOM) * SE)
+df.predictions <- df.predictions  |> mutate(CI.LOWER = TOT_REV.pred - qt(0.95, df = DEG.FREEDOM) * SE,
+                        CI.UPPER = TOT_REV.pred + qt(0.95, df = DEG.FREEDOM) * SE)
 
 # Compute error between predicted and true values
-data.all.orgs <- data.all.orgs |> 
-  mutate(REL_ERROR = abs(PREDICTION - TOT_REV)/TOT_REV,
+df.predictions <- df.predictions  |> 
+  mutate(REL_ERROR = abs(TOT_REV.pred - TOT_REV)/TOT_REV,
          IN_CI = (TOT_REV >= CI.LOWER & TOT_REV <= CI.UPPER))
 
-table(data.all.orgs$IN_CI)
-quantile(data.all.orgs$REL_ERROR, probs = seq(0,1,0.2))
-sum((data.all.orgs$TOT_REV - data.all.orgs$PREDICTION)**2)/nrow(data.all.orgs)
+summary.stats <- df.predictions |> group_by(EIN2) |> 
+      summarize(IN_CI.prop = sum(IN_CI)/n(), 
+                RMSE = sqrt(sum((TOT_REV - TOT_REV.pred)**2)/n()),
+                MEAN = sum(TOT_REV)/n(),
+                RMSE.norm.mm = RMSE/(max(TOT_REV)-min(TOT_REV)),
+                RMSE.norm.mean = RMSE/MEAN)
+
+summary.stats <- summary.stats |> filter(RMSE.norm.mm != Inf)
+      
+table(df.predictions$IN_CI)
+
+quantile(df.predictions$REL_ERROR, probs = seq(0,1,0.1))
+
+RMSE.all <- sum((df.predictions$TOT_REV - df.predictions$TOT_REV.pred)**2)/nrow(df.predictions)
+cat("\n",
+    "RMSE: ", RMSE.all, 
+    "\nRMSE/(max-min): ", RMSE.all / (max(df.predictions$TOT_REV.pred) - min(df.predictions$TOT_REV.pred)), 
+    "\nRMSE/mean: ", RMSE.all/mean(df.predictions$TOT_REV.pred),
+    "\n")
+
+table(summary.stats$IN_CI.prop)
+
+quantile(summary.stats$RMSE, probs = seq(0,1,0.1))
+
+quantile(summary.stats$RMSE.norm.mean, probs = seq(0,1,0.1))
+```
+
+```{r}
+# Long version for plots
+df.predictions.long <- readRDS("MODEL/nearest_neighbors/predictions_df.rds") |> 
+      mutate(TOT_REV.pred = TOT_REV.pred + MEAN) |> 
+      select(-MEAN) |> 
+      left_join(all.orgs.data |> filter(PREDICT), by = c("EIN2", "YEAR")) # get true and predicted values
+df.predictions.long <- df.predictions.long |> select(-PREDICT)  |> 
+      left_join(res |> filter(IMPUTE_STATUS == "original") |> 
+                      group_by(ORIGINAL_ORG) |>
+                      summarize(DEG.FREEDOM = n()-1) |> 
+                      ungroup() |> rename(EIN2 = ORIGINAL_ORG), 
+                by = "EIN2") # compute degrees of freedom (number of original records for neighbors - 1)
+df.predictions.long <- df.predictions.long |>
+      pivot_longer(cols = c(TOT_REV, TOT_REV.pred), names_to = "IMPUTE_STATUS", values_to = "revenue") |>
+      mutate(IMPUTE_STATUS = recode(IMPUTE_STATUS,
+                           "TOT_REV" = "original",
+                           "TOT_REV.pred" = "predicted")) |> 
+      mutate(SE = case_when(IMPUTE_STATUS == "predicted" ~ SE,
+                            IMPUTE_STATUS == "original" ~ 0)) |> 
+      rename(TOT_REV = revenue) # separate the true TOT_REV and predicted TOT_REV into different rows
+
+df.predictions.long <- bind_rows(df.predictions.long,
+                            all.orgs.data |> filter(!PREDICT) |> semi_join(df.predictions, by = "EIN2") |> mutate(SE = 0, IMPUTE_STATUS = "original"))
+
+df.predictions.long <- df.predictions.long |> arrange(EIN2, YEAR) |> select(-PREDICT)
+
+eins <- (summary.stats |> filter(IN_CI.prop == 0) |> arrange(desc(RMSE)))$EIN2
+eins2  <- (summary.stats |> arrange(desc(RMSE.norm.mm)))$EIN2
 ```
 
 
 ```{r}
-df |> filter(EIN2 == "EIN-27-4007082") |> filter(IMPUTE_STATUS == "original" & TAX_YEAR!=2015) |>
-  ggplot(aes(x = TAX_YEAR, y = TOT_REV)) + geom_point() + geom_line()
+for (ein in eins[1:10]){
+      df.sub <- res |> filter(ORIGINAL_ORG == ein) |>
+            group_by(EIN2, NEIGHBOR_ID) |> 
+            mutate(YEAR = row_number()) |> # shift the years so everyone overlaps
+            ungroup() |> 
+            filter(IMPUTE_STATUS == "original") |> # only keep non-imputed data from nearest neighbors
+            mutate(SE = 0)
+      
+      deg.freedom <- nrow(df.sub) - 1
+      
+      user.data <- df.predictions.long |> 
+            filter(EIN2 == ein) |> 
+            mutate(EIN2 = "Your organization", 
+                   NEIGHBOR_ID = 0)
+      
+      df.sub <- bind_rows(df.sub, user.data) |> select(-NUM_ORIGINAL, -END_YEAR, -DISTANCE, -DEG.FREEDOM)
+      
+      # Confidence intervals
+      df.sub <- df.sub |>
+            mutate(CI.LOWER = case_when(
+                        IMPUTE_STATUS == "original" ~ TOT_REV,
+                        IMPUTE_STATUS == "predicted" ~ TOT_REV - qt(0.95, df = deg.freedom) * SE)) |>
+            mutate(CI.UPPER = case_when(
+                        IMPUTE_STATUS == "original" ~ TOT_REV,
+                        IMPUTE_STATUS == "predicted" ~ TOT_REV + qt(0.95, df = deg.freedom) * SE)) |>
+            mutate(LINETYPE = case_when(
+                        EIN2 == "Your organization" ~ "your organization",
+                        .default = "similar organizations"))
+      
+      p <- df.sub |> filter(IMPUTE_STATUS == "original") |>
+            ggplot(mapping = aes(x = YEAR, y = TOT_REV, color = interaction(EIN2, NEIGHBOR_ID))) +
+            geom_line(mapping = aes(linewidth = LINETYPE, alpha = LINETYPE)) + # the lines for each organization, with line width and opacity (alpha) varying by the variable LINETYPE
+            geom_line(data = (df.sub |> filter(IMPUTE_STATUS == "predicted")), linetype="dashed", color="black", linewidth=1.5) + # add dashed portion of line to predictions for your org
+            geom_point(mapping = aes(shape = interaction(EIN2, NEIGHBOR_ID), size = LINETYPE)) + # add in markers, where shape varies by org and marker size varies by LINETYPE
+            geom_ribbon(data = (df.sub |> filter(IMPUTE_STATUS == "predicted")),
+                              aes(ymin = CI.LOWER, ymax = CI.UPPER,fill = IMPUTE_STATUS),
+                              alpha = 0.25, color = "darkgrey") + # confidence interval
+            scale_color_manual(values = c( "#000000", "#009E73",  "#E8DA1D", "#0072B2", "#D55E00", "#CC79A7"), name = "Organization ID") +
+            scale_shape_manual(values = c(15, 17, 18, 7, 10, 19), name = "Organization ID") +
+            scale_size_manual(values = c(2.5,3.5), guide="none") +
+            scale_linewidth_manual(values = c(0.75, 1), guide="none") +
+            scale_alpha_manual(values = c(0.75, 1), guide="none") +
+            scale_fill_manual(values = "grey", labels="95% Confidence Interval", name="") +
+            scale_y_continuous(labels = scales::comma) +
+            labs(x = "Year", y = "Total Revenue (USD)", title = "Comparing Your Organization to Similar Organizations") + 
+            theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) + 
+            theme_bw()
+      print(p)
+}
+```
+
+```{r}
+df <- readRDS("PREPROCESSING/processed_mega_df.rds")
+df.outliers <- readRDS("PREPROCESSING/candidate_outliers_df.rds")
+test_eins <- eins[1:10]
+
+df |> filter(EIN2 == "EIN-46-3265423") |>
+            ggplot(aes(x = TAX_YEAR, y = TOT_REV)) +
+            geom_line() +
+            geom_point(aes(shape = IMPUTE_STATUS, color = IMPUTE_STATUS))
+
+df.outliers |> filter(EIN2 == test_eins[4])
+
+
+df |> filter(EIN2 == "EIN-46-3265423") |> filter(IMPUTE_STATUS == "original")
+
+df.predictions |> filter(EIN2 == "EIN-46-3265423")
+
+res |> filter(ORIGINAL_ORG == "EIN-46-3265423") |> filter(IMPUTE_STATUS == "original")
 ```
 

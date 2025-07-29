@@ -14,18 +14,6 @@ rm(plot_surface, plot_true_vs_pred, plot_heatmap, get_likelihood_bayesopt)
 # Read in data, remove any organizations with an unknown NTEE category
 df <- readRDS("PREPROCESSING/processed_mega_df.rds") |> filter(NTEE != "UNU")
 
-# Add in the first and last year we had original data for each org
-org_bounds <- df |>
-      filter(IMPUTE_STATUS != "imputed") |>
-      group_by(EIN2) |>
-      summarize(FIRST_APPEARED = min(TAX_YEAR),
-                LAST_APPEARED = max(TAX_YEAR),
-                .groups = "drop")
-
-df <- left_join(df, org_bounds, by = "EIN2")
-
-rm(org_bounds) # remove variable since we no longer need it
-
 # Index the original data for each org
 data.per.org <- df |> 
       filter(IMPUTE_STATUS == "original") |>
@@ -60,7 +48,7 @@ categories <- unique(all.orgs.data$NTEE)
 all.comparison.orgs <- setNames(data.table(matrix(ncol = 12, nrow = 0)), 
                                 c("EIN2", "TAX_YEAR", "TOT_REV", "NTEE", "IMPUTE_STATUS", "NUM_ORIGINAL", "START_YEAR", "END_PLUS", "ORIGINAL_ORG", "END_YEAR", "DISTANCE", "NEIGHBOR_ID"))
 
-start.time <- Sys.time()
+start.time <- Sys.time() # ~ 5 min
 res <- foreach(category = categories, .combine = 'rbind', .packages = c("dplyr", "data.table", "RANN"), .verbose = TRUE) %do% {
       # STEP 1: get all the user.data for each org in current category
       user.data <- all.orgs.data |> 
@@ -144,16 +132,18 @@ res <- foreach(category = categories, .combine = 'rbind', .packages = c("dplyr",
 }
 print(Sys.time()-start.time)
 
-saveRDS(res, "MODEL/nearest_neighbors/res_nn.rds")
+saveRDS(all.comparison.orgs, "MODEL/nearest_neighbors/res_nn.rds")
 
+res = all.comparison.orgs
+rm(df, all.comparison.orgs, comparison.orgs, df.search, df.search.sub, nearest, nearest.neighbors, user.data)
 ####################################################
 # Hyperparamter Optimization
 ####################################################
 cluster <- makeCluster(7)
 registerDoParallel(cluster)
 
-start.time <- Sys.time()
-res.pars <- foreach(ein = eins, .combine = 'rbind', .packages = c("dplyr", "fields", "mvtnorm", "lhs"), .verbose = FALSE, .errorhandling = "remove") %dopar% {
+start.time <- Sys.time() # 16 hours
+res.pars <- foreach(ein = unique(all.orgs.data$EIN2), .combine = 'rbind', .packages = c("dplyr", "fields", "mvtnorm", "lhs"), .verbose = FALSE, .errorhandling = "remove") %dopar% {
       # Neearest Neighbors Data, grouping by EIN2,DISTANCE in case EIN2 is repeated (if repeated, distance will be difference), adding shifted YEAR variable and centering the total revenue values
       df.nn <- res |> 
             filter(ORIGINAL_ORG == ein) |> 
@@ -174,7 +164,7 @@ res.pars <- foreach(ein = eins, .combine = 'rbind', .packages = c("dplyr", "fiel
       
       initial.conds <- randomLHS(10,2)
       initial.conds[, 1] <- 0.05 + initial.conds[, 1] * (2.5 - 0.05) # nu in [0.05,2.5)
-      initial.conds[, 2] <- 0 + initial.conds[, 2] * (3 - 0) # nugget in [0,3]
+      initial.conds[, 2] <- 0.05 + initial.conds[, 2] * (3 - 0.05) # nugget in [0.05,3]
       
       tst <- setNames(data.frame(matrix(ncol = 5, nrow = 0)), c("EIN2", "nu", "nugget", "likelihood", "trial"))
       likelihood_wrapper <- function(pars.vec){
@@ -191,7 +181,7 @@ res.pars <- foreach(ein = eins, .combine = 'rbind', .packages = c("dplyr", "fiel
                                    f = likelihood_wrapper,
                                    grad = NULL,
                                    ui = rbind(c(1,0),c(-1,0),c(0,1)), #rbind(c(1,0),c(-1,0),c(0,1))
-                                   ci = c(0.001,-3.5,0)) #c(0.001,-3.5, 0)
+                                   ci = c(0.001,-3.5,0.001)) #c(0.001,-3.5, 0)
             tst[nrow(tst)+1,1] <- ein
             tst[nrow(tst),2:ncol(tst)] <- c(c(res.opt$par[1], res.opt$par[2], -1*res.opt$value, i))
       }
@@ -201,7 +191,7 @@ res.pars <- foreach(ein = eins, .combine = 'rbind', .packages = c("dplyr", "fiel
 print(Sys.time()-start.time)
 stopCluster(cl = cluster)
 
-# saveRDS(res.pars, "MODEL/nearest_neighbors/res_parameters.rds")
+saveRDS(res.pars, "MODEL/nearest_neighbors/res_parameters.rds")
 
 ####################################################
 # GP Predictions
@@ -209,8 +199,8 @@ stopCluster(cl = cluster)
 cluster <- makeCluster(7)
 registerDoParallel(cluster)
 
-start.time <- Sys.time()
-res.predictions <- foreach(ein = eins, .packages = c("dplyr", "fields", "mvtnorm"), .verbose = FALSE, .errorhandling = "remove") %dopar% {
+start.time <- Sys.time() # 5-6 hours?
+res.predictions <- foreach(ein = unique(res.pars$EIN2), .packages = c("dplyr", "fields", "mvtnorm"), .verbose = FALSE) %dopar% {
       # Nearest Neighbors data, grouping by EIN2,DISTANCE in case EIN2 is repeated (if repeated, distance will be difference), adding shifted YEAR variable and centering the total revenue values
       df.nn <- res |> 
             filter(ORIGINAL_ORG == ein) |> 
@@ -242,6 +232,7 @@ res.predictions <- foreach(ein = eins, .packages = c("dplyr", "fields", "mvtnorm
                        YEAR = years.to.predict + n.data,
                        sig.sqd = numeric(), 
                        TOT_REV = numeric(length(years.to.predict)), 
+                       MEAN = mean(df.nn$TOT_REV),
                        standard_errors = matrix(0,ncol=length(years.to.predict),nrow=length(years.to.predict)))
       
       mu_1 <- numeric(length(years.to.predict)) # all zeros
@@ -274,5 +265,5 @@ res.predictions <- foreach(ein = eins, .packages = c("dplyr", "fields", "mvtnorm
 print(Sys.time() - start.time)
 stopCluster(cl = cluster)
 
-names(res.predictions) <- eins
-# saveRDS(res.predictions, "MODEL/nearest_neighbors/res_predictions.rds")
+names(res.predictions) <- unique(res.pars$EIN2)
+saveRDS(res.predictions, "MODEL/nearest_neighbors/res_predictions.rds")
