@@ -438,23 +438,23 @@ summary.stats <- df.predictions |> group_by(EIN2) |>
                 RMSE.norm.mean = RMSE/MEAN)
 
 summary.stats <- summary.stats |> filter(RMSE.norm.mm != Inf)
-      
-table(df.predictions$IN_CI)
-
-quantile(df.predictions$REL_ERROR, probs = seq(0,1,0.1))
 
 RMSE.all <- sum((df.predictions$TOT_REV - df.predictions$TOT_REV.pred)**2)/nrow(df.predictions)
+
+var.mean <- sum((df.predictions$TOT_REV - mean(df.predictions$TOT_REV))**2)
+var.pred <- sum((df.predictions$TOT_REV - df.predictions$TOT_REV.pred)**2)
+r.squared <- (var.mean - var.pred)/var.mean
+
+
 cat("\n",
     "RMSE: ", RMSE.all, 
     "\nRMSE/(max-min): ", RMSE.all / (max(df.predictions$TOT_REV.pred) - min(df.predictions$TOT_REV.pred)), 
     "\nRMSE/mean: ", RMSE.all/mean(df.predictions$TOT_REV.pred),
+    "\nR^2:", r.squared,
     "\n")
 
+
 table(summary.stats$IN_CI.prop)
-
-quantile(summary.stats$RMSE, probs = seq(0,1,0.1))
-
-quantile(summary.stats$RMSE.norm.mean, probs = seq(0,1,0.1))
 ```
 
 ```{r}
@@ -485,11 +485,12 @@ df.predictions.long <- df.predictions.long |> arrange(EIN2, YEAR) |> select(-PRE
 
 eins <- (summary.stats |> filter(IN_CI.prop == 0) |> arrange(desc(RMSE)))$EIN2
 eins2  <- (summary.stats |> arrange(desc(RMSE.norm.mm)))$EIN2
+eins3  <- (summary.stats |> arrange((RMSE.norm.mm)))$EIN2
 ```
 
 
 ```{r}
-for (ein in eins[1:10]){
+for (ein in eins3[1:10]){
       df.sub <- res |> filter(ORIGINAL_ORG == ein) |>
             group_by(EIN2, NEIGHBOR_ID) |> 
             mutate(YEAR = row_number()) |> # shift the years so everyone overlaps
@@ -501,7 +502,7 @@ for (ein in eins[1:10]){
       
       user.data <- df.predictions.long |> 
             filter(EIN2 == ein) |> 
-            mutate(EIN2 = "Your organization", 
+            mutate(EIN2 = "Original", 
                    NEIGHBOR_ID = 0)
       
       df.sub <- bind_rows(df.sub, user.data) |> select(-NUM_ORIGINAL, -END_YEAR, -DISTANCE, -DEG.FREEDOM)
@@ -515,7 +516,7 @@ for (ein in eins[1:10]){
                         IMPUTE_STATUS == "original" ~ TOT_REV,
                         IMPUTE_STATUS == "predicted" ~ TOT_REV + qt(0.95, df = deg.freedom) * SE)) |>
             mutate(LINETYPE = case_when(
-                        EIN2 == "Your organization" ~ "your organization",
+                        EIN2 == "Original" ~ "original",
                         .default = "similar organizations"))
       
       p <- df.sub |> filter(IMPUTE_STATUS == "original") |>
@@ -533,7 +534,7 @@ for (ein in eins[1:10]){
             scale_alpha_manual(values = c(0.75, 1), guide="none") +
             scale_fill_manual(values = "grey", labels="95% Confidence Interval", name="") +
             scale_y_continuous(labels = scales::comma) +
-            labs(x = "Year", y = "Total Revenue (USD)", title = "Comparing Your Organization to Similar Organizations") + 
+            labs(x = "Year", y = "Total Revenue (USD)", title = paste("Comparing", ein, "to Similar Organizations")) + 
             theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) + 
             theme_bw()
       print(p)
@@ -543,9 +544,17 @@ for (ein in eins[1:10]){
 ```{r}
 df <- readRDS("PREPROCESSING/processed_mega_df.rds")
 df.outliers <- readRDS("PREPROCESSING/candidate_outliers_df.rds")
-test_eins <- eins[1:10]
+df.original <- readRDS("PREPROCESSING/df_orginal_processed.rds")
 
-df |> filter(EIN2 == "EIN-46-3265423") |>
+
+test_eins <- eins[1:10]
+ein <- test_eins[3] #"EIN-46-3265423"
+
+df.original |> filter(EIN2 == ein) |>
+            ggplot(aes(x = TAX_YEAR, y = TOT_REV)) +
+            geom_line() + geom_point(aes(shape = outlier, color = outlier))
+
+df |> filter(EIN2 == ein) |>
             ggplot(aes(x = TAX_YEAR, y = TOT_REV)) +
             geom_line() +
             geom_point(aes(shape = IMPUTE_STATUS, color = IMPUTE_STATUS))
