@@ -23,79 +23,80 @@ n.data <- length(user.history) # number of data points in user-supplied history
 n.predict <- 2 # number of years the user wants to predict into (selected from a drop down list with options 1, 2, 3)
 
 ########################################################################
-# Load in data
-########################################################################
-df <- readRDS("PREPROCESSING/processed_mega_df.rds") |> 
-  filter(NTEE == category)
-
-start.year <- min(df$TAX_YEAR) # first year in the data set
-end.year <-  max(df$TAX_YEAR) # last year in the data set
-
-########################################################################
 # Nearest Neighbor Search
 ########################################################################
-# STEP 1: Set up user.data with shifted year variable
-user.data <- as.data.table(list(EIN2 = user.EIN, TAX_YEAR = user.years, TOT_REV = user.history)) |>
-  arrange(TAX_YEAR) |>
-  mutate(YEAR = row_number()) |>
-  select(EIN2, YEAR, TOT_REV) 
-
-setDT(user.data)
-user.data <- user.data |> dcast(EIN2 ~ YEAR, value.var = "TOT_REV") # Reshape to wide format with years as columns
-
-# STEP 2: Nearest Neighbor search
-nearest.neighbors <- setNames(data.table(matrix(ncol = 4, nrow = 0)), c("EIN2", "START_YEAR", "END_YEAR", "DISTANCE")) # empty data frame that we'll fill with nearest neighbors
-for (year in seq(start.year, end.year-n.predict-n.data+1, 1)){
-  curr.interval <- year:(year+n.data-1) # Time interval to be searched for K nearest neighbors
-  
-  # Get the data to search through and filter out any orgs with too much imputed data in the current n.data+n.predict interval
-  df.search <- df |>
-    filter(TAX_YEAR %in% year:(year+n.data-1+n.predict)) |> 
-    mutate(IMPUTED = (IMPUTE_STATUS != "original")) |>
-    select(EIN2, TAX_YEAR, TOT_REV, IMPUTED) |>
-    group_by(EIN2) |>
-    mutate(PROP_IMPUTED = sum(IMPUTED)/n(), YEAR = row_number()) |>
-    ungroup() |> 
-    filter(PROP_IMPUTED <= 1/3) |> 
-    filter(TAX_YEAR %in% curr.interval)
-  
-  # Reshape to wide format where columns are years
-  setDT(df.search)
-  df.search <- df.search |> select(EIN2, YEAR, TOT_REV) |> dcast(EIN2 ~ YEAR, value.var = "TOT_REV")
-  
-  if (curr.interval[length(curr.interval)] > end.year-n.predict){break} # If the interval contains years it shouldn't, exit for loop
-  
-  # Get K nearest neighbors for this time window
-  nearest <- nn2(df.search |> select(-EIN2), user.data |> select(-EIN2), k=5) 
-  nearest.neighbors <- rbind(nearest.neighbors, as.data.table(list("EIN2" = df.search[as.vector(nearest$nn.idx),]$EIN2,
-                                                                   "START_YEAR" = curr.interval[1],
-                                                                   "END_YEAR" = curr.interval[length(curr.interval)],
-                                                                   "DISTANCE" = as.vector(nearest$nn.dists))))
+nn.search <- function(category, user.EIN, user.years, user.history, n.predict){
+    df <- readRDS("PREPROCESSING/processed_mega_df.rds") |> 
+      filter(NTEE == category)
+    
+    start.year <- min(df$TAX_YEAR) # first year in the data set
+    end.year <-  max(df$TAX_YEAR) # last year in the data set
+    
+    # STEP 1: Set up user.data with shifted year variable
+    n.data <- length(user.history)
+    user.data <- as.data.table(list(EIN2 = user.EIN, TAX_YEAR = user.years, TOT_REV = user.history)) |>
+      arrange(TAX_YEAR) |>
+      mutate(YEAR = row_number()) |>
+      select(EIN2, YEAR, TOT_REV) 
+    
+    setDT(user.data)
+    user.data <- user.data |> dcast(EIN2 ~ YEAR, value.var = "TOT_REV") # Reshape to wide format with years as columns
+    
+    # STEP 2: Nearest Neighbor search
+    nearest.neighbors <- setNames(data.table(matrix(ncol = 4, nrow = 0)), c("EIN2", "START_YEAR", "END_YEAR", "DISTANCE")) # empty data frame that we'll fill with nearest neighbors
+    for (year in seq(start.year, end.year-n.predict-n.data+1, 1)){
+      curr.interval <- year:(year+n.data-1) # Time interval to be searched for K nearest neighbors
+      
+      # Get the data to search through and filter out any orgs with too much imputed data in the current n.data+n.predict interval
+      df.search <- df |>
+        filter(TAX_YEAR %in% year:(year+n.data-1+n.predict)) |> 
+        mutate(IMPUTED = (IMPUTE_STATUS != "original")) |>
+        select(EIN2, TAX_YEAR, TOT_REV, IMPUTED) |>
+        group_by(EIN2) |>
+        mutate(PROP_IMPUTED = sum(IMPUTED)/n(), YEAR = row_number()) |>
+        ungroup() |> 
+        filter(PROP_IMPUTED <= 1/3) |> 
+        filter(TAX_YEAR %in% curr.interval)
+      
+      # Reshape to wide format where columns are years
+      setDT(df.search)
+      df.search <- df.search |> select(EIN2, YEAR, TOT_REV) |> dcast(EIN2 ~ YEAR, value.var = "TOT_REV")
+      
+      if (curr.interval[length(curr.interval)] > end.year-n.predict){break} # If the interval contains years it shouldn't, exit for loop
+      
+      # Get K nearest neighbors for this time window
+      nearest <- nn2(df.search |> select(-EIN2), user.data |> select(-EIN2), k=5) 
+      nearest.neighbors <- rbind(nearest.neighbors, as.data.table(list("EIN2" = df.search[as.vector(nearest$nn.idx),]$EIN2,
+                                                                       "START_YEAR" = curr.interval[1],
+                                                                       "END_YEAR" = curr.interval[length(curr.interval)],
+                                                                       "DISTANCE" = as.vector(nearest$nn.dists))))
+    }
+    
+    # STEP 3: Get the top 5 neighbors for each org
+    nearest.neighbors <- nearest.neighbors |> 
+      arrange(DISTANCE) |> # Within each organization, order by distance
+      head(5)
+    
+    # Give each matched neighbor an ID number
+    nearest.neighbors <- nearest.neighbors |> mutate(NEIGHBOR_ID = row_number()) |> ungroup()
+    
+    # Create an END_YEAR + n.predict column to help with ranges
+    nearest.neighbors <- nearest.neighbors |> mutate(END_PLUS = END_YEAR + n.predict)
+    
+    # STEP 4: Get the full data for each nearest neighbor
+    
+    # Perform a non-equi join, where rows from nearest.neighbors are matched with rows in comparison.orgs based on conditions
+    df <- df |> mutate(TAX_YEAR_COMP = TAX_YEAR) # Rename TAX_YEAR before joining to avoid name conflict
+    df <- df |> select(EIN2, TAX_YEAR, TOT_REV, IMPUTE_STATUS, TAX_YEAR_COMP)
+    setkey(df, EIN2, TAX_YEAR_COMP) # Set keys for the join
+    res <- df[nearest.neighbors,
+              on = .(EIN2, TAX_YEAR_COMP >= START_YEAR, TAX_YEAR_COMP <= END_PLUS),
+              allow.cartesian = TRUE,
+              nomatch = 0] # For each org in nearest.neighbors, give me the rows for that org from comparison.orgs corresponding to the TAX_YEAR values from START_YEAR through END_PLUS
+    res <- res |> rename(START_YEAR = TAX_YEAR_COMP, END_PLUS = TAX_YEAR_COMP.1)
+    
+    return(res)
 }
-
-# STEP 3: Get the top 5 neighbors for each org
-nearest.neighbors <- nearest.neighbors |> 
-  arrange(DISTANCE) |> # Within each organization, order by distance
-  head(5)
-
-# Give each matched neighbor an ID number
-nearest.neighbors <- nearest.neighbors |> mutate(NEIGHBOR_ID = row_number()) |> ungroup()
-
-# Create an END_YEAR + n.predict column to help with ranges
-nearest.neighbors <- nearest.neighbors |> mutate(END_PLUS = END_YEAR + n.predict)
-
-# STEP 4: Get the full data for each nearest neighbor
-
-# Perform a non-equi join, where rows from nearest.neighbors are matched with rows in comparison.orgs based on conditions
-df <- df |> mutate(TAX_YEAR_COMP = TAX_YEAR) # Rename TAX_YEAR before joining to avoid name conflict
-df <- df |> select(EIN2, TAX_YEAR, TOT_REV, IMPUTE_STATUS, TAX_YEAR_COMP)
-setkey(df, EIN2, TAX_YEAR_COMP) # Set keys for the join
-res <- df[nearest.neighbors,
-          on = .(EIN2, TAX_YEAR_COMP >= START_YEAR, TAX_YEAR_COMP <= END_PLUS),
-          allow.cartesian = TRUE,
-          nomatch = 0] # For each org in nearest.neighbors, give me the rows for that org from comparison.orgs corresponding to the TAX_YEAR values from START_YEAR through END_PLUS
-res <- res |> rename(START_YEAR = TAX_YEAR_COMP, END_PLUS = TAX_YEAR_COMP.1)
-
 ########################################################################
 # Hyperparameter Optimization
 ########################################################################
