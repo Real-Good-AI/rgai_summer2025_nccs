@@ -951,6 +951,23 @@ df.full <- df.full |> mutate(NTEE = replace_na(NTEE, "UNU"))
 saveRDS(df.full, "PREPROCESSING/processed_mega_df.rds")
 ```
 
+```{r}
+df <- readRDS("PREPROCESSING/processed_mega_df.rds")
+
+for (category in unique(df$NTEE)){
+      df.sub <- df |> filter(NTEE==category)
+      filename <- paste("PREPROCESSING/processed_mega_df_",category, ".rds", sep="")
+      saveRDS(df.sub, filename)
+      print(filename)
+}
+
+for (category in unique(df$NTEE)){
+      filename <- paste("PREPROCESSING/processed_mega_df_",category, ".rds", sep="")
+      df.sub <- readRDS(filename)
+      print(filename)
+      print(unique(df.sub$NTEE))
+}
+```
 
 ### Step 4: Checking some of the imputations
 ```{r}

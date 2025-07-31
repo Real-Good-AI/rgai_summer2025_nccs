@@ -12,8 +12,8 @@ library(scales)
 library(lhs) # for latin hypercube sampling
 
 nn.search <- function(category, user.EIN, user.years, user.history, n.predict){
-      df <- readRDS("PREPROCESSING/processed_mega_df.rds") |> 
-            filter(NTEE == category)
+      filename <- paste("PREPROCESSING/processed_mega_df_",category, ".rds", sep="")
+      df <- readRDS(filename)
       
       start.year <- min(df$TAX_YEAR) # first year in the data set
       end.year <-  max(df$TAX_YEAR) # last year in the data set
@@ -212,6 +212,32 @@ gp.predict <- function(res, res.pars, user.EIN, user.years, user.history, n.pred
       return(user.data)
 }
 
+# res <- nn.search("ART", "EIN-00-0000000", c(2022, 2023), c(1, 1), 2)
+# res.pars <- gp.param.opt(res, "EIN-00-0000000", c(2022, 2023), c(1, 1), 2)
+# res.gp <- gp.predict(res, res.pars, "EIN-00-0000000", c(2022, 2023), c(1, 1), 2)
+
 # res <- nn.search("ART", "EIN-00-0000000", c(2022, 2023, 2024), c(62369, 100199, 185830), 2)
 # res.pars <- gp.param.opt(res, "EIN-00-0000000", c(2022, 2023, 2024), c(62369, 100199, 185830), 2)
 # res.gp <- gp.predict(res, res.pars, "EIN-00-0000000", c(2022, 2023, 2024), c(62369, 100199, 185830), 2)
+
+# res.gp$TAX_YEAR <- seq(2022, 2024 + 2)
+# 
+# deg.freedom <- nrow(res |> filter(IMPUTE_STATUS=="original")) - 1
+# user_data_df <- res.gp |>
+#       mutate(CI.LOWER = case_when(
+#             IMPUTE_STATUS == "Reported" ~ TOT_REV,
+#             IMPUTE_STATUS == "Predicted" ~ TOT_REV - qt(0.95, df = deg.freedom) * SE)) |>
+#       mutate(CI.UPPER = case_when(
+#             IMPUTE_STATUS == "Reported" ~ TOT_REV,
+#             IMPUTE_STATUS == "Predicted" ~ TOT_REV + qt(0.95, df = deg.freedom) * SE)) 
+# 
+# df_reported <- user_data_df %>% filter(IMPUTE_STATUS == "Reported")
+# df_predicted <- user_data_df %>% filter(IMPUTE_STATUS == "Predicted")
+# df_transition <- user_data_df %>% filter((TAX_YEAR == 2024) | (TAX_YEAR == 2024+1))
+# 
+# df_peers <- res |> 
+#       mutate(label = paste("Organization ", NEIGHBOR_ID, ": ", EIN2, sep = "")) |> 
+#       group_by(NEIGHBOR_ID) |> 
+#       mutate(TAX_YEAR = seq(2022, 2024 + 2)) |> 
+#       ungroup() |> 
+#       mutate(label = factor(label, levels = unique(label[order(NEIGHBOR_ID)])))
