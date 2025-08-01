@@ -569,3 +569,30 @@ df.predictions |> filter(EIN2 == "EIN-46-3265423")
 res |> filter(ORIGINAL_ORG == "EIN-46-3265423") |> filter(IMPUTE_STATUS == "original")
 ```
 
+```{r}
+res.predictions <- readRDS("MODEL/nearest_neighbors/res_predictions.rds")
+df.predictions <- readRDS("MODEL/nearest_neighbors/predictions_df.rds") |> mutate(TOT_REV.pred = TOT_REV.pred + MEAN) |> select(-MEAN)
+
+SIGMA <- lapply(res.predictions, function(x) x[["SIGMA"]])
+
+inv.t.chol <- function(x){
+      tryCatch({chol2inv(t(chol(x)))}, error = function(err) {"error!!!"})
+}
+
+SIGMA.mod <- lapply(SIGMA, inv.t.chol)
+
+trouble <- lapply(SIGMA.mod, function(x) all(x == "error!!!"))
+trouble  <- Filter(function(x) x, trouble)
+trouble <- names(trouble)
+
+all.orgs.data <- readRDS("MODEL/nearest_neighbors/all_orgs_data.rds")
+all.orgs.data <- all.orgs.data |> filter(EIN2 %in% trouble)
+res <- readRDS("MODEL/nearest_neighbors/res_nn.rds") 
+res <- res |> filter(ORIGINAL_ORG %in% trouble)
+
+SIGMA.trouble <- SIGMA[trouble]
+
+res.pars <- readRDS("MODEL/nearest_neighbors/res_parameters.rds") |> filter(EIN2 %in% trouble)
+```
+
+

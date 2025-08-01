@@ -6,6 +6,7 @@ library(data.table)
 library(shinycssloaders)
 library(future)
 library(promises)
+library(webshot2)
 source("app_helper.R")
 
 plan(multisession)
@@ -233,16 +234,26 @@ server <- function(input, output, session) {
                   output$gpPredOutput <- renderTable({
                         user_data_df <- user_data_df |> 
                               select(-YEAR, -NEIGHBOR_ID) |> 
-                              rename(EIN = EIN2, YEAR = TAX_YEAR, DATA_ORIGIN = IMPUTE_STATUS, REVENUE = TOT_REV)
+                              rename(EIN = EIN2, Year = TAX_YEAR, Data_Origin = IMPUTE_STATUS, Revenue = TOT_REV)
                         deg.freedom <- nrow(res |> filter(IMPUTE_STATUS=="original")) - 1
                         user_data_df <- user_data_df |>
-                              mutate(CI.LOWER = case_when(
-                                    DATA_ORIGIN == "Reported" ~ NA,
-                                    DATA_ORIGIN == "Predicted" ~ REVENUE - qt(0.95, df = deg.freedom) * SE)) |>
-                              mutate(CI.UPPER = case_when(
-                                    DATA_ORIGIN == "Reported" ~ NA,
-                                    DATA_ORIGIN == "Predicted" ~ REVENUE + qt(0.95, df = deg.freedom) * SE)) 
-                        user_data_df
+                              mutate(Lower_Estimate = case_when(
+                                    Data_Origin == "Reported" ~ NA,
+                                    Data_Origin == "Predicted" ~ Revenue - qt(0.95, df = deg.freedom) * SE)) |>
+                              mutate(Upper_Estimate = case_when(
+                                    Data_Origin == "Reported" ~ NA,
+                                    Data_Origin == "Predicted" ~ Revenue + qt(0.95, df = deg.freedom) * SE)) |>
+                              select(-SE)
+                        user_data_df$Year <- seq(2022,2024 + 2)
+                        user_data_df |> mutate(Revenue = case_when(
+                              Data_Origin == "Reported" ~ dollar_format()(Revenue),
+                              Data_Origin == "Predicted" ~ dollar_format()(signif(Revenue, 3)))) |>
+                              mutate(Lower_Estimate = dollar_format()(signif(Lower_Estimate,3)),
+                                     Upper_Estimate = dollar_format()(signif(Upper_Estimate,3))) |>
+                              relocate(Revenue, .after = Data_Origin) |>
+                              mutate(Lower_Estimate = replace_na(Lower_Estimate, "Not Applicable"),
+                                     Upper_Estimate = replace_na(Upper_Estimate, "Not Applicable"))
+
                   })
                   
                   # Step 6: Plot
@@ -320,7 +331,8 @@ server <- function(input, output, session) {
                                                           symmetric = FALSE,
                                                           array = df_predicted$CI.UPPER - df_predicted$TOT_REV,
                                                           arrayminus = df_predicted$TOT_REV - df_predicted$CI.LOWER,
-                                                          color = "gray"
+                                                          color = "gray",
+                                                          showlegend = TRUE
                                                     ),
                                                     name = "95% Confidence Interval")
                               }
@@ -338,7 +350,7 @@ server <- function(input, output, session) {
                                         x = ~TAX_YEAR, y = ~TOT_REV,
                                         type = 'scatter', mode = 'lines',
                                         line = list(dash = "dash", color = "black", width = 2.5),
-                                        name = "Predicted", showlegend = FALSE) %>%
+                                        name = "", showlegend = FALSE, hoverinfo = "none") %>%
                               
                               
                               layout(
@@ -360,10 +372,32 @@ server <- function(input, output, session) {
                         res |> group_by(NEIGHBOR_ID) |>
                               slice(1) |>
                               ungroup() |>
-                              select(EIN2, START_YEAR, END_PLUS, NEIGHBOR_ID) |>
-                              rename(END_YEAR = END_PLUS) |>
-                              mutate(END_YEAR = as.integer(END_YEAR))
+                              select(EIN2, START_YEAR, END_YEAR, END_PLUS, NEIGHBOR_ID) |>
+                              mutate(Matched_Years = paste(START_YEAR, "-", END_YEAR),
+                                     Prediction_Years = paste(END_YEAR+1, "-", END_PLUS)) |>
+                              select(-START_YEAR, -END_YEAR, -END_PLUS) |>
+                              rename(Similarity_Ranking = NEIGHBOR_ID, EIN = EIN2) |>
+                              relocate(Similarity_Ranking, .after = last_col())
                   })
+                  
+                  # output$downloadPlotPNG <- downloadHandler(
+                  #       filename = function() {
+                  #             paste0("revenue_plot_", Sys.Date(), ".png")
+                  #       },
+                  #       content = function(file) {
+                  #             temp_html <- tempfile(fileext = ".html")
+                  #             
+                  #             # Build the same plot used in renderPlotly
+                  #             plt <- plotly_build(output$revenuePlot())
+                  #             
+                  #             # Save temporary HTML
+                  #             htmlwidgets::saveWidget(plt, temp_html, selfcontained = TRUE)
+                  #             
+                  #             # Convert to PNG using webshot2
+                  #             webshot2::webshot(temp_html, file = file, vwidth = 1000, vheight = 700)
+                  #       }
+                  # )
+                  
                   
                   # Render in specified order
                   output$resultsUI <- renderUI({
@@ -374,14 +408,22 @@ server <- function(input, output, session) {
                               # h4("Gaussian Process Optimization Result:"),
                               # withSpinner(tableOutput("gpOutput")),
                               
-                              h4("Similar Organizations & Matched Years:"),
+                              h4("Interactive Revenue Plot:"),
+                              withSpinner(plotlyOutput("revenuePlot")),
+                              p("Pssttt... This plot is interactive, try hovering over the plot or clicking different aspects like legend items!"),
+                              
+                              h4("Similar Organizations:"),
+                              p("According to our data, these are the 5 organizations with revenue histories most similar to yours! The most similar organization has Similarity Ranking 1. We also show the years for that organization that matched your revenue history, and the years from their organization that we used to predict your future revenue."),
                               withSpinner(tableOutput("resNeighborSummary")),
                               
                               h4("Gaussian Process Prediction Output:"),
-                              withSpinner(tableOutput("gpPredOutput")),
+                              p(
+                                    paste("Using data from the top 5 most similar organizations, we used Gaussian Processes to predict what your next", n_pred, "years will look like.",
+                                          "For the predicted revenue, we provide a 95% confidence interval: if we were to low-ball our estimate of that year's revenue, we would give Lower_Estimate. If we were to high-ball it, we'd give Upper_Estimate.")
+                              ),
+                              withSpinner(tableOutput("gpPredOutput"))
                               
-                              h4("Revenue Plot:"),
-                              withSpinner(plotlyOutput("revenuePlot"))
+                              # downloadButton("downloadPlotPNG", "Download Plot as PNG")
                         )
                   })
                   
