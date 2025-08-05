@@ -10,10 +10,18 @@ library(cowplot)
 library(plotly)
 library(scales)
 library(lhs) # for latin hypercube sampling
+library(memoise)
+
+readMegaDF <- memoise(function() {
+      message("Reading mega.df from disk…")
+      readRDS("PREPROCESSING/processed_mega_df_app.rds")
+})
 
 nn.search <- function(category, user.EIN, user.years, user.history, n.predict){
-      filename <- paste("PREPROCESSING/processed_mega_df_",category, ".rds", sep="")
-      df <- readRDS(filename)
+      # filename <- paste("PREPROCESSING/processed_mega_df_",category, ".rds", sep="")
+      # df <- readRDS(filename)
+      #df <- readMegaDF()
+      df <- df |> filter(NTEE == category)
       
       start.year <- min(df$TAX_YEAR) # first year in the data set
       end.year <-  max(df$TAX_YEAR) # last year in the data set
@@ -73,7 +81,7 @@ nn.search <- function(category, user.EIN, user.years, user.history, n.predict){
       
       # Perform a non-equi join, where rows from nearest.neighbors are matched with rows in comparison.orgs based on conditions
       df <- df |> mutate(TAX_YEAR_COMP = TAX_YEAR) # Rename TAX_YEAR before joining to avoid name conflict
-      df <- df |> select(EIN2, TAX_YEAR, TOT_REV, IMPUTE_STATUS, TAX_YEAR_COMP)
+      df <- df |> select(EIN2, TAX_YEAR, TOT_REV, IMPUTE_STATUS, TAX_YEAR_COMP, ORG_NAME_CURRENT)
       setkey(df, EIN2, TAX_YEAR_COMP) # Set keys for the join
       res <- df[nearest.neighbors,
                 on = .(EIN2, TAX_YEAR_COMP >= START_YEAR, TAX_YEAR_COMP <= END_PLUS),

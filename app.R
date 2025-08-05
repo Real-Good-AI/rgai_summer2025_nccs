@@ -7,17 +7,20 @@ library(shinycssloaders)
 library(future)
 library(promises)
 library(webshot2)
+library(progressr)
 source("app_helper.R")
 
+handlers("shiny")
 plan(multisession)
 
+df <- readMegaDF()
 ui <- fluidPage(
       titlePanel("Nonprofit Revenue Prediction Tool"),
       uiOutput("mainUI")
 )
 
 server <- function(input, output, session) {
-      rv <- reactiveValues(confirmed = FALSE)
+      rv <- reactiveValues(confirmed = FALSE, existingData = NULL)
       loading <- reactiveVal(FALSE)
       start_nn <- reactiveVal(FALSE)
       
@@ -41,7 +44,7 @@ server <- function(input, output, session) {
             if (!rv$confirmed) {
                   tagList(
                         selectInput("ntee", "Choose NTEE Category", choices = ntee_choices),
-                        textInput("ein", "Enter EIN (Format: XX-XXXXXXX)", placeholder = "12-3456789"),
+                        textInput("ein", "Enter EIN (Format: XX-XXXXXXX)", placeholder = "12-3456789", value = "12-3456789"),
                         numericInput("n_years", "How many years of data do you have (2-5)?", min = 2, max = 5, value = 2),
                         uiOutput("revenueInputs"),
                         selectInput("predict_years", "How many years do you want to predict?", choices = 1:3),
@@ -49,13 +52,34 @@ server <- function(input, output, session) {
                   )
             } else {
                   tagList(
-                        tableOutput("summaryTable"),
-                        radioButtons("confirm", "Does this look correct?", choices = c("Yes", "No")),
+                        # a row with two columns: user input vs. existing data (if any)
+                        fluidRow(
+                              column(6,
+                                     h4("Your entries"),
+                                     tableOutput("summaryTable")
+                              ),
+                              # only show column 2 if we found existingData
+                              if (!is.null(rv$existingData)) column(6,
+                                                                    h4("NCCS Core Dataset"),
+                                                                    p("Oh! It looks like we already have data for some of these years:"),
+                                                                    tableOutput("existingDataTable")
+                              )
+                        ),
+                        # an explanatory note when we did find existing data
+                        if (!is.null(rv$existingData)) p(
+                              "If your numbers match ours, great—just confirm below. No need to worry if the numbers are off by only a few dollars. ",
+                              "If the numbers have a big discrepancy, it's possible that we have a mistake in our records, but please double-check your inputs before proceeding. If your entries look good, confirm below. Otherwise, feel free to start over."
+                        ),
+                        # now the old confirm UI
+                        radioButtons("confirm", "Does this look correct?",
+                                     choices = c("Yes", "No")),
                         actionButton("confirm_btn", "Submit Confirmation"),
                         textOutput("confirmation_message"),
                         textOutput("loadingText"),
                         uiOutput("resultsUI"),
-                        conditionalPanel("output.showRestart", actionButton("restart", "Start Over"))
+                        conditionalPanel("output.showRestart",
+                                         actionButton("restart", "Start Over")
+                        )
                   )
             }
       })
@@ -104,12 +128,32 @@ server <- function(input, output, session) {
                   return()
             }
             
+            if (all(revs == 0)) {
+                  showModal(modalDialog(
+                        title = "Input Error",
+                        "It looks like you only input $0 revenue. We require at least one year of nonzero revenue history because this tool isn't reliable if the revenue history is all zeros. If your revenue history in the last 5 years is all zeros, this tool won't work for you--but you can still play around with hypothetical numbers, just proceed with caution.",
+                        easyClose = TRUE
+                  ))
+                  return()
+            }
+            
+            # look up in your preloaded `df`
+            formatted_ein <- paste0("EIN-", input$ein)
+            df_existing <- df |>
+                  filter(EIN2 == formatted_ein, TAX_YEAR %in% years) |>
+                  filter(IMPUTE_STATUS == "original")
+            
+            if (nrow(df_existing) > 0) {
+                  rv$existingData <- df_existing |> select(-IMPUTE_STATUS) |> mutate(TAX_YEAR = as.integer(TAX_YEAR)) |> rename(EIN = EIN2, YEAR = TAX_YEAR, REVENUE = TOT_REV, CURRENT_NAME = ORG_NAME_CURRENT)
+            }
+            
             # All checks passed — now it's safe to flip to the confirmation page
             rv$confirmed <- TRUE
       })
       
       summary_data <- eventReactive(input$submit, {
             req(input$ein, input$ntee, input$n_years)
+            df <- readMegaDF()
             
             # EIN format check
             validate(
@@ -135,6 +179,10 @@ server <- function(input, output, session) {
             )
       })
       
+      output$existingDataTable <- renderTable({
+            req(rv$existingData)
+            rv$existingData
+      })
       
       output$summaryTable <- renderTable({
             summary_data()
@@ -159,9 +207,16 @@ server <- function(input, output, session) {
                   output$confirmation_message <- renderText({
                         paste("Great, we are proceeding with predicting revenue for the next", input$predict_years, "year(s).")
                   })
-                  output$loadingText <- renderText("Please wait while we work on this...")
+                  output$loadingText <- renderText("Please wait. Thanks!")
                   output$resultsUI <- renderUI(NULL)
                   loading(TRUE)
+                  
+                  showModal(modalDialog(
+                        title = "Working…",
+                        p("Please hang tight while we crunch the numbers--this may take a few minutes! Take a water or bathroom break, or do some deep breathing. :)"),
+                        footer = NULL,
+                        easyClose = FALSE
+                  ))
                   
                   # Slight delay so UI can update before heavy computation starts
                   later::later(function() {
@@ -216,6 +271,7 @@ server <- function(input, output, session) {
                         stop(e)  # rethrow for %...!% to catch
                   })
             }, seed = 2727) %...>% (function(results) {
+                  removeModal()
                   res <- results$res
                   gp_res <- results$gp_res
                   user_data_df <- results$user_data_df
@@ -244,7 +300,11 @@ server <- function(input, output, session) {
                                     Data_Origin == "Reported" ~ NA,
                                     Data_Origin == "Predicted" ~ Revenue + qt(0.95, df = deg.freedom) * SE)) |>
                               select(-SE)
-                        user_data_df$Year <- seq(2022,2024 + 2)
+                        
+                        first_year <- min(user_years)
+                        last_year <- max(user_years)
+                        user_data_df$Year <- seq(first_year, last_year + n_pred)
+                        
                         user_data_df |> mutate(Revenue = case_when(
                               Data_Origin == "Reported" ~ dollar_format()(Revenue),
                               Data_Origin == "Predicted" ~ dollar_format()(signif(Revenue, 3)))) |>
@@ -354,7 +414,7 @@ server <- function(input, output, session) {
                               
                               
                               layout(
-                                    title = paste("Comparing Your Organization to Similar ", ntee_cat, " Organizations"),
+                                    title = paste("Comparing Your Organization to Similar ", ntee_cat, " Organizations", sep=""),
                                     xaxis = list(
                                           title = "Year",
                                           tickformat = ".0f",    # force no decimals
@@ -372,31 +432,14 @@ server <- function(input, output, session) {
                         res |> group_by(NEIGHBOR_ID) |>
                               slice(1) |>
                               ungroup() |>
-                              select(EIN2, START_YEAR, END_YEAR, END_PLUS, NEIGHBOR_ID) |>
+                              select(EIN2, START_YEAR, END_YEAR, END_PLUS, NEIGHBOR_ID, ORG_NAME_CURRENT) |>
                               mutate(Matched_Years = paste(START_YEAR, "-", END_YEAR),
                                      Prediction_Years = paste(END_YEAR+1, "-", END_PLUS)) |>
                               select(-START_YEAR, -END_YEAR, -END_PLUS) |>
-                              rename(Similarity_Ranking = NEIGHBOR_ID, EIN = EIN2) |>
+                              rename(Similarity_Ranking = NEIGHBOR_ID, EIN = EIN2, Current_Organization_Name = ORG_NAME_CURRENT) |>
                               relocate(Similarity_Ranking, .after = last_col())
                   })
                   
-                  # output$downloadPlotPNG <- downloadHandler(
-                  #       filename = function() {
-                  #             paste0("revenue_plot_", Sys.Date(), ".png")
-                  #       },
-                  #       content = function(file) {
-                  #             temp_html <- tempfile(fileext = ".html")
-                  #             
-                  #             # Build the same plot used in renderPlotly
-                  #             plt <- plotly_build(output$revenuePlot())
-                  #             
-                  #             # Save temporary HTML
-                  #             htmlwidgets::saveWidget(plt, temp_html, selfcontained = TRUE)
-                  #             
-                  #             # Convert to PNG using webshot2
-                  #             webshot2::webshot(temp_html, file = file, vwidth = 1000, vheight = 700)
-                  #       }
-                  # )
                   
                   
                   # Render in specified order
@@ -410,7 +453,10 @@ server <- function(input, output, session) {
                               
                               h4("Interactive Revenue Plot:"),
                               withSpinner(plotlyOutput("revenuePlot")),
-                              p("Pssttt... This plot is interactive, try hovering over the plot or clicking different aspects like legend items!"),
+                              tags$p(
+                                    tags$em("Pssttt... This plot is interactive, try clicking different aspects like the legend items!"),
+                                    style = "color: #0075a3; font-style: italic;"
+                              ),
                               
                               h4("Similar Organizations:"),
                               p("According to our data, these are the 5 organizations with revenue histories most similar to yours! The most similar organization has Similarity Ranking 1. We also show the years for that organization that matched your revenue history, and the years from their organization that we used to predict your future revenue."),
@@ -422,8 +468,7 @@ server <- function(input, output, session) {
                                           "For the predicted revenue, we provide a 95% confidence interval: if we were to low-ball our estimate of that year's revenue, we would give Lower_Estimate. If we were to high-ball it, we'd give Upper_Estimate.")
                               ),
                               withSpinner(tableOutput("gpPredOutput"))
-                              
-                              # downloadButton("downloadPlotPNG", "Download Plot as PNG")
+
                         )
                   })
                   
