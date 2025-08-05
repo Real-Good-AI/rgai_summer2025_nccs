@@ -132,10 +132,11 @@ res <- foreach(category = categories, .combine = 'rbind', .packages = c("dplyr",
 }
 print(Sys.time()-start.time)
 
-saveRDS(all.comparison.orgs, "MODEL/nearest_neighbors/res_nn.rds")
+#saveRDS(all.comparison.orgs, "MODEL/nearest_neighbors/res_nn.rds") # res <- readRDS("MODEL/nearest_neighbors/res_nn.rds")
 
 res = all.comparison.orgs
 rm(df, all.comparison.orgs, comparison.orgs, df.search, df.search.sub, nearest, nearest.neighbors, user.data)
+
 ####################################################
 # Hyperparamter Optimization
 ####################################################
@@ -191,7 +192,7 @@ res.pars <- foreach(ein = unique(all.orgs.data$EIN2), .combine = 'rbind', .packa
 print(Sys.time()-start.time)
 stopCluster(cl = cluster)
 
-saveRDS(res.pars, "MODEL/nearest_neighbors/res_parameters.rds")
+saveRDS(res.pars, "MODEL/nearest_neighbors/res_parameters.rds") # res.pars <- readRDS("MODEL/nearest_neighbors/res_parameters.rds")
 
 ####################################################
 # GP Predictions
@@ -233,7 +234,9 @@ res.predictions <- foreach(ein = unique(res.pars$EIN2), .packages = c("dplyr", "
                        sig.sqd = numeric(), 
                        TOT_REV = numeric(length(years.to.predict)), 
                        MEAN = mean(df.nn$TOT_REV),
-                       standard_errors = matrix(0,ncol=length(years.to.predict),nrow=length(years.to.predict)))
+                       standard_errors = numeric(length(years.to.predict)),
+                       SIGMA = matrix(0,ncol=length(years.to.predict),nrow=length(years.to.predict))
+                       )
       
       mu_1 <- numeric(length(years.to.predict)) # all zeros
       mu_2 <- numeric(nrow(df.nn)) # all zeros
@@ -258,7 +261,10 @@ res.predictions <- foreach(ein = unique(res.pars$EIN2), .packages = c("dplyr", "
       SIGMA.12 <- mat_cov[years.to.predict, years.original, drop = FALSE]
       
       res.list[["TOT_REV"]] <- (mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (data.nn - mu_2)))[,1] 
-      res.list[["standard_errors"]] <- diag(sqrt((SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12)))))
+      
+      SIGMA.bar <- (SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12)))
+      res.list[["standard_errors"]] <- sqrt(diag(SIGMA.bar))
+      res.list[["SIGMA"]] <- SIGMA.bar
       
       res.list
 }
