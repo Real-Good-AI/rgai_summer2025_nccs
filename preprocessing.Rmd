@@ -989,6 +989,35 @@ for (ein in sample(orgs.outlier.list, 10)){
 
 
 
+### Step 5: Adding in organization names
+```{r}
+library(readr)
+library(tidyverse, warn.conflicts = FALSE)
+library(data.table)
+library(dplyr, warn.conflicts = FALSE)
+
+start.time <- Sys.time()
+df <- readRDS("PREPROCESSING/processed_mega_df.rds")
+print(Sys.time()-start.time)
+
+start.time <- Sys.time()
+unified_bmf <- as.data.frame(read.csv("CORE/BMF_UNIFIED_V1.1.csv"))
+print(Sys.time()-start.time)
+```
+
+```{r}
+source("SCRIPTS/clean_BMF.R")
+res <- clean_BMF(vars_to_keep = c("EIN2", "ORG_NAME_CURRENT"), thresh = 10, saveFlag = FALSE)
+res$na.count
+
+org.names <- res$clean.data
+
+df <- df |> left_join(org.names, by = "EIN2")
+
+saveRDS(df, "PREPROCESSING/processed_mega_df.rds")
+```
+
+
 ## Percent Change
 ```{r}
 df <- df |>
