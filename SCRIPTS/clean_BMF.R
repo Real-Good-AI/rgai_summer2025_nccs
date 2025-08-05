@@ -5,7 +5,7 @@ library(tibble)
 source("SCRIPTS/reviewing_duplicate_EIN.R")
 source("SCRIPTS/clean_helper.R")
 
-clean_BMF <- function(vars_to_keep, thresh){
+clean_BMF <- function(vars_to_keep, thresh, saveFlag = TRUE){
     unified_bmf <- as.data.frame(read.csv("CORE/BMF_UNIFIED_V1.1.csv"))
     # Replace any empty strings '' with NA values (so later when checking for missing values is easier)
     unified_bmf <- unified_bmf |> mutate_if(is.character, ~na_if(.,''))
@@ -15,7 +15,7 @@ clean_BMF <- function(vars_to_keep, thresh){
     
     # Keep only variables we care about
     bmf_subset <- unified_bmf[vars_to_keep]
-    bmf_subset$NTEEV2 <- substr(bmf_subset$NTEEV2, 1, 3)
+    if ("NTEEV2" %in% colnames(bmf_subset)){bmf_subset$NTEEV2 <- substr(bmf_subset$NTEEV2, 1, 3)}
     bmf_subset <- bmf_subset |> distinct() # remove any duplicate rows
     
     # For any repeated EIN2 rows, keep row with fewest NA values
@@ -25,7 +25,7 @@ clean_BMF <- function(vars_to_keep, thresh){
         distinct(EIN2, .keep_all = TRUE)   # keep first row per EIN2 only
     
     # If Latitude and Longitude both equal 0, replace with NA
-    if (c("LATITUDE", "LONGITUDE") %in% names(cleanBMF)){
+    if (all(c("LATITUDE", "LONGITUDE") %in% names(cleanBMF))){
       cleanBMF$LATLONG_FLAG <- ((cleanBMF$LATITUDE == 0) & (cleanBMF$LONGITUDE == 0))
       cleanBMF$LATITUDE[cleanBMF$LATLONG_FLAG] <- NA_integer_
       cleanBMF$LONGITUDE[cleanBMF$LATLONG_FLAG] <- NA_integer_
@@ -38,10 +38,16 @@ clean_BMF <- function(vars_to_keep, thresh){
     na_count <- na_count |>
         mutate(percent = na_cnt/n)
     na_count <- tibble::rownames_to_column(na_count, "var_name")
-    write_csv(na_count, "CLEAN/cleanBMF_NA_counts.csv")
     
     # drop records with missing values in according to threshold
     cleanBMF$NUM_NA <- rowSums(is.na(cleanBMF))
     cleanBMF <- cleanBMF[(cleanBMF$NUM_NA < thresh),] |> select(all_of(vars_to_keep))
-    write_csv(cleanBMF, "CLEAN/cleanBMF.csv")
+    
+    if (saveFlag){
+          write_csv(na_count, "CLEAN/cleanBMF_NA_counts.csv")
+          write_csv(cleanBMF, "CLEAN/cleanBMF.csv")
+    } else{
+          return(list(na.count = na_count, clean.data = cleanBMF))
+    }
+          
 }
