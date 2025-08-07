@@ -8,6 +8,7 @@ library(future)
 library(promises)
 library(webshot2)
 library(progressr)
+library(shinyBS)
 source("app_helper.R")
 
 handlers("shiny")
@@ -16,6 +17,14 @@ plan(multisession)
 df <- readMegaDF()
 ui <- fluidPage(
       titlePanel("Nonprofit Revenue Prediction Tool"),
+      div(
+            style = "position: absolute; top: 15px; right: 15px; z-index: 1000;",
+            # use either a Bootstrap class for color, or inline CSS:
+            actionButton(
+                  "help", "Help",
+                  style = "background-color: #0075a3; color: white;"
+            )
+      ),
       uiOutput("mainUI")
 )
 
@@ -39,17 +48,55 @@ server <- function(input, output, session) {
             "Universities" = "UNI"
       )
       
+      # Help modal
+      observeEvent(input$help, {
+            showModal(modalDialog(
+                  title = NULL,
+                  # wrap the two lines in tagList()
+                  tagList(
+                        p("If you need help or have any feedback, please email us at ", 
+                          tags$a(href = "mailto:contact@realgoodai.org", "contact@realgoodai.org")),
+                        p(
+                              "You can also read the ",
+                              tags$a(
+                                    "User Guide",
+                                    href   = "https://www.realgoodai.org/contact",
+                                    target = "_blank"
+                              ),
+                              " for step-by-step instructions."
+                        )
+                  ),
+                  footer    = modalButton("Close"),
+                  easyClose = TRUE
+            ))
+      })
+      
       # UI layout
       output$mainUI <- renderUI({
             if (!rv$confirmed) {
                   tagList(
-                        selectInput("ntee", "Choose NTEE Category", choices = ntee_choices),
+                        selectInput("ntee", "Choose NTEE Broad Category", choices = ntee_choices),
                         textInput("ein", "Enter EIN (Format: XX-XXXXXXX)", placeholder = "12-3456789", value = "12-3456789"),
                         numericInput("n_years", "How many years of data do you have (2-5)?", min = 2, max = 5, value = 2),
                         uiOutput("revenueInputs"),
                         selectInput("predict_years", "How many years do you want to predict?", choices = 1:3),
-                        actionButton("submit", "Submit")
+                        actionButton("submit", "Submit"),
+                        
+                        # Now define tooltips for those IDs:
+                        shinyBS::bsTooltip("ntee",
+                                           "Refer to the user guide for help determining your category!",
+                                           placement = "right", trigger = "hover"
+                        ),
+                        shinyBS::bsTooltip("ein",
+                                           "Your organization’s Employer ID Number. Format must be 12-3456789.",
+                                           placement = "right", trigger = "hover"
+                        ),
+                        shinyBS::bsTooltip("n_years",
+                                           "You will need total revenue values for each year (refer to user guide for more info)",
+                                           placement = "right", trigger = "hover"
+                        )
                   )
+                  
             } else {
                   tagList(
                         # a row with two columns: user input vs. existing data (if any)
@@ -213,7 +260,7 @@ server <- function(input, output, session) {
                   
                   showModal(modalDialog(
                         title = "Working…",
-                        p("Please hang tight while we crunch the numbers--this may take a few minutes! Take a water or bathroom break, or do some deep breathing. :)"),
+                        p("Please hang tight while we crunch the numbers--this may take a minute or two! Take a water or bathroom break, or do some deep breathing. :)"),
                         footer = NULL,
                         easyClose = FALSE
                   ))
@@ -291,7 +338,7 @@ server <- function(input, output, session) {
                         user_data_df <- user_data_df |> 
                               select(-YEAR, -NEIGHBOR_ID) |> 
                               rename(EIN = EIN2, Year = TAX_YEAR, Data_Origin = IMPUTE_STATUS, Revenue = TOT_REV)
-                        deg.freedom <- nrow(res |> filter(IMPUTE_STATUS=="original")) - 1
+                        deg.freedom <- nrow(res |> filter(!IMPUTED)) - 1
                         user_data_df <- user_data_df |>
                               mutate(Lower_Estimate = case_when(
                                     Data_Origin == "Reported" ~ NA,
@@ -322,7 +369,7 @@ server <- function(input, output, session) {
                         last_year <- max(user_years)
                         user_data_df$TAX_YEAR <- seq(first_year, last_year + n_pred)
                         
-                        deg.freedom <- nrow(res |> filter(IMPUTE_STATUS=="original")) - 1
+                        deg.freedom <- nrow(res |> filter(!IMPUTED)) - 1
                         user_data_df <- user_data_df |>
                               mutate(CI.LOWER = case_when(
                                     IMPUTE_STATUS == "Reported" ~ TOT_REV,
@@ -445,30 +492,41 @@ server <- function(input, output, session) {
                   # Render in specified order
                   output$resultsUI <- renderUI({
                         tagList(
-                              # h4("Nearest Neighbors Result:"),
-                              # withSpinner(tableOutput("resOutput")),
-                              # 
-                              # h4("Gaussian Process Optimization Result:"),
-                              # withSpinner(tableOutput("gpOutput")),
-                              
-                              h4("Interactive Revenue Plot:"),
-                              withSpinner(plotlyOutput("revenuePlot")),
-                              tags$p(
-                                    tags$em("Pssttt... This plot is interactive, try clicking different aspects like the legend items!"),
-                                    style = "color: #0075a3; font-style: italic;"
+                              h4("Interactive Revenue Plot"),
+                              # collapsible explainer
+                              bsCollapse(
+                                    id     = "plot_help",
+                                    open   = NULL,              # start closed
+                                    bsCollapsePanel(
+                                          "Did you know the plot is interactive?",
+                                          "Click on legend items or lines to isolate a series or zoom in. Try it!",
+                                          style = "info"
+                                    )
                               ),
+                              withSpinner(plotlyOutput("revenuePlot")),
                               
-                              h4("Similar Organizations:"),
-                              p("According to our data, these are the 5 organizations with revenue histories most similar to yours! The most similar organization has Similarity Ranking 1. We also show the years for that organization that matched your revenue history, and the years from their organization that we used to predict your future revenue."),
+                              h4("Similar Organizations"),
+                              bsCollapse(
+                                    id   = "similar_help",
+                                    bsCollapsePanel(
+                                          "Click me for more info!",
+                                          "We find the 5 nonprofits whose past revenue histories best match yours and then use their trajectories to inform your forecast.
+                                          The most similar organization has Similarity Ranking 1. We also show the years for that organization that matched your revenue history, and the years from their organization that we used to predict your future revenue."
+                                    )
+                              ),
                               withSpinner(tableOutput("resNeighborSummary")),
+
                               
-                              h4("Gaussian Process Prediction Output:"),
-                              p(
-                                    paste("Using data from the top 5 most similar organizations, we used Gaussian Processes to predict what your next", n_pred, "years will look like.",
-                                          "For the predicted revenue, we provide a 95% confidence interval: if we were to low-ball our estimate of that year's revenue, we would give Lower_Estimate. If we were to high-ball it, we'd give Upper_Estimate.")
+                              h4("Gaussian Process Prediction Output"),
+                              bsCollapse(
+                                    id   = "gp_help",
+                                    bsCollapsePanel(
+                                          "Click me for more info!",
+                                          paste("Using data from the top 5 most similar organizations, we used Gaussian Processes to predict what your next", n_pred, "years will look like.",
+                                                "For the predicted revenue, we provide a 95% confidence interval: if we were to low-ball our estimate of that year's revenue, we would give Lower_Estimate. If we were to high-ball it, we'd give Upper_Estimate.")
+                                    )
                               ),
                               withSpinner(tableOutput("gpPredOutput"))
-
                         )
                   })
                   
