@@ -37,7 +37,8 @@ fscope_values <- c("-pz") # Download files from IRS 990 Form Scope in this list;
 year_values <- seq(from = 1989, to = 2022, by = 1) # Download files from years in this list
 
 download_CORE(tscope_values, fscope_values, year_values) # this function from download_data.R will download the data for you onto your local computer
-download_dicts() # this function from download_data.R will download the data dictionaries and Business Master File (BMF) for you onto your local computer
+download_dicts() # download the data dictionaries
+download_bmf() # download Business Master File (BMF) for you onto your local computer
 ```
 
 # Clean Business Master File (BMF)
@@ -47,7 +48,7 @@ vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_ASSETS_RECENT", "CENSUS_STATE_AB
 thresh <- 0.5*length(vars_to_keep) # Any rows with more NA values than this threshold will be dropped
 
 dir.create("CLEAN")
-clean_BMF(vars_to_keep, thresh) # this function from clean_BMF.R cleans the BMF file for you and saves to your computer in CLEAN folder
+clean_BMF(vars_to_keep, thresh, saveFlag=TRUE) # this function from clean_BMF.R cleans the BMF file for you and saves to your computer in CLEAN folder if you set saveFlag to TRUE, otherwise creates list e.g. cleanBMF.list <- clean_BMF(vars_to_keep, thresh, saveFlag = FALSE)
 ```
 
 # Clean CORE Data and merge with BMF
@@ -62,17 +63,17 @@ file_name_tag <- "-501C3-CHARITIES-PZ-HRMN.csv"
 file_dir <- "CORE/pz/CORE-"
 save_dir <- "CLEAN/pz/"
 
-dir.create(c("CLEAN/pz", "CLEAN/pf", "CLEAN/pc"))
+dir.create(save_dir)
 clean_CORE(all_relevant_vars, year_values, file_name_tag, file_dir, save_dir, prop_NA) # this function from clean_CORE.R cleans the CORE files, merges with cleaned BMF file, and saves resulting data frame
 ```
 
 # Load the (cleaned/merged) data frame into the environment
 ```{r}
-save_dir <- "CLEAN/pz/"
+load_dir <- "CLEAN/pz/"
 year_values <- seq(from = 1989, to = 2022, by = 1)
 
-filename <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[length(year_values)], ".csv", sep="")
-df <- as.data.table(read_csv(filename, show_col_types = FALSE)) |> filter(TAX_YEAR != 2022)
+filename <- paste(load_dir, "cleanCORE_", year_values[1], "-", year_values[length(year_values)], ".csv", sep="")
+df <- as.data.table(read_csv(filename, show_col_types = FALSE)) |> filter(TAX_YEAR!=2022)
 
 head(df |> select(EIN2, TOT_REV, TAX_YEAR, NTEE, SIZE.CTS, SIZE.CAT))
 ```
@@ -104,10 +105,10 @@ size_labs <- c("Under $100,000", "$100,000 - $499,999", "$500,000 - $999,999", "
 size_palette <- c("#1796D2", "#D2D2D2", "#000000", "#FDC010", "#ED028B", "#55B748")
 
 df |>
-  mutate(SIZE = factor(SIZE)) |>
-  group_by(SIZE, TAX_YEAR) |>
+  mutate(SIZE.CAT = factor(SIZE.CAT)) |>
+  group_by(SIZE.CAT, TAX_YEAR) |>
   summarise(sum_TOT_REV = sum(TOT_REV, na.rm = TRUE)) |>
-  ggplot(aes(x = TAX_YEAR, y = sum_TOT_REV, color = SIZE)) +
+  ggplot(aes(x = TAX_YEAR, y = sum_TOT_REV, color = SIZE.CAT)) +
   geom_point() +
   geom_line() +
   scale_color_manual(values = size_palette, labels = size_labs, na.translate = FALSE) +
@@ -121,10 +122,10 @@ ntee_labs <- c("Arts, Culture, and Humanities", "Education (minus Universities)"
 ntee_palette <- c("#1796D2", "#8DBCD2", "#989898", "#131313", "#F99C28", "#8A6908", "#EF2174", "#A7546C", "#5A7254", "#8A4846", "#DC2B28", "#55AE49")
 
 df |>
-  mutate(NTEEV2 = factor(NTEEV2)) |>
-  group_by(NTEEV2, TAX_YEAR) |>
+  mutate(NTEE = factor(NTEE)) |>
+  group_by(NTEE, TAX_YEAR) |>
   summarise(sum_TOT_REV = sum(TOT_REV, na.rm = TRUE)) |>
-  ggplot(aes(x = TAX_YEAR, y = sum_TOT_REV, color = NTEEV2)) +
+  ggplot(aes(x = TAX_YEAR, y = sum_TOT_REV, color = NTEE)) +
   geom_point() +
   geom_line() +
   scale_color_manual(values = ntee_palette, labels = ntee_labs, na.translate = FALSE) +
@@ -158,19 +159,19 @@ size_labs <- c("Under $100,000", "$100,000 - $499,999", "$500,000 - $999,999", "
 size_palette <- c("#1796D2", "#D2D2D2", "#000000", "#FDC010", "#ED028B", "#55B748")
 
 mean_plot <- df |>
-  mutate(SIZE = factor(SIZE)) |>
-  group_by(TAX_YEAR, SIZE) |>
+  mutate(SIZE.CAT = factor(SIZE.CAT)) |>
+  group_by(TAX_YEAR, SIZE.CAT) |>
   summarise(mean_log_rev = mean(log(TOT_REV + 1), na.rm = TRUE)) |>
-  ggplot(aes(x = TAX_YEAR, y = mean_log_rev, color=SIZE)) +
+  ggplot(aes(x = TAX_YEAR, y = mean_log_rev, color=SIZE.CAT)) +
   geom_line() +
   scale_color_manual(values = size_palette, labels = size_labs, na.translate = FALSE) +
   labs(x = "Year", y = "LOG(Dollars)", title = "Mean Log Revenues, 1989-2021")
 
 med_plot <- df |>
-  mutate(SIZE = factor(SIZE)) |>
-  group_by(TAX_YEAR, SIZE) |>
+  mutate(SIZE.CAT = factor(SIZE.CAT)) |>
+  group_by(TAX_YEAR, SIZE.CAT) |>
   summarise(med_log_rev = median(log(TOT_REV + 1), na.rm = TRUE)) |>
-  ggplot(aes(x = TAX_YEAR, y = med_log_rev, color=SIZE)) +
+  ggplot(aes(x = TAX_YEAR, y = med_log_rev, color=SIZE.CAT)) +
   geom_line() +
   scale_color_manual(values = size_palette, labels = size_labs, na.translate = FALSE) +
   labs(x = "Year", y = "LOG(Dollars)", title = "Median Log Revenues, 1989-2021")
@@ -186,19 +187,19 @@ ntee_labs <- c("Arts, Culture, and Humanities", "Education (minus Universities)"
 ntee_palette <- c("#1796D2", "#8DBCD2", "#989898", "#131313", "#F99C28", "#8A6908", "#EF2174", "#A7546C", "#5A7254", "#8A4846", "#DC2B28", "#55AE49")
 
 mean_plot <- df |>
-  mutate(NTEEV2 = factor(NTEEV2)) |>
-  group_by(TAX_YEAR, NTEEV2) |>
+  mutate(NTEE = factor(NTEE)) |>
+  group_by(TAX_YEAR, NTEE) |>
   summarise(mean_log_rev = mean(log(TOT_REV + 1), na.rm = TRUE)) |>
-  ggplot(aes(x = TAX_YEAR, y = mean_log_rev, color=NTEEV2)) +
+  ggplot(aes(x = TAX_YEAR, y = mean_log_rev, color=NTEE)) +
   geom_line() +
   scale_color_manual(values = ntee_palette, labels = ntee_labs, na.translate = FALSE) +
   labs(x = "Year", y = "LOG(Dollars)", title = "Mean Log Revenues, 1989-2021")
 
 med_plot <- df |>
-  mutate(NTEEV2 = factor(NTEEV2)) |>
-  group_by(TAX_YEAR, NTEEV2) |>
+  mutate(NTEE = factor(NTEE)) |>
+  group_by(TAX_YEAR, NTEE) |>
   summarise(med_log_rev = median(log(TOT_REV + 1), na.rm = TRUE)) |>
-  ggplot(aes(x = TAX_YEAR, y = med_log_rev, color=NTEEV2)) +
+  ggplot(aes(x = TAX_YEAR, y = med_log_rev, color=NTEE)) +
   geom_line() +
   scale_color_manual(values = ntee_palette, labels = ntee_labs, na.translate = FALSE) +
   labs(x = "Year", y = "LOG(Dollars)", title = "Median Log Revenues, 1989-2021")
@@ -225,7 +226,7 @@ ntee_codes <- c("ART", "EDU", "ENV", "HEL", "HMS", "HOS", "IFA", "MMB", "PSB", "
 
 for (i in seq(1,length(ntee_codes),1)){
   my_plot <- df |>
-  filter(NTEEV2 == ntee_codes[i]) |>
+  filter(NTEE == ntee_codes[i]) |>
   ggplot(aes(x = TAX_YEAR, y = TOT_REV, color = EIN2)) +
   geom_line() +
   scale_color_discrete(na.translate = FALSE) +
@@ -239,7 +240,7 @@ Total revenue for individual organizations, but each plot is a different size (t
 ```{r, eval=FALSE}
 for (i in seq(1,length(size_labs),1)){
   my_plot <- df |>
-  filter(SIZE == i) |>
+  filter(SIZE.CAT == i) |>
   ggplot(aes(x = TAX_YEAR, y = TOT_REV, color = EIN2)) +
   geom_line() +
   scale_color_discrete(na.translate = FALSE) +
@@ -249,67 +250,4 @@ for (i in seq(1,length(size_labs),1)){
 }
 ```
 
-# Modeling
-```{r, echo=TRUE, eval=FALSE}
-# Pre-processing
-df <- df %>% mutate_if(is.character, ~na_if(.,'')) |> 
-      mutate(LOG_REV = log(TOT_REV + 1),
-             SIZE.CAT = factor(SIZE.CAT),
-             YEAR = TAX_YEAR - 1989)
-
-# Split data into traning, validation, and test sets
-# https://stackoverflow.com/questions/36068963/r-how-to-split-a-data-frame-into-training-validation-and-test-sets
-spec = c(train = .6, test = .2, validate = .2)
-
-g = sample(cut(
-  seq(nrow(df)), 
-  nrow(df)*cumsum(c(0,spec)),
-  labels = names(spec)
-))
-
-res = split(df, g)
-
-# Save for later use
-dir.create("MODEL")
-write_csv(as.data.frame(res$train), "MODEL/training.csv")
-write_csv(as.data.frame(res$test), "MODEL/test.csv")
-write_csv(as.data.frame(res$validate), "MODEL/validate.csv")
-```
-
-## General Time Trend with `lm`
-First, lets get the general time trend by heterogeneous year-fixed effects by regressing the outcome on time, treating time as a categorical variable.
-```{r, echo=TRUE, eval=FALSE}
-# Read in training data
-train.set <- as.data.frame(read_csv("MODEL/training.csv", show_col_types = FALSE))
-
-# Get year_fixed effects first
-start.time <- Sys.time()
-time_model <- lm(formula = LOG_REV ~ factor(YEAR), data = train.set, na.action = na.exclude)
-print("Time model:")
-print(Sys.time() - start.time)
-saveRDS(time_model, "MODEL/time_model.rds")
-summary(time_model)
-
-# Add the residuals back to the data frame to fit the next model
-train.set$TIME_RES <- residuals(time_model)
-dir.create("MODEL/linear_models")
-write_csv(as.data.frame(train.set), "MODEL/linear_models/training.csv")
-```
-
-## Base model
-Starting with a very rich, complex model, let $$Y_{it} = \alpha + \vec{\boldsymbol{\beta}} X +  \gamma_t\text{YEAR}_t$$ where $X$ is all possible interactions between $\text{NTEE}_i, \ \text{SIZE}_i, \ \text{LATITUDE}_i, \ \text{LONGITUDE}_i, \ \text{and TIME}_t$, where $\text{NTEE}_i, \ \text{SIZE}_i$ are categorical variables and the remaining variables are continuous. $X$ contains all interactions between variables up to order 5 (including main, aka order-1, effects). 
-
-```{r}
-rm(list = ls())
-train.set <- as.data.frame(read_csv("MODEL/linear_models/training.csv", show_col_types = FALSE))
-
-# train base model on residuals
-start.time <- Sys.time()
-model <- lm(formula = TIME_RES ~ NTEE*SIZE.CAT*LATITUDE*LONGITUDE*YEAR, data = train.set,  na.action = na.exclude)
-print(Sys.time() - start.time)
-
-AIC(model)
-
-summary(model)
-```
-
+# Nearest Neighbor + Gaussian Process Prediction Approach
