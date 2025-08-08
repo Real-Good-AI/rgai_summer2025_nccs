@@ -8,7 +8,7 @@ plot_data_distributions <- function(df, column, tot = NULL, xlab = NULL, title =
       }
       
       # Default total to take proportion out of if not provided
-      if (is.null(n)) {
+      if (is.null(tot)) {
             tot <- nrow(df)
       }
       
