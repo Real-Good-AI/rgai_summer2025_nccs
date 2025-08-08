@@ -41,6 +41,8 @@ head(unified_bmf)
 ```
 
 # Cleaning: Checking for duplicates
+You can skip this section if you want to get straight to cleaning the data.
+
 We noticed that sometimes there is more than one record in the BMF tied to the same organization. Why do these duplicates occur?
 
 - How many of those duplicates have the same organization name? 
@@ -368,7 +370,7 @@ library(purrr)
 #predictor_vars <- c("F9_00_EXEMPT_STAT_501C3_X", "TAX_YEAR")
 #all_relevant_vars <- c(outcome_vars, predictor_vars, "EIN2", "F9_00_TAX_PERIOD_END_DATE")
 
-year_values <- seq(from = 1989, to = 2021, by = 1)
+year_values <- seq(from = 1989, to = 2022, by = 1)
 save_dir <- "CLEAN/pz/"
 
 filename <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[length(year_values)], ".csv", sep="")
@@ -376,6 +378,7 @@ filename <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[lengt
 # Read in data and do some preprocessing
 df <- as.data.table(read_csv(filename, show_col_types = FALSE)) %>% 
       mutate_if(is.character, ~na_if(.,'')) |> 
+      filter(TAX_YEAR != 2022) |>
       distinct()
 
 df <- df |> mutate(LOG_REV = log(TOT_REV + 1),
@@ -393,11 +396,12 @@ saveRDS(df, "PREPROCESSING/df.rds")
 
 
 ## Finding Orgs that reported same log_rev every year
+We need to do this because if they reported the same revenue each year, any GP / prediction stuff doesn't make sense for that org. Really you would just predict that same value that they reported each year. 
 ```{r}
 table(df$DATA_COUNT)
 quantile(df$DATA_COUNT, probs = seq(0,1,0.1))
 
-df <- df |> filter(DATA_COUNT >= 5) # Drops about 600K records - at some point should do analysis on this
+df <- df |> filter(DATA_COUNT >= 5) # Drops about 600K records 
 
 # center the log revenue
 df <- df |>
@@ -455,10 +459,10 @@ print(plot_data_distributions(df = df, column = NTEE, tot = nrow(df),
 print(plot_data_distributions(df = df.sub, column = NTEE, tot = nrow(df.sub), title = "Proportion of total ORGANIZATIONS by subsector") + scale_x_discrete(labels = ntee_labs) +
                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
       )
-print(plot_data_distributions(df = df |> filter(DATA_COUNT < 5), column = NTEE, tot = nrow(df), 
-                              title = "Proportion of total RECORDS by subsector, from Time Series with < 5 years") + scale_x_discrete(labels = ntee_labs) +
+print(plot_data_distributions(df = (df |> filter(DATA_COUNT < 5)), column = NTEE, 
+                              title = "Proportion of total RECORDS by subsector, from Time Series with < 5 years")) + scale_x_discrete(labels = ntee_labs) +
                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
-      )
+      
 print(plot_data_distributions(df = df.sub |> filter(DATA_COUNT < 5), column = NTEE, tot = nrow(df.sub),
                               title = "Proportion of total ORGANIZATIONS by subsector, from Time Series with < 5 years") + scale_x_discrete(labels = ntee_labs) +
                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
