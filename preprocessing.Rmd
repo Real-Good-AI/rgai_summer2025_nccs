@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = FALSE, eval = FALSE)
 # Downloading Data
 ```{r}
 source("SCRIPTS/download_data.R")
-tscope_values <- c("501ce") # Download files from Tax Exempt Types in this list; possible values: "501c3", "501ce" 
+tscope_values <- c("501c3") # Download files from Tax Exempt Types in this list; possible values: "501c3", "501ce" 
 fscope_values <- c("-pz") # Download files from IRS 990 Form Scope in this list; possible values: "-pz", "-pc", "-pf"
 year_values <- seq(from = 1989, to = 2022, by = 1) # Download files from years in this list
 download_CORE(tscope_values, fscope_values, year_values)
@@ -26,7 +26,7 @@ download_bmf()
 # Loading Data 
 ## Dictionary
 ```{r}
-data_dict <- read.csv("CORE/CORE-HRMN_dd.csv")
+data_dict <- read.csv("CORE/CORE-HRMN_dd.csv", show_col_types = FALSE)
 head(data_dict)
 #glimpse(data_dict)
 #summarise(data_dict)
@@ -34,13 +34,13 @@ head(data_dict)
 
 ## Unified BMF Data
 ```{r}
-unified_bmf <- read_csv("CORE/BMF_UNIFIED_V1.1.csv")
+unified_bmf <- read_csv("CORE/BMF_UNIFIED_V1.1.csv", show_col_types = FALSE)
 head(unified_bmf)
 #glimpse(unified_bmf)
 #summarise(unified_bmf)
 ```
 
-# Cleaning: Checking for duplicates (TODO: review CORE code sections)
+# Cleaning: Checking for duplicates
 We noticed that sometimes there is more than one record in the BMF tied to the same organization. Why do these duplicates occur?
 
 - How many of those duplicates have the same organization name? 
@@ -58,13 +58,13 @@ Return a data frame with the following variables:
 
 SEE FILE: reviewing_duplicate_EIN.R for the script that helps with the analysis
 
-```{r, eval = FALSE}
+```{r}
 library(tidyverse)
 library(data.table)
 library(dplyr)
 source("SCRIPTS/reviewing_duplicate_EIN.R")
 
-unified_bmf <- read.csv("CORE/BMF_UNIFIED_V1.1.csv")
+unified_bmf <- read.csv("CORE/BMF_UNIFIED_V1.1.csv", show_col_types = FALSE)
 
 # These are the variables in the data set that we are currently interested in keeping to potentially use for modeling!
 vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_REVENUE_RECENT", "F990_TOTAL_INCOME_RECENT", "F990_TOTAL_ASSETS_RECENT", "CENSUS_STATE_ABBR", "CENSUS_COUNTY_NAME", "ORG_YEAR_FIRST", "ORG_YEAR_LAST") # "NTEE_IRS", "NCCS_LEVEL_2", "NCCS_LEVEL_3", "ORG_NAME_SEC", "ORG_NAME_CURRENT", "ORG_YEAR_FIRST", "ORG_YEAR_LAST", "ORG_YEAR_COUNT"
@@ -86,7 +86,7 @@ bmf_subset$NTEEV2 <- substr(bmf_subset$NTEEV2, 1, 3)
 ```
 
 
-```{r, eval = FALSE}
+```{r}
 # drop rows with EIN = 00-0000000 
 bmf_subset <- bmf_subset[!(bmf_subset$EIN2 %in% "EIN-00-0000000"),]
 n_before_removing_dupes <- nrow(bmf_subset)
@@ -107,17 +107,17 @@ head(bmf_dupe_info, 10)
 ## Exploring duplicates: CORE-PZ
 
 Download the data and get info on duplicate EIN
-```{r, eval = FALSE}
+```{r}
 library(tidyverse)
 library(data.table)
 library(dplyr)
-source("reviewing_duplicate_EIN.R")
-source("clean_helper.R")
+source("SCRIPTS/reviewing_duplicate_EIN.R")
+source("SCRIPTS/clean_helper.R")
 
-CORE_1989 <- as.data.frame(read_csv("CORE/CORE-1989-501C3-CHARITIES-PZ-HRMN.csv"))
-CORE_2014 <- as.data.frame(read_csv("CORE/CORE-2014-501C3-CHARITIES-PZ-HRMN.csv"))
-CORE_2021 <- as.data.frame(read_csv("CORE/CORE-2021-501C3-CHARITIES-PZ-HRMN.csv"))
-CORE_2022 <- as.data.frame(read_csv("CORE/CORE-2022-501C3-CHARITIES-PZ-HRMN.csv"))
+CORE_1989 <- as.data.frame(read_csv("CORE/pz/CORE-1989-501C3-CHARITIES-PZ-HRMN.csv", show_col_types = FALSE))
+CORE_2014 <- as.data.frame(read_csv("CORE/pz/CORE-2014-501C3-CHARITIES-PZ-HRMN.csv", show_col_types = FALSE))
+CORE_2021 <- as.data.frame(read_csv("CORE/pz/CORE-2021-501C3-CHARITIES-PZ-HRMN.csv", show_col_types = FALSE))
+CORE_2022 <- as.data.frame(read_csv("CORE/pz/CORE-2022-501C3-CHARITIES-PZ-HRMN.csv", show_col_types = FALSE))
 
 CORE_1989 <- CORE_1989 |> mutate_if(is.character, ~na_if(.,''))
 dupes_CORE_1989 <- dupes(CORE_1989)
@@ -135,6 +135,14 @@ CORE_2022 <- CORE_2022 |> mutate_if(is.character, ~na_if(.,''))
 dupes_CORE_2022 <- dupes(CORE_2022)
 info2022 <- duplicateEIN2_info(CORE_2022, dupes_CORE_2022$dupes_groups) |> filter(num_differences != 0)
 ```
+
+```{r}
+head(info1989)
+head(info2014)
+head(info2021)
+head(info2022)
+```
+
 
 Get information on missing data
 ```{r}
@@ -183,17 +191,17 @@ benefits_vars <- c("F9_01_EXP_BEN_PAID_MEMB_CY","F9_07_COMP_DTK_COMP_ORG", "F9_0
 
 all_outcome_vars <- c(asset_vars, revenue_vars, expenses_vars, benefits_vars)
 
-# 
+# Which variables would we be dropping due to over 50% of records missing the corresponding data?
 intersect(all_outcome_vars, cols_to_drop)
 ```
 
 ## Exploring Duplicates: CORE-PC
 Download data
 ```{r}
-source("download_data.R")
+source("SCRIPTS/download_data.R")
 tscope_values <- c("501c3") # Download files from Tax Exempt Types in this list; possible values: "501c3", "501ce" 
 fscope_values <- c("-pc") # Download files from IRS 990 Form Scope in this list; possible values: "-pz", "-pc", "-pf"
-year_values <- seq(from = 2012, to = 2022, by = 1) # Download files from years in this list
+year_values <- seq(from = 2018, to = 2021, by = 1) # Download files from years in this list
 download_CORE(tscope_values, fscope_values, year_values)
 ```
 
@@ -203,8 +211,8 @@ library(readr)
 library(tidyverse)
 library(data.table)
 library(dplyr)
-source("reviewing_duplicate_EIN.R")
-source("clean_helper.R")
+source("SCRIPTS/reviewing_duplicate_EIN.R")
+source("SCRIPTS/clean_helper.R")
 
 year_values <- seq(from = 2018, to = 2021, by = 1)
 file_name_tag <- "-501C3-CHARITIES-PC-HRMN.csv"
@@ -279,7 +287,7 @@ for (i in year_values){
 }
 ```
 
-Columns corresponding to outcome variables
+Columns corresponding to possible outcome variables
 ```{r}
 # 990EZ: Part 2 line 25
 # 990: Part 1 line 20 & Part 10 line 16
@@ -304,100 +312,16 @@ all_outcome_vars <- c(asset_vars, revenue_vars, expenses_vars, benefits_vars)
 intersect(all_outcome_vars, cols_to_drop) #F9_09_EXP_COMP_DTK_TOT : Part9Line5, F9_09_EXP_OTH_SAL_WAGE_TOT : Part9Line7, F9_09_EXP_PAYROLL_TAX_TOT : Part9Line10
 ```
 
-Data cleaning: drop some missing values & duplicates
-```{r}
-# drop columns that have too much missing data
-for (i in year_values){
-  varname <- paste("core", i, sep = "")
-  dat <- get(varname) 
-  assign(varname, dat[, !(names(dat) %in% cols_to_drop)])
-}
 
-# remove any duplicate rows
-for (i in year_values){
-  varname <- paste("core", i, sep = "")
-  assign(varname, get(varname) |> distinct())
-}
 
-# How much data is missing and where?
-for (i in year_values){
-  varname_load <- paste("core", i, sep = "")
-  varname <- paste("na", i, sep = "")
-  assign(varname, na_counts_df(get(varname_load)))
-}
-```
-
-```{r}
-# For any repeated EIN2 rows, keep row with highest/latest F9_00_TAX_PERIOD_END_DATE
-# Reasoning: most repeated EIN2 have a discrepancy in this column, should take the one filed with latest date! About 12 have the same date, in which case one is chosen arbitrarily (due to the "tie")
-for (i in year_values){
-  varname <- paste("core", i, sep = "")
-  dat <- get(varname) %>%
-    arrange(desc(F9_00_TAX_PERIOD_END_DATE)) %>% # sort rows by date in descending order (latest to oldest)
-    distinct(EIN2, .keep_all = TRUE)   # keep first row per EIN2 only
-  assign(varname, dat)
-}
-```
-Double check if we removed all the duplicates!
-```{r}
-# get list of duplicate EIN plus data frame grouped by each EIN dupe
-for (i in year_values){
-  varname_load <- paste("core", i, sep = "")
-  dat <- dupes(get(varname_load)) 
-  varname <- paste("dupes", i, sep = "")
-  assign(varname, dat)
-}
-
-# how many duplicate EIN2? 
-for (i in year_values){
-  varname_load <- paste("dupes", i, sep = "")
-  varname <- paste("core", i, sep = "")
-  n1 <- nrow(get(varname_load)$dupes)
-  n2 <- nrow(get(varname))
-  print(paste("Year:", i, ", Num dupes:", n1, ", Total num:", n2, ", Prop:", n1/n2, sep = " "))
-}
-```
-Which columns are not common across all data files?
-```{r}
-col_set_diff <- setdiff(names(core2018), names(core2021))
-intersect(all_outcome_vars, col_set_diff)
-
-# drop columns that are not represented in each dataset
-for (i in year_values){
-  varname <- paste("core", i, sep = "")
-  dat <- get(varname) 
-  assign(varname, dat[, !(names(dat) %in% col_set_diff)])
-}
-
-# add year column to each datafile
-for (i in year_values){
-  varname <- paste("core", i, sep = "")
-  dat <- get(varname)
-  dat$year <- i
-  assign(varname, dat)
-}
-
-# add a year column to each data frame
-long_core <- lapply(year_values, function(yr) {
-  df <- get(paste("core", yr, sep=""))  # Get the data frame from the environment
-  df$year <- yr
-  return(df)
-})
-
-# stack the rows from each data frame on top of each other (to keep in long format)
-long_core <- as.data.table(bind_rows(long_core))
-
-# Merge with metadata from Business Master File (BMF)
-bmf <- as.data.table(read_csv("CLEAN/cleanBMF.csv"))
-merged_df <- long_core |> left_join(bmf, join_by(EIN2))
-```
 
 # Cleaning BMF files using script
 ```{r}
+source("SCRIPTS/clean_BMF.R")
 # Clean Business Master File (BMF)
 vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_ASSETS_RECENT", "CENSUS_STATE_ABBR", "CENSUS_COUNTY_NAME", "ORG_YEAR_FIRST", "ORG_YEAR_LAST", "LATITUDE", "LONGITUDE", "CENSUS_CBSA_FIPS")
 thresh <- 0.5*length(vars_to_keep) # Any rows with more NA values than this threshold will be dropped
-clean_BMF(vars_to_keep, thresh)
+clean_BMF(vars_to_keep, thresh, saveFlag = TRUE) # if you set saveFlag to FALSE, the function instead returns a list of results that you would have to save into a variable i.e. cleanBMF.list <- clean_BMF(vars_to_keep, thresh, saveFlag = FALSE)
 ```
 
 # Cleaning CORE files using script
@@ -419,27 +343,12 @@ file_name_tag <- "-501C3-CHARITIES-PZ-HRMN.csv"
 file_dir <- "CORE/pz/CORE-"
 save_dir <- "CLEAN/pz/"
 
-#clean_CORE(all_relevant_vars, year_values, file_name_tag, file_dir, save_dir, prop_NA)
+dir.create(save_dir)
+clean_CORE(all_relevant_vars, year_values, file_name_tag, file_dir, save_dir, prop_NA)
 
 filename <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[length(year_values)], ".csv", sep="")
 df <- as.data.table(read_csv(filename, show_col_types = FALSE)) %>% mutate_if(is.character, ~na_if(.,''))
 df_na <- na_counts_df(df)
-
-df <- df |> mutate(LOG_TOT_REV = log(TOT_REV))
-```
-
-If later you need to rework the final merged df but are okay with how the CORE files were saved after being cleaned
-```{r}
-year_values <- seq(from = 1989, to = 2022, by = 1)
-save_dir <- "CLEAN/pz/"
-
-long_core <- as.data.frame(read_csv("CLEAN/pz/core1989.csv", show_col_types = FALSE))
-for (i in year_values){
-      varname <- paste("core", i, sep = "")
-      filename <- paste(save_dir, varname, ".csv", sep = "")
-      print(filename)
-      long_core <- as.data.table(bind_rows(long_core, as.data.frame(read_csv(filename, show_col_types = FALSE))))
-}
 ```
 
 # Pre-processing
@@ -459,7 +368,7 @@ library(purrr)
 #predictor_vars <- c("F9_00_EXEMPT_STAT_501C3_X", "TAX_YEAR")
 #all_relevant_vars <- c(outcome_vars, predictor_vars, "EIN2", "F9_00_TAX_PERIOD_END_DATE")
 
-year_values <- seq(from = 1989, to = 2022, by = 1)
+year_values <- seq(from = 1989, to = 2021, by = 1)
 save_dir <- "CLEAN/pz/"
 
 filename <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[length(year_values)], ".csv", sep="")
@@ -467,7 +376,6 @@ filename <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[lengt
 # Read in data and do some preprocessing
 df <- as.data.table(read_csv(filename, show_col_types = FALSE)) %>% 
       mutate_if(is.character, ~na_if(.,'')) |> 
-      filter(TAX_YEAR != 2022) |> 
       distinct()
 
 df <- df |> mutate(LOG_REV = log(TOT_REV + 1),
@@ -511,26 +419,26 @@ orgs.no.change <- unique(df.sub$EIN2)
 saveRDS(orgs.no.change, "PREPROCESSING/orgs_reported_same.rds")
 ```
 
-## Dropping Orgs with less than 4 records - Analysis (TODO - shift to less than 5 and do analysis on full data)
+## Dropping Orgs with less than 5
 ```{r}
 # Add data_count column, which for an organization is the length of their time series, i.e. the number of years of data we have for them
-train.set <- as.data.table(read_csv("MODEL/training.csv", show_col_types = FALSE)) |>
+df <- readRDS("PREPROCESSING/df.rds") |>
       group_by(EIN2) |>
       mutate(DATA_COUNT = n()) |>
       ungroup()
 
 # Since there is only one DATA_COUNT per org, we only need to keep one record per org
-df <- train.set |> group_by(EIN2) |> slice(1) |> ungroup()
+df.sub <- df |> group_by(EIN2) |> slice(1) |> ungroup()
 ```
 
 ```{r}
 # Spread of records corresponding to a particular data count
-quantile(train.set$DATA_COUNT, probs = seq(0,1,0.1))
-
-# Spread of organizations with a particular data count
 quantile(df$DATA_COUNT, probs = seq(0,1,0.1))
 
-df |> ggplot(mapping = aes(x = DATA_COUNT)) +
+# Spread of organizations with a particular data count
+quantile(df.sub$DATA_COUNT, probs = seq(0,1,0.1))
+
+df.sub |> ggplot(mapping = aes(x = DATA_COUNT)) +
       geom_bar() +
       labs(x = "Length of Time Series", y = "Number of Organizations", title = "How many years of data do we have for each org?") +
       scale_x_continuous(breaks=seq(0,30,2))
@@ -540,18 +448,18 @@ df |> ggplot(mapping = aes(x = DATA_COUNT)) +
 source("SCRIPTS/plotting_helper.R")
 ntee_labs <- c("Arts, Culture, & Humanities", "Education (minus Universities)", "Environment & Animals", "Health (minus Hospitals)", "Human Services", "Hospitals", "International, Foreign Affairs", "Mutual/Membership Benefit", "Public, Societal Benefit", "Religion Related", "Universities", "Other")
 
-print(plot_data_distributions(df = train.set, column = NTEE, tot = nrow(train.set), 
+print(plot_data_distributions(df = df, column = NTEE, tot = nrow(df), 
                               title = "Proportion of total RECORDS by subsector") + scale_x_discrete(labels = ntee_labs) +
             theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
       )
-print(plot_data_distributions(df = df, column = NTEE, tot = nrow(df), title = "Proportion of total ORGANIZATIONS by subsector") + scale_x_discrete(labels = ntee_labs) +
+print(plot_data_distributions(df = df.sub, column = NTEE, tot = nrow(df.sub), title = "Proportion of total ORGANIZATIONS by subsector") + scale_x_discrete(labels = ntee_labs) +
                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
       )
-print(plot_data_distributions(df = train.set |> filter(DATA_COUNT < 5), column = NTEE, tot = nrow(train.set), 
+print(plot_data_distributions(df = df |> filter(DATA_COUNT < 5), column = NTEE, tot = nrow(df), 
                               title = "Proportion of total RECORDS by subsector, from Time Series with < 5 years") + scale_x_discrete(labels = ntee_labs) +
                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
       )
-print(plot_data_distributions(df = df |> filter(DATA_COUNT < 5), column = NTEE, tot = nrow(df),
+print(plot_data_distributions(df = df.sub |> filter(DATA_COUNT < 5), column = NTEE, tot = nrow(df.sub),
                               title = "Proportion of total ORGANIZATIONS by subsector, from Time Series with < 5 years") + scale_x_discrete(labels = ntee_labs) +
                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
       )
@@ -560,19 +468,19 @@ print(plot_data_distributions(df = df |> filter(DATA_COUNT < 5), column = NTEE, 
 ```{r}
 size_labs <- c("Under $100,000", "$100,000 - $499,999", "$500,000 - $999,999", "$1 Million - $4.99 Million", "$5 Million - $9.99 Million", "Above $10 Million")
 
-print(plot_data_distributions(df = train.set |> mutate(SIZE.CAT = factor(SIZE.CAT)), column = SIZE.CAT, tot = nrow(train.set),
+print(plot_data_distributions(df = df |> mutate(SIZE.CAT = factor(SIZE.CAT)), column = SIZE.CAT, tot = nrow(df),
                               title = "Proportion of total RECORDS by size") + scale_x_discrete(labels = size_labs) +
                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
       )
-print(plot_data_distributions(df = df |> mutate(SIZE.CAT = factor(SIZE.CAT)), column = SIZE.CAT, tot = nrow(df),
+print(plot_data_distributions(df = df.sub |> mutate(SIZE.CAT = factor(SIZE.CAT)), column = SIZE.CAT, tot = nrow(df.sub),
                               title = "Proportion of total ORGANIZATIONS by size") + scale_x_discrete(labels = size_labs) +
                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
       )
-print(plot_data_distributions(df = train.set |> mutate(SIZE.CAT = factor(SIZE.CAT)) |> filter(DATA_COUNT < 5), column = SIZE.CAT, tot = nrow(train.set),
+print(plot_data_distributions(df = df |> mutate(SIZE.CAT = factor(SIZE.CAT)) |> filter(DATA_COUNT < 5), column = SIZE.CAT, tot = nrow(df),
                               title = "Proportion of total RECORDS by size, from Time Series with < 5 years") + scale_x_discrete(labels = size_labs) +
                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
       )
-print(plot_data_distributions(df = df |> mutate(SIZE.CAT = factor(SIZE.CAT)) |> filter(DATA_COUNT < 5), column = SIZE.CAT, tot = nrow(df),
+print(plot_data_distributions(df = df.sub |> mutate(SIZE.CAT = factor(SIZE.CAT)) |> filter(DATA_COUNT < 5), column = SIZE.CAT, tot = nrow(df.sub),
                               title = "Proportion of total ORGANIZATIONS by size, from Time Series with < 5 years") + scale_x_discrete(labels = size_labs) +
                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
       )
@@ -582,25 +490,25 @@ print(plot_data_distributions(df = df |> mutate(SIZE.CAT = factor(SIZE.CAT)) |> 
 ```{r}
 size_labs <- c("Under $100,000", "$100,000 - $499,999", "$500,000 - $999,999", "$1 Million - $4.99 Million", "$5 Million - $9.99 Million", "Above $10 Million")
 
-print(plot_data_distributions(df = train.set |> mutate(SIZE.CAT = factor(SIZE.CAT)) |> filter(DATA_COUNT < 4), column = SIZE.CAT, tot = nrow(train.set),
-                              title = "Proportion of total RECORDS by size, from Time Series with < 4 years") + scale_x_discrete(labels = size_labs) +
+print(plot_data_distributions(df = df |> mutate(SIZE.CAT = factor(SIZE.CAT)) |> filter(DATA_COUNT < 4), column = SIZE.CAT, tot = nrow(df),
+                              title = "Proportion of total RECORDS by size, from Time Series with < 5 years") + scale_x_discrete(labels = size_labs) +
                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
       )
-print(plot_data_distributions(df = df |> mutate(SIZE.CAT = factor(SIZE.CAT)) |> filter(DATA_COUNT < 4), column = SIZE.CAT, tot = nrow(df),
-                              title = "Proportion of total ORGANIZATIONS by size, from Time Series with < 4 years") + scale_x_discrete(labels = size_labs) +
+print(plot_data_distributions(df = df.sub |> mutate(SIZE.CAT = factor(SIZE.CAT)) |> filter(DATA_COUNT < 4), column = SIZE.CAT, tot = nrow(df.sub),
+                              title = "Proportion of total ORGANIZATIONS by size, from Time Series with < 5 years") + scale_x_discrete(labels = size_labs) +
                   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
       )
 ```
 
 ```{r}
-print(plot_data_distributions(df = train.set, column = DIVISION, tot = nrow(train.set), 
-                              title = "Proportion of total RECORDS by Division") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9)))
 print(plot_data_distributions(df = df, column = DIVISION, tot = nrow(df), 
+                              title = "Proportion of total RECORDS by Division") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9)))
+print(plot_data_distributions(df = df.sub, column = DIVISION, tot = nrow(df.sub), 
                               title = "Proportion of total ORGANIZATIONS by Division") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9)))
-print(plot_data_distributions(df = train.set |> filter(DATA_COUNT < 5), column = DIVISION, tot = nrow(train.set), 
+print(plot_data_distributions(df = df |> filter(DATA_COUNT < 5), column = DIVISION, tot = nrow(df), 
                               title = "Proportion of total RECORDS by Division, from Time Series with < 5 years") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
       )
-print(plot_data_distributions(df = df |> filter(DATA_COUNT < 5), column = DIVISION, tot = nrow(df),
+print(plot_data_distributions(df = df.sub |> filter(DATA_COUNT < 5), column = DIVISION, tot = nrow(df.sub),
                               title = "Proportion of total ORGANIZATIONS by Division, from Time Series with < 5 years") + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0.9))
       )
 ```
