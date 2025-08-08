@@ -10,15 +10,15 @@ Citation: Jesse Lecy, (2024). NCCS Core Series.
 * app_helper.R 
   * helper code for the app 
 * demo.Rmd
-  * walks you through downloading data, cleaning it, and making some plots.
+  * walks you through downloading data, cleaning it, and making some plots, including an example of the plot you can create with the app
 * docs_cleaning.md
-  * walks you through out data cleaning steps and reasoning
+  * walks you through out data cleaning steps and reasoning (for the code, however, refer to preprocessing.Rmd and SCRIPTS folder)
 * gp_outlier_detection.Rmd 
   * results from the outlier detection
 * preprocessing.Rmd
   * walks you through the data cleaning and preprocessing steps that we took from start to finish
 * modeling.Rmd
-  * walks you through out modeling
+  * walks you through out modeling process
 
 ## Folders
 
