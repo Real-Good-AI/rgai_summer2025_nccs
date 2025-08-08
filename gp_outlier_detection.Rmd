@@ -9,7 +9,131 @@ output: html_document
 knitr::opts_chunk$set(echo = FALSE, eval = FALSE)
 ```
 
-# Outlier Analysis
+# Outlier Analysis - Full
+```{r}
+df <- readRDS("PREPROCESSING/df_orginal_processed.rds")
+df.candidates <- readRDS("PREPROCESSING/candidate_outliers_df.rds")
+
+res.parameters <- readRDS("PREPROCESSING/best_parameters.rds")
+
+all.orgs.gp <-res.parameters$EIN
+
+res.out.1 <- readRDS("PREPROCESSING/gp_res_1.rds")
+res.out.2 <- readRDS("PREPROCESSING/gp_res_2.rds")
+res.out.3 <- readRDS("PREPROCESSING/gp_res_3.rds")
+res.out.4 <- readRDS("PREPROCESSING/gp_res_4.rds")
+res.out.5 <- readRDS("PREPROCESSING/gp_res_5.rds")
+
+# Rename
+names(res.out.1) <- all.orgs.gp[1:100000]
+names(res.out.2) <- all.orgs.gp[100001:200000]
+names(res.out.3) <- all.orgs.gp[200001:300000]
+names(res.out.4) <- all.orgs.gp[300001:399999]
+names(res.out.5) <- all.orgs.gp[400000:length(all.orgs.gp)]
+
+# Get all candidates, first I have to extract the candidates sublist from each res.out object
+candidates <- c(lapply(res.out.1, function(x){x[["candidates"]]}),
+                lapply(res.out.2, function(x){x[["candidates"]]}),
+                lapply(res.out.3, function(x){x[["candidates"]]}),
+                lapply(res.out.4, function(x){x[["candidates"]]}),
+                lapply(res.out.5, function(x){x[["candidates"]]})
+                )
+
+# Filter out any orgs with no detected outliers
+candidates <- Filter(function(x) length(x) > 0, candidates)
+
+standard_errors <- c(lapply(res.out.1, function(x){x[["standard_errors"]]}),
+                lapply(res.out.2, function(x){x[["standard_errors"]]}),
+                lapply(res.out.3, function(x){x[["standard_errors"]]}),
+                lapply(res.out.4, function(x){x[["standard_errors"]]}),
+                lapply(res.out.5, function(x){x[["standard_errors"]]})
+                )
+
+predictions <- readRDS("PREPROCESSING/all_predictions.rds")
+rm(res.out.1, res.out.2, res.out.3, res.out.4, res.out.5)
+
+all.years <- c(unlist(candidates))
+```
+
+```{r}
+# cluster <- makeCluster(7)
+# registerDoParallel(cluster)
+# 
+# start.time <- Sys.time() #31 min
+# residuals <- foreach(ein = names(candidates), .packages = c("dplyr"), .verbose = TRUE) %dopar% {
+#       df.sub <- df |> filter(EIN2==ein)
+#       res <- (df.sub$LOG_REV - predictions[[ein]]) / standard_errors[[ein]] # standardized residuals
+#       res[which(df.sub$TAX_YEAR %in% candidates[[ein]])]
+# }
+# print(Sys.time() - start.time)
+# stopCluster(cl = cluster)
+# 
+# names(residuals) <- names(candidates)
+# saveRDS(residuals, "PREPROCESSING/all_outlier_residuals.rds")
+```
+
+```{r}
+# df.stres <- do.call(rbind, lapply(names(candidates), function(id) {
+#   data.frame(EIN = id, Value = candidates[[id]], STDRES = residuals[[id]])
+# }))
+# 
+# df.stres <- df.stres |> rename(EIN2 = EIN, TAX_YEAR = Value)
+# df.candidates <- left_join(df.candidates, df.stres)
+
+# saveRDS(df.candidates, "PREPROCESSING/candidate_outliers_df.rds")
+
+df.candidates <- df.candidates |> mutate(SIGN = sign(STDRES), DIFF.abs = abs(STDRES - 3), DIFF.rel = (STDRES-3)/3)
+table(df.candidates$SIGN)
+
+df.candidates |> mutate(SIGN = factor(SIGN, levels = c(1, -1))) |>
+      ggplot() +
+      geom_histogram(mapping = aes(x = TAX_YEAR, group = factor(SIGN), fill = factor(SIGN)), color = "black", bins = length(unique(all.years))) +
+      scale_fill_manual(values = c("#1796D2", "#FDC010"), labels = c("Positive", "Negative")) +
+      labs(x = "Year", title = "Outliers per Year", fill = "Outlier Type")
+```
+
+
+```{r}
+num.per.year <- table(all.years)
+total.per.year <- table(df$TAX_YEAR)
+
+num.per.year <- as.data.frame(num.per.year) |> rename(YEAR = all.years) 
+total.per.year <- as.data.frame(total.per.year) |> rename(YEAR = Var1)
+
+per.year.df <- full_join(num.per.year, total.per.year, by = "YEAR", suffix = c(".out", ".total")) |>
+      mutate(Percent = Freq.out/Freq.total)
+
+tst <- df.candidates |> group_by(TAX_YEAR, SIGN) |> summarize(count = n())
+
+per.year.df[,"positive"] <- tst |> ungroup() |> filter(SIGN == 1) |> select(count)
+per.year.df[,"negative"] <- tst |> ungroup() |> filter(SIGN == -1) |> select(count)
+
+per.year.df <- per.year.df |> rename(year = YEAR, total.outliers = Freq.out, total.data = Freq.total, prop.outliers = Percent, total.pos = positive, total.neg = negative) |> mutate(prop.pos = total.pos/total.data, prop.neg = total.neg/total.data)
+```
+
+```{r}
+# Reshape data to long format
+df.long <- per.year.df |> 
+  select(year, prop.pos, prop.neg) |> 
+  pivot_longer(cols = c(prop.pos, prop.neg), 
+               names_to = "outlier_type", 
+               values_to = "proportion") |> 
+  mutate(outlier_type = recode(outlier_type, 
+                               prop.pos = "Positive", 
+                               prop.neg = "Negative"))
+df.long <- df.long |> mutate(outlier_type = factor(outlier_type, levels = c("Positive", "Negative")))
+
+ggplot(df.long, aes(x = factor(year), y = proportion*100, fill = outlier_type)) +
+      geom_bar(stat = "identity", color = "black") +
+      labs(x = "Year", y = "Percent", fill = "Outlier Type", title = "Percent of Outliers per Year") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) +
+      scale_fill_manual(values = c("#1796D2",  "#FDC010"))
+```
+
+
+
+
+# Outlier Analysis - training set
 
 ```{r, eval = TRUE, message = FALSE}
 library(fields)
@@ -112,7 +236,7 @@ df.stres |>
 
 What proportion of the records each year are identified as outliers, positive versus negative?
 ```{r, eval = TRUE}
-per.year.df <- readRDS("MODEL/outlier_detection/full/per_year_DF.rds")
+per.year.df <- readRDS("MODEL/outlier_detection/full_training/per_year_DF.rds")
 
 # Reshape data to long format
 df.long <- per.year.df |> 
