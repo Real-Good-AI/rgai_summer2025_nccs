@@ -2,7 +2,7 @@
 
 Note: Data is from open source NCCS Core Series Data: [website link](https://nccs.urban.org/nccs/datasets/core/) 
 
-Citation: Jesse Lecy, (2024). NCCS Core Series.
+Data Citation: Jesse Lecy, (2024). NCCS Core Series.
 
 ## Main Directory
 * app.R
@@ -18,7 +18,7 @@ Citation: Jesse Lecy, (2024). NCCS Core Series.
 * preprocessing.Rmd
   * walks you through the data cleaning and preprocessing steps that we took from start to finish
 * modeling.Rmd
-  * walks you through out modeling process
+  * walks you through our modeling process
 
 ## Folders
 
