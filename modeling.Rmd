@@ -8,7 +8,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
 ```
-
+This notebook assumes you have already created the file PREPROCESSING/processed_mega_df.rds (refer to preprocessing.Rmd section Creating "Full" Dataset)
 # Test Org
 ## Load Data and Libraries
 ```{r, message = FALSE}
