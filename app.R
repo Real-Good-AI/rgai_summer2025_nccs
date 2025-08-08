@@ -71,7 +71,7 @@ server <- function(input, output, session) {
             ))
       })
       
-      # UI layout
+      # UI layout for the first page (user input)
       output$mainUI <- renderUI({
             if (!rv$confirmed) {
                   tagList(
@@ -133,7 +133,7 @@ server <- function(input, output, session) {
       
       outputOptions(output, "mainUI", suspendWhenHidden = FALSE)
       
-      # Dynamic revenue/year inputs
+      # Dynamic revenue/year inputs depending on whether user has 2-5 of revenue history
       output$revenueInputs <- renderUI({
             req(input$n_years)
             tagList(
@@ -146,7 +146,8 @@ server <- function(input, output, session) {
             )
       })
 
-      
+      # Second page, after the user hits the "submit" button on the first page
+      # Includes user input validation steps
       observeEvent(input$submit, {
             req(input$ein, input$ntee, input$n_years)
             
@@ -175,6 +176,7 @@ server <- function(input, output, session) {
                   return()
             }
             
+            # Make sure the user did not put in only 0's
             if (all(revs == 0)) {
                   showModal(modalDialog(
                         title = "Input Error",
@@ -184,7 +186,7 @@ server <- function(input, output, session) {
                   return()
             }
             
-            # look up in your preloaded `df`
+            # look up in your preloaded `df` to see if they input information we already have
             formatted_ein <- paste0("EIN-", input$ein)
             df_existing <- df |>
                   filter(EIN2 == formatted_ein, TAX_YEAR %in% years) |>
@@ -198,6 +200,7 @@ server <- function(input, output, session) {
             rv$confirmed <- TRUE
       })
       
+      # Table we show the user with the information they submitted, asking them to confirm if it looks correct
       summary_data <- eventReactive(input$submit, {
             req(input$ein, input$ntee, input$n_years)
             df <- readMegaDF()
@@ -244,6 +247,7 @@ server <- function(input, output, session) {
       })
       outputOptions(output, "showRestart", suspendWhenHidden = FALSE)
       
+      # Askign user to confirm if their data looks correct so we can proceed with analysis
       observeEvent(input$confirm_btn, {
             if (input$confirm == "No") {
                   rv$confirmed <- FALSE
@@ -272,7 +276,7 @@ server <- function(input, output, session) {
             }
       })
       
-      
+      # Step 1: Analysis i.e. nearest neighbor search (nn.search), GP tuning (gp.param.opt), and prediction (gp.predict)
       observe({
             req(start_nn())
             start_nn(FALSE)
@@ -286,6 +290,7 @@ server <- function(input, output, session) {
             
             future({
                   tryCatch({
+                        # res is a dataframe with the data corresponding to the top 5 nearest neighbors
                         res <- nn.search(
                               category = ntee_cat,
                               user.EIN = formatted_ein,
@@ -293,7 +298,7 @@ server <- function(input, output, session) {
                               user.history = user_revenue,
                               n.predict = n_pred
                         )
-                        
+                        # gp_res is a dataframe with one row containing the optimal nu and nugget values for the GP
                         gp_res <- gp.param.opt(
                               user.EIN = formatted_ein,
                               user.years = user_years,
@@ -301,7 +306,7 @@ server <- function(input, output, session) {
                               res = res,
                               n.predict = n_pred
                         )
-                        
+                        # user_data_df is a data.frame with the prediction for the user's organization from the GP trained on top 5 neighbors' data
                         user_data_df <- gp.predict(
                               res = res,
                               res.pars = gp_res,
@@ -323,17 +328,8 @@ server <- function(input, output, session) {
                   gp_res <- results$gp_res
                   user_data_df <- results$user_data_df
                   
-                  # Step 3: Render nn.search result table
-                  output$resOutput <- renderTable({
-                        head(res, 5)
-                  })
-                  
-                  # Step 4: Render gp.predict result
-                  output$gpOutput <- renderTable({
-                        gp_res
-                  })
-                  
-                  # Step 5: Render gp.param.opt result
+                  # Step 2: Create the GP output table for the user, with user-friendly terms
+                  # We rename the columns, add confidence intervals, make sure the years are filled in for each value and do some formatting so the output looks nice
                   output$gpPredOutput <- renderTable({
                         user_data_df <- user_data_df |> 
                               select(-YEAR, -NEIGHBOR_ID) |> 
@@ -363,118 +359,13 @@ server <- function(input, output, session) {
 
                   })
                   
-                  # Step 6: Plot
+                  # Step 3: Create the interactive plot
                   output$revenuePlot <- renderPlotly({
-                        first_year <- min(user_years)
-                        last_year <- max(user_years)
-                        user_data_df$TAX_YEAR <- seq(first_year, last_year + n_pred)
-                        
-                        deg.freedom <- nrow(res |> filter(!IMPUTED)) - 1
-                        user_data_df <- user_data_df |>
-                              mutate(CI.LOWER = case_when(
-                                    IMPUTE_STATUS == "Reported" ~ TOT_REV,
-                                    IMPUTE_STATUS == "Predicted" ~ TOT_REV - qt(0.95, df = deg.freedom) * SE)) |>
-                              mutate(CI.UPPER = case_when(
-                                    IMPUTE_STATUS == "Reported" ~ TOT_REV,
-                                    IMPUTE_STATUS == "Predicted" ~ TOT_REV + qt(0.95, df = deg.freedom) * SE)) 
-                        
-                        df_reported <- user_data_df %>% filter(IMPUTE_STATUS == "Reported")
-                        df_predicted <- user_data_df %>% filter(IMPUTE_STATUS == "Predicted")
-                        df_transition <- user_data_df %>% filter((TAX_YEAR == last_year) | (TAX_YEAR == last_year+1))
-                        
-                        df_peers <- res |> 
-                              mutate(label = paste("Organization ", NEIGHBOR_ID, ": ", EIN2, sep = "")) |> 
-                              group_by(NEIGHBOR_ID) |> 
-                              mutate(TAX_YEAR = seq(first_year, last_year + n_pred)) |> 
-                              ungroup() |> 
-                              mutate(label = factor(label, levels = unique(label[order(NEIGHBOR_ID)])))
-                        
-                        
-                        p <- plot_ly() %>%
-                              # Lines for neighbor organizations
-                              add_trace(data = df_peers,
-                                        x = ~TAX_YEAR, y = ~TOT_REV, color = ~label, symbol = ~label, 
-                                        colors = c("#648FFF", "#785EF0", "#DC267F","#FE6100", "#FFB000"),
-                                        opacity = 0.6, type = 'scatter', mode = 'lines+markers') %>%
-                              
-                              # Line for reported
-                              add_trace(data = df_reported,
-                                        x = ~TAX_YEAR, y = ~TOT_REV,
-                                        type = 'scatter', mode = 'lines+markers',
-                                        line = list(dash = "solid", color = "black", width = 3),
-                                        marker = list(symbol = "circle", color = "black", size = 8.5),
-                                        name = "Reported")
-                              
-                              # Conditional CI addition
-                              if (nrow(df_predicted) > 1) {
-                                    p <- p %>%
-                                          # Lower bound
-                                          add_trace(data = df_predicted,
-                                                    x = ~TAX_YEAR, y = ~CI.LOWER,
-                                                    type = 'scatter', mode = 'lines',
-                                                    line = list(width = 1, color="grey"),
-                                                    showlegend = FALSE,
-                                                    name = "CI Lower",
-                                                    hoverinfo = "none") %>%
-                                          # Upper bound with fill
-                                          add_trace(data = df_predicted,
-                                                    x = ~TAX_YEAR, y = ~CI.UPPER,
-                                                    type = 'scatter', mode = 'lines',
-                                                    fill = 'tonexty',
-                                                    fillcolor = 'rgba(128, 128, 128, 0.2)',
-                                                    line = list(width = 1, color="grey"),
-                                                    showlegend = TRUE,
-                                                    name = "95% Confidence Interval",
-                                                    hoverinfo = "none")
-                              } else {
-                                    # Error bar version
-                                    p <- p %>%
-                                          add_trace(data = df_predicted,
-                                                    x = ~TAX_YEAR, y = ~TOT_REV,
-                                                    type = 'scatter', mode = 'markers',
-                                                    marker = list(symbol = "circle-open", color = "black", size = 8.5),
-                                                    error_y = list(
-                                                          type = "data",
-                                                          symmetric = FALSE,
-                                                          array = df_predicted$CI.UPPER - df_predicted$TOT_REV,
-                                                          arrayminus = df_predicted$TOT_REV - df_predicted$CI.LOWER,
-                                                          color = "gray",
-                                                          showlegend = TRUE
-                                                    ),
-                                                    name = "95% Confidence Interval")
-                              }
-                        
-                        # Line for predicted
-                        p <- p |> add_trace(data = df_predicted,
-                                            x = ~TAX_YEAR, y = ~TOT_REV,
-                                            type = 'scatter', mode = 'lines+markers',
-                                            line = list(dash = "dash", color = "black", width = 2.5),
-                                            marker = list(symbol = "circle-open", color = "black", size = 8.5),
-                                            name = "Predicted") %>%
-                              
-                              # Line for transition
-                              add_trace(data = df_transition,
-                                        x = ~TAX_YEAR, y = ~TOT_REV,
-                                        type = 'scatter', mode = 'lines',
-                                        line = list(dash = "dash", color = "black", width = 2.5),
-                                        name = "", showlegend = FALSE, hoverinfo = "none") %>%
-                              
-                              
-                              layout(
-                                    title = paste("Comparing Your Organization to Similar ", ntee_cat, " Organizations", sep=""),
-                                    xaxis = list(
-                                          title = "Year",
-                                          tickformat = ".0f",    # force no decimals
-                                          tickmode = "linear",   # evenly spaced ticks
-                                          dtick = 1,             # step size = 1 year
-                                          separatethousands = FALSE  # prevent commas
-                                    ),
-                                    yaxis = list(title = "Revenue"),
-                                    legend = list(title = list(text = "Legend"), traceorder = "normal")
-                              )
+                        p <- app.plot(user_years, ntee_cat, n_pred, user_data_df, res)
                         p
                   })
                   
+                  # Step 4: Create the "top 5 similar organizations" summary table 
                   output$resNeighborSummary <- renderTable({
                         res |> group_by(NEIGHBOR_ID) |>
                               slice(1) |>
