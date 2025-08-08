@@ -6,10 +6,42 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+knitr::opts_chunk$set(echo = FALSE, eval = FALSE)
 ```
-This notebook assumes you have already created the file PREPROCESSING/processed_mega_df.rds (refer to preprocessing.Rmd section Creating "Full" Dataset)
-# Test Org
+# Methods
+
+## Outlier Detection
+As part of the data preprocessing, we looked for outliers to remove from the dataset so they would not interfere with detecting the true underlying patterns in the data. We'll walk through a concrete example to explain our outlier detection process, which used Gaussian Processes (GPs). Suppose an organization has revenue data for the years 2011-2021.
+1. We tune a GP to their data, namely use Nelder Mead optimization with multiple starts to find the (nu, nugget) values that maximize the likelihood of the data.
+2. Using the optimal nu and nugget values, we then do a leave-one-out style process:
+  * We fit a GP to all that organization's data except one year, e.g. 2012-2021, or 2011-2019 and 2021; so we fit a different GP for each year but that year is left out; note that each time we recompute sigma^2 and scale the covariance matrix accordingly
+3. With each GP, we predict the "missing" year and compute the standardized residual since we have the true reported revenue for that year. If any year has a standardized residual greater than 3, we label it an outlier. You can see some of the results in gp_outlier_detection.Rmd
+
+
+## Data
+You can get more information about how we cleaned and processed the data from docs_cleaning.md as well as preprocessing.Rmd (which is built so you can reproduce the data we used if you go through it from start to finish).
+
+At a high-level, one of the important pieces is that we created a "mega" dataset. Although we had data from 1989 for hundreds of thousands of organizations, not every organization existed or had data during the entire 33 year period. For our prediction method (which we'll get into more detail on later), we needed a dataset that had a record for every organization for every year over that 33 year period. We did this with some imputation. You can see more step by step details in the Creating "Full" Dataset subsection of preprocessing.Rmd. 
+
+As an example, suppose an organization only had reported data for 2008-2016. From 1989-2007, we padded their revenue with 0's (as there's a strong chance the organization did not exist or was too small to appear in the dataset prior to 2008). From 2016-2021 we also padded their revenue with 0's, since there's a strong likelihood the organization died. It is however possible that they simply changed nonprofit category or merged with another nonprofit, so this system is not perfect. If there were any missing revenues from 2008 to 2016 or if there were outliers detected, we imputed the revenue for that year using Gaussian Processes (GPs). For example, if this organization had missing data in 2010, we fit a GP to their data in 2008, 2009, and 2011-2016 then used the GP to predict revenue in 2010.
+
+Once every organization had a revenue for each year from 1989-2021 we moved on to prediction.
+
+## Prediction
+The gist of what our prediction model does is as follows, given 2-5 years of revenue history and the NTEE category for an organization, as well 1-3 years of a prediction period (set by the user):
+Suppose the user inputs 3 years of data (`n.data = 3`) and wants to predict two years (`n.predict = 2`)
+1. We first look through the full ("mega") dataset for organizations in the same NTEE category that have similar revenue history at any point in time from 1989-2021
+  * We do nearest neighbors strictly on the revenue values. We look at every contiguous set of `n.data` years of revenue for other organizations in their NTEE category and do nearest neighbors with Euclidean distance. 
+  * For every `n.data` year period, we select the top 7 nearest neighbors
+2. We then filter out any organizations where more than 1/3 of their data is imputed in the `n.data + n.predict` years of data we would use (since when we train the GP we want to use as much real data as possible)
+3. We now have a collection of about 7 organizations per window, we order by distance and select the top 5 neighbors.
+4. After selecting the top 5 neighbors, we fit a GP to their data for the `n.data + n.predict` period of each neighbor. For example, one neighbor might have matched on the `n.data` year period 2010-2012, therefore we use the next `n.predict` years (2013-2014) to help us "see the future". But the exact years may be different for each neighbor.
+  * we tune the GP to get the optimal nu and nugget values
+5. Finally, we predict the organization's future revenue using the GP!
+
+
+# Evaluation: How well does our prediction scheme work?
+This part of the notebook assumes you have already created the file PREPROCESSING/processed_mega_df.rds (refer to preprocessing.Rmd section Creating "Full" Dataset)
 ## Load Data and Libraries
 ```{r, message = FALSE}
 library(readr)
@@ -25,362 +57,51 @@ library(lhs) # for latin hypercube sampling
 df <- readRDS("PREPROCESSING/processed_mega_df.rds")
 ```
 
-## Summary of dataset
-```{r, eval = FALSE, echo = FALSE}
-summary(df)
-colnames(df)
-table(df$NTEE)
-```
-
-
-## Nearest Neighbors
-Given an organization's NTEE category and 2-5 years of history, find other orgs within the same NTEE category that had similar pattern at any point in time.
-
-- Let `n.data` = number of data points the org gives us, must have 2 <= n.data <= 5
-- Let `n.predict` = number of years we wish to extrapolate into, must have 1 <= n.predict <= 3
-
-Starting with the window 1989-1989+`n.data`, look for `K` nearest orgs and save their EINs and distance. Move on to the next window (1990-1990+`n.data`), but stop when the end of the window is greater than 2021-`n.predict`. Once you have `K` neighbors per window, pick the top 5 (i.e. closest 5). Maybe add a check that if their own org is in there, to add in 6th neighbor. 
-
-Only columns we need (?) are: "EIN2", TAX_YEAR", "TOT_REV", "NTEE", "IMPUTE_STATUS"
+## Leave one out (LOO)-style procedure
+The actual procedure happens in SCRIPTS/model_LOO_eval.R, but there is one file needed in that script that we generate here. The idea behind the LOO-style procedure is we predict three years of data for each organization using their three years of data prior, but we intentionally predict on years we have data for them so we can compute errors! 
 ```{r}
-start.year <- 1989 # first year in the data set
-end.year <- 2021 # last year in the data set
+# End goal: all.orgs.data is a subset of df with the following columns: EIN2, TAX_YEAR, TOT_REV, PREDICT
+# PREDICT is boolean, TRUE if this is a year we are predicting on. Any records set to FALSE will be used as the org's history
+# For each EIN2 should only contain the records we are using as history and the records we will predict
+n.data = 3
+n.predict = 3
+# Group and get random, continous set of n.data+n.predict rows; assumes each EIN already sorted by TAX_YEAR
+result <- df |> filter(IMPUTE_STATUS == "original") |>
+      group_by(EIN2) |>
+      group_modify(~{
+            total_keep <- n.data + n.predict
+            num_rows <- nrow(.x)
+            
+            # Randomly pick a valid starting index
+            start_idx <- sample(1:(num_rows - total_keep + 1), 1)
+            end_idx <- start_idx + total_keep - 1
 
-user.EIN <- "EIN-00-0000000"
-user.years <- c("2022", "2023", "2024") # user-supplied years
-user.data <- as.data.table(list(62369, 100199, 185830)) # user-supplied history
-colnames(user.data) <- user.years
+            subset <- .x[start_idx:end_idx, ] # Get subset of size length n.data + n.predict of rows
+            
+            subset <- subset |> mutate(PREDICT = c(rep(FALSE, n.data), rep(TRUE, n.predict))) # Add PREDICT column
+            return(subset)
+      }) |>
+      ungroup()
 
-n.data <- length(user.data) # number of data points in user-supplied history
-n.predict <- 2 # number of years the uesr wants to predict into
-category <- c("ART") # categories the user is willing to compare with
+# Make sure we didn't accidentally pick a subset where each TOT_REV value is equal to 0 
+# center the log revenue
+result <- result |>
+      group_by(EIN2) |>
+      mutate(DEMEANED_REV = TOT_REV - mean(TOT_REV)) |>
+      ungroup()
 
-df.sub <- df |> filter(NTEE %in% category) |> select(EIN2, TAX_YEAR, TOT_REV, NTEE, IMPUTE_STATUS)
+# For each org, get indicator of whether or not they reported same tot_rev value each year
+result <- left_join(result, 
+                result |> group_by(EIN2) |> summarize(all0 = all(TOT_REV == 0)), 
+                by = "EIN2")
 
-K <- 5 # number of nearest neighbors to search for in each window
-nearest.neighbors <- setNames(data.frame(matrix(ncol = 4, nrow = 0)), c("EIN2", "START_YEAR", "END_YEAR", "DISTANCE"))
-start.time <- Sys.time()
-for (year in seq(start.year, end.year-n.predict-n.data+1, 1)){
-      curr.interval <- year:(year+n.data-1) # Time interval to be searched for K nearest neighbors
-      if (curr.interval[length(curr.interval)] > end.year-n.predict){break} # If the interval contains years it shouldn't, exit for loop
-      
-      # Get the data corresponding to this time interval, reshape to wide format so there is a different column per year
-      df.sub.sub <- df.sub |> filter(TAX_YEAR %in% curr.interval) |> select(EIN2, TAX_YEAR, TOT_REV) |> dcast(EIN2 ~ TAX_YEAR, value.var = "TOT_REV")
-      
-      # Get K nearest neighbors for this time window
-      nearest <- nn2(df.sub.sub |> select(-EIN2), user.data, k=K) 
-      nearest.neighbors <- rbind(nearest.neighbors, as.data.table(list("EIN2" = df.sub.sub[as.vector(nearest$nn.idx),]$EIN2,
-                                                                       "START_YEAR" = curr.interval[1],
-                                                                       "END_YEAR" = curr.interval[length(curr.interval)],
-                                                                       "DISTANCE" = as.vector(nearest$nn.dists))))
-}
-print(Sys.time()-start.time)
+result <- result |> filter(!all0)
+
+result <- result |> select(EIN2, TAX_YEAR, TOT_REV, NTEE, PREDICT)
+saveRDS(as.data.table(result), "MODEL/nearest_neighbors/all_orgs_data.rds")
 ```
 
-```{r}
-# Goal: Get 5 nearest neighbors, but only pick ones that don't have too many imputed values
-
-# Order neighbors by distance
-nearest.neighbors <- nearest.neighbors[order(DISTANCE)]
-
-# Create an END_YEAR + n.predict column to help with ranges
-nearest.neighbors[, END_PLUS := END_YEAR + n.predict]
-
-# Get the data for the orgs in nearest.neighbors
-comparison.orgs <- df.sub |> filter(EIN2 %in% nearest.neighbors$EIN2) # full data for nearest neighbor orgs
-
-# Perform a non-equi join, where rows from nearest.neighbors are matched with rows in comparison.orgs based on conditions
-comparison.orgs <- comparison.orgs |> mutate(TAX_YEAR_COMP = TAX_YEAR) # Rename TAX_YEAR in comparison.orgs before joining to avoid name conflict
-setkey(comparison.orgs, EIN2, TAX_YEAR_COMP) # Set keys for the join
-comparison.orgs <- comparison.orgs[nearest.neighbors,
-                          on = .(EIN2, TAX_YEAR_COMP >= START_YEAR, TAX_YEAR_COMP <= END_PLUS),
-                          allow.cartesian = TRUE,
-                          nomatch = 0] # For each org in nearest.neighbors, give me the rows for that org from comparison.orgs corresponding to the TAX_YEAR values from START_YEAR through END_PLUS
-comparison.orgs <- comparison.orgs |> rename(START_YEAR = TAX_YEAR_COMP, END_PLUS = TAX_YEAR_COMP.1)
-
-# Compute the proportion/number of imputed data points for each row in nearest.neighbors
-comparison.orgs[, NON_ORIGINAL := IMPUTE_STATUS != "original"] # turn to boolean for easy counting of imputed values
-result <- comparison.orgs |> 
-  group_by(EIN2, DISTANCE) |> 
-  summarize(PROP_IMPUTED = mean(NON_ORIGINAL), NUM_IMPUTED = sum(NON_ORIGINAL))
-
-# Merge back with nearest.neighbors and filter out any that have too many imputed values
-# n.data + n.predict ranges between 3 and 8; if 3, allow no imputed values, if 4 or 5 or allow up to 1 imputed value, if 6-8 allow up to 2 imputed values
-comparison.orgs <- left_join(comparison.orgs, result, by = c("EIN2", "DISTANCE"))
-comparison.orgs <- comparison.orgs |> filter(PROP_IMPUTED <= 2/6)
-
-# Get top 5 neighbors
-# TODO: Case where top 5 includes original org
-# TODO: Case where there are repeated orgs in top 5
-comparison.orgs <- comparison.orgs[order(DISTANCE)]
-comparison.orgs <- comparison.orgs[1:(K*(n.data + n.predict))]
-
-# Give each matched neighbor an ID number
-comparison.orgs <- comparison.orgs |> 
-      left_join(comparison.orgs |> group_by(DISTANCE, EIN2) |> summarise(GROUP_ID = cur_group_id()) |> ungroup(),
-                by = c("EIN2", "DISTANCE"))
-
-rm(result, nearest, curr.interval, year, start.time)
-```
-
-## Predict with GP trained on nearest neighbors data
-```{r}
-# Data, grouping by EIN2,DISTANCE in case EIN2 is repeated (if repeated, distance will be difference)
-df.sub.sub <- comparison.orgs |> group_by(EIN2, DISTANCE) |> mutate(YEAR = row_number()) |> ungroup() |> filter(IMPUTE_STATUS == "original")
-df.sub.sub <- df.sub.sub |> mutate(TOT_REV.centered = TOT_REV - mean(TOT_REV)) 
-```
-
-### Hyperparamter Optimization
-```{r, message=FALSE}
-source("SCRIPTS/outlier_detection_helper.R")
-
-# Normalized distance matrix
-dist_mat <- rdist(c(2:n.data + n.predict, df.sub.sub$YEAR)) # the n.predict years we need to predict on and the years we have nearest neighbor data for
-dist_mat <- (dist_mat - min(dist_mat)) / (max(dist_mat) - min(dist_mat))
-
-initial.conds <- randomLHS(15,2)
-initial.conds[, 1] <- 0.05 + initial.conds[, 1] * (2.5 - 0.05) # nu in [0.05,2.5)
-initial.conds[, 2] <- 0 + initial.conds[, 2] * (3 - 0) # nugget in [0,3]
-
-tst <- setNames(data.frame(matrix(ncol = 5, nrow = 0)), c("EIN", "nu", "nugget", "likelihood", "trial"))
-likelihood_wrapper <- function(pars.vec){
-      return(-1 * get_likelihood_sigma(row = pars.vec,
-                                       dist_mat = dist_mat,
-                                       rho = 1,
-                                       all_years = (n.predict+1):dim(dist_mat)[1],
-                                       data = df.sub.sub$TOT_REV.centered))
-}
-
-for (i in 1:nrow(initial.conds)){
-      res <- constrOptim(theta = initial.conds[i,], 
-                         f = likelihood_wrapper,
-                         grad = NULL,
-                         ui = rbind(c(1,0),c(-1,0),c(0,1)), #rbind(c(1,0),c(-1,0),c(0,1))
-                         ci = c(0.001,-3.5,0)) #c(0.001,-3.5, 0)
-      tst[nrow(tst)+1,1] <- user.EIN
-      tst[nrow(tst),2:ncol(tst)] <- c(c(res$par[1], res$par[2], -1*res$value, i))
-}
-tst[which.max(tst$likelihood),]
-```
-
-
-
-### Training a GP and predicting
-```{r}
-# Hyperparameters
-nu <- 0.6136
-nugget <- 0.4848
-rho <- 1
-
-# For indexing the Matern covariance matrix
-years.to.predict <- 1:n.predict # indices (w.r.t dist_mat) of the years we need to predict on
-years.original <- (n.predict+1):dim(dist_mat)[1] # indices (w.r.t dist_mat) of the years we have nearest neighbor data for
-
-mu_1 <- numeric(length(years.to.predict)) # all zeros
-mu_2 <- numeric(nrow(df.sub.sub)) # all zeros
-
-# Generate Matern covariance matrix using "best" hyperparameters from res data.frame
-mat_cov <- Matern(d = dist_mat, 
-                  smoothness = nu, 
-                  range = rho, 
-                  phi = 1) + diag(nugget, dim(dist_mat)[1])
-
-# Compute sigma^2 and scale covariance matrix
-nn.data <- df.sub.sub$TOT_REV.centered
-sigma.squared <- (1/length(nn.data)) * (nn.data %*% chol2inv(chol(mat_cov[years.original,years.original])) %*% nn.data)[1,1]
-mat_cov <- sigma.squared * mat_cov
-
-# Conditional Distributions
-SIGMA.11 <- mat_cov[years.to.predict, years.to.predict]
-SIGMA.22.inv <- chol2inv(chol(mat_cov[years.original, years.original]))
-SIGMA.12 <- mat_cov[years.to.predict, years.original, drop = FALSE]
-
-predictions <- (mu_1 + (SIGMA.12 %*% SIGMA.22.inv %*% (nn.data - mu_2)))[,1] #mu_bar
-standard_errors <- sqrt((SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
-```
-
-```{r}
-user.data <- user.data |> 
-      mutate(EIN2 = user.EIN) |> 
-      melt(id.vars = "EIN2", variable.name = "TAX_YEAR", value.name = "TOT_REV") |> 
-      mutate(TAX_YEAR = as.integer(as.character(TAX_YEAR)), IMPUTE_STATUS = "original", SE = 0) 
-
-# add in predicted values and standard errors
-user.data <- rbind(user.data, as.data.frame(list(EIN2 = user.EIN,
-                                    TAX_YEAR = 1:n.predict + max(user.data$TAX_YEAR),
-                                    TOT_REV = predictions + mean(df.sub.sub$TOT_REV),
-                                    IMPUTE_STATUS = "predicted",
-                                    SE = diag(standard_errors))))
-
-# Add in shifted year variable
-user.data <- user.data |> mutate(YEAR = row_number())
-```
-
-
-
-
-## Plot Results
-```{r, eval = FALSE, echo = FALSE}
-pal <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#E8DA1D", "#0072B2", "#D55E00", "#CC79A7")
-```
-
-
-```{r}
-# Your org 
-ggplot(user.data |> filter(IMPUTE_STATUS == "original"), mapping = aes(x = TAX_YEAR, y = TOT_REV)) +
-      geom_point(size = 3) +
-      geom_line() +
-      labs(x = "Year", y = "Total Revenue", title = "User-supplied Data (better title later?)")
-```
-
-```{r}
-# Full original trajectories
-pList <- list()
-leg.flag <- FALSE
-for (i in 1:length(unique(comparison.orgs$GROUP_ID))){
-      df.sub.plot <- comparison.orgs |> filter(GROUP_ID == i)
-      curr.ein <- df.sub.plot$EIN2[1]
-      title <- paste("#", i, ": ", substr(curr.ein, start = 5, stop = nchar(curr.ein)), 
-                     ", Years:", df.sub.plot[1,"START_YEAR"], "-", df.sub.plot[1,"END_YEAR"], sep = "")
-      p <- df.sub.plot |>
-            ggplot(user.data, mapping = aes(x = TAX_YEAR, y = TOT_REV)) +
-            geom_point(mapping = aes(shape = IMPUTE_STATUS), size = 2) + 
-            geom_line() +
-            labs(x = "Year", y = "Total Revenue", 
-                 title = title) + 
-            theme(legend.position = "bottom") +
-            scale_shape_manual(values = c(5, 19, 8)) +
-            scale_x_continuous(breaks = seq(1989, 2021, 3)) +
-            theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1))
-      pList[[i]] <- p + theme_bw()
-      
-      if (length(unique(df.sub.plot$IMPUTE_STATUS)) == 3) {
-            leg.flag <- TRUE
-            leg <- get_plot_component(p, "guide-box-bottom", return_all=TRUE)}
-}
-if (!leg.flag) {leg <- get_plot_component(pList[[1]], "guide-box-bottom", return_all=TRUE)}
-
-p <- plot_grid(pList[[1]] + theme(legend.position = "none"),
-          pList[[2]] + theme(legend.position = "none"),
-          pList[[3]] + theme(legend.position = "none"),
-          pList[[4]] + theme(legend.position = "none"),
-          pList[[5]] + theme(legend.position = "none"), ncol = 2, scale = 1.1)
-
-title <- ggdraw() + draw_label(paste("Nearest Neighbors in order of closeness, with comparison years"), fontface = 'bold', x = 0, hjust = 0) +
-            theme(plot.margin = margin(l=10))
-print(plot_grid(title, p, leg, ncol = 1, rel_heights = c(0.1,1,0.1)))
-```
-
-
-
-```{r}
-# Zoomed in to comparison trajectories
-df.sub.plot <- comparison.orgs |> filter((TAX_YEAR >= START_YEAR & TAX_YEAR <= END_YEAR+n.predict)) |> mutate(SE = NA)
-df.sub.plot <- bind_rows(df.sub.plot, 
-                     user.data |> select(-YEAR) |> mutate(NTEE = NA, START_YEAR = NA, END_YEAR = NA, DISTANCE = 0) |> filter(IMPUTE_STATUS == "original"))
-p <- df.sub.plot |>
-      ggplot(user.data, mapping = aes(x = TAX_YEAR, y = log(TOT_REV), color = EIN2)) +
-      geom_point(mapping = aes(shape = IMPUTE_STATUS), size = 2) + 
-      geom_line() +
-      scale_color_manual(values = c( "#000000", "#009E73",  "#E8DA1D", "#0072B2", "#D55E00", "#CC79A7")) +
-      scale_shape_manual(values = c(5, 19, 8)) +
-      scale_y_continuous(labels = scales::comma) +
-      labs(x = "Year", y = "Total Revenue (USD)", title = "Nearest Neighbors, Zoomed in") + 
-      scale_x_continuous(breaks = seq(min(df.sub.plot$TAX_YEAR), max(df.sub.plot$TAX_YEAR), 2)) +
-      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) + theme_bw()
-
-print(p)
-```
-
-```{r}
-# Zoomed in, years stripped, all comparison orgs + next n.predict years, your org
-df.sub.plot <- comparison.orgs |> filter((TAX_YEAR >= START_YEAR & TAX_YEAR <= END_YEAR+n.predict)) |> mutate(SE = NA)
-df.sub.plot <- df.sub.plot |> group_by(EIN2) |> mutate(YEAR = row_number()) |> ungroup()
-df.sub.plot <- bind_rows(df.sub.plot, user.data)
-p <- df.sub.plot |>
-      ggplot(user.data, mapping = aes(x = YEAR, y = TOT_REV, color = EIN2)) +
-      geom_point(mapping = aes(shape = IMPUTE_STATUS), size = 2) + 
-      geom_line() +
-      scale_color_manual(values = c( "#000000", "#009E73",  "#E8DA1D", "#0072B2", "#D55E00", "#CC79A7")) +
-      scale_shape_manual(values = c(5, 19, 8, 1)) +
-      labs(x = "Year", y = "Total Revenue (USD)", title = "Nearest Neighbors, Zoomed in and overlapping") + 
-      scale_y_continuous(labels = scales::comma) +
-      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) + theme_bw()
-
-print(p)
-```
-
-
-
-
-```{r}
-df.sub.plot <- comparison.orgs |> 
-      filter((TAX_YEAR >= START_YEAR & TAX_YEAR <= END_YEAR+n.predict)) |> # Want the n.data + n.predict years of nearest neighbors data
-      group_by(EIN2) |> 
-      mutate(YEAR = row_number()) |> # shift the years so everyone overlaps
-      ungroup() |> 
-      filter(IMPUTE_STATUS == "original") |> # only keep non-imputed data from nearest neighbors
-      mutate(SE = 0)
-
-deg.freedom <- nrow(df.sub.plot) - 1
-
-df.sub.plot <- bind_rows(df.sub.plot, user.data |> mutate(EIN2 = "Your organization"))
-
-# Confidence intervals
-df.sub.plot <- df.sub.plot |>
-      mutate(CI.LOWER = case_when(
-                  IMPUTE_STATUS == "original" ~ TOT_REV,
-                  IMPUTE_STATUS == "predicted" ~ TOT_REV - qt(0.95, df = deg.freedom) * SE)) |>
-      mutate(CI.UPPER = case_when(
-                  IMPUTE_STATUS == "original" ~ TOT_REV,
-                  IMPUTE_STATUS == "predicted" ~ TOT_REV + qt(0.95, df = deg.freedom) * SE)) |>
-      mutate(LINETYPE = case_when(
-                  EIN2 == "Your organization" ~ "your organization",
-                  .default = "similar organizations"))
-
-p <- df.sub.plot |>
-      ggplot(mapping = aes(x = YEAR, y = TOT_REV, color = EIN2)) +
-      geom_line(mapping = aes(linewidth = LINETYPE, alpha = LINETYPE)) + # the lines for each organization, with line width and opacity (alpha) varying by the variable LINETYPE
-      geom_line(data = (df.sub.plot |> filter(IMPUTE_STATUS == "predicted")), linetype="dashed", color="white", linewidth=1.5) + # add dashed portion of line to predictions for your org
-      geom_point(mapping = aes(shape = EIN2, size = LINETYPE)) + # add in markers, where shape varies by org and marker size varies by LINETYPE
-      geom_text(data = (df.sub.plot |> filter(IMPUTE_STATUS == "original", EIN2 == "Your organization")), # add labels to markers for the user input data
-            aes(label = TOT_REV), # Specify the label aesthetic
-            nudge_x = -0.2, # Adjust label position horizontally
-            nudge_y = 20000) +
-      geom_ribbon(data = (df.sub.plot |> filter(IMPUTE_STATUS == "predicted")),
-                        aes(ymin = CI.LOWER, ymax = CI.UPPER,fill = IMPUTE_STATUS),
-                        alpha = 0.25, color = "darkgrey") + # confidence interval
-      scale_color_manual(values = c("#009E73",  "#E8DA1D", "#0072B2", "#D55E00", "#CC79A7", "#000000"), name = "Organization ID") +
-      scale_shape_manual(values = c(15, 17, 18, 7, 10, 19), name = "Organization ID") +
-      scale_size_manual(values = c(2.5,3.5), guide="none") +
-      scale_linewidth_manual(values = c(0.75, 1), guide="none") +
-      scale_alpha_manual(values = c(0.75, 1), guide="none") +
-      scale_fill_manual(values = "grey", labels="95% Confidence Interval", name="") +
-      scale_y_continuous(labels = scales::comma) +
-      labs(x = "Year", y = "Total Revenue (USD)", title = "Comparing Your Organization to Similar Organizations") + 
-      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1)) + 
-      theme_bw()
-p
-```
-
-
-
-# Evaluation
-## Load Data and Libraries
-```{r, message = FALSE}
-library(readr)
-library(tidyverse, warn.conflicts = FALSE)
-library(data.table)
-library(dplyr, warn.conflicts = FALSE)
-library(RANN)
-library(fields)
-library(ggplot2)
-library(cowplot)
-library(lhs) # for latin hypercube sampling
-
-#df <- readRDS("PREPROCESSING/processed_mega_df.rds")
-```
-
+## Results of LOO-style procedure
 ```{r}
 all.orgs.data <- readRDS("MODEL/nearest_neighbors/all_orgs_data.rds")
 res <- readRDS("MODEL/nearest_neighbors/res_nn.rds")
@@ -399,17 +120,17 @@ all.orgs.data <- all.orgs.data |>
       ungroup()
       
 # Extract predictions
-# start.time <- Sys.time() # 37min
-# df.predictions <- do.call(rbind, lapply(names(res.predictions), function(id) {
-#   data.frame(EIN2 = id, 
-#              YEAR = res.predictions[[id]]$YEAR, 
-#              TOT_REV.pred = res.predictions[[id]]$TOT_REV, 
-#              SE = res.predictions[[id]]$standard_errors, 
-#              MEAN = res.predictions[[id]]$MEAN)
-# }))
-# print(Sys.time() - start.time)
+start.time <- Sys.time() # 37min
+df.predictions <- do.call(rbind, lapply(names(res.predictions), function(id) {
+data.frame(EIN2 = id,
+           YEAR = res.predictions[[id]]$YEAR,
+           TOT_REV.pred = res.predictions[[id]]$TOT_REV,
+           SE = res.predictions[[id]]$standard_errors,
+           MEAN = res.predictions[[id]]$MEAN)
+}))
+print(Sys.time() - start.time)
+saveRDS(df.predictions, "MODEL/nearest_neighbors/predictions_df.rds")
 
-# saveRDS(df.predictions, "MODEL/nearest_neighbors/predictions_df.rds")
 df.predictions <- readRDS("MODEL/nearest_neighbors/predictions_df.rds") |> mutate(TOT_REV.pred = TOT_REV.pred + MEAN) |> select(-MEAN)
 
 # Merge predictions and standard errors with true data
@@ -457,7 +178,7 @@ cat("\n",
 table(summary.stats$IN_CI.prop)
 ```
 
-
+### Plots
 ```{r}
 # Long version for plots
 df.predictions.long <- readRDS("MODEL/nearest_neighbors/predictions_df.rds") |> 
@@ -570,6 +291,7 @@ df.predictions |> filter(EIN2 == "EIN-46-3265423")
 res |> filter(ORIGINAL_ORG == "EIN-46-3265423") |> filter(IMPUTE_STATUS == "original")
 ```
 
+### Confidence Intervals corrected for correlation
 ```{r}
 res.predictions <- readRDS("MODEL/nearest_neighbors/res_predictions.rds")
 df.predictions <- readRDS("MODEL/nearest_neighbors/predictions_df.rds") |> mutate(TOT_REV.pred = TOT_REV.pred + MEAN) |> select(-MEAN)
@@ -579,12 +301,6 @@ SIGMA <- lapply(res.predictions, function(x) x[["SIGMA"]])
 inv.t.chol <- function(x){
       tryCatch({chol2inv(t(chol(x)))}, error = function(err) {"error!!!"})
 }
-
-# SIGMA.mod <- lapply(SIGMA, inv.t.chol)
-# 
-# trouble <- lapply(SIGMA.mod, function(x) all(x == "error!!!"))
-# trouble  <- Filter(function(x) x, trouble)
-# trouble <- names(trouble)
 
 # Add the true total revenue to the predictions data frame
 all.orgs.data <- all.orgs.data |> group_by(EIN2) |> mutate(YEAR = row_number()) |> ungroup()
@@ -604,16 +320,6 @@ saveRDS(df.predictions |> select(-IN_95_CI), "MODEL/nearest_neighbors/prediction
 ```
 
 
-```{r}
-setDT(df.predictions)
-df.predictions[, STANDARDIZED :=
-      {r <- TOT_REV - TOT_REV.pred
-      as.numeric( SIGMA[[EIN2[1]]] %*% r )},
-      by = EIN2]
-
-SIGMA[["EIN-01-0015091"]] %*% (df.predictions$TOT_REV[1:3] - df.predictions$TOT_REV.pred[1:3])
-SIGMA[["EIN-01-0017496"]] %*% (df.predictions$TOT_REV[4:6] - df.predictions$TOT_REV.pred[4:6])
-```
 
 ```{r}
 res <- readRDS("MODEL/nearest_neighbors/res_nn.rds")
