@@ -32,3 +32,7 @@ MODEL/
 ParBayesianOptimization/
 PREPROCESSING_mays/ 
 CORE/harmonized_data_dictionary.xlsx
+PREPROCESSING/df.rds
+PREPROCESSING/processed_mega_df.rds
+PREPROCESSING/years_to_predict.rds
+PREPROCESSING/orgs_reported_same.rds

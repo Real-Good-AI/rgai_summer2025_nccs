@@ -63,6 +63,7 @@ Helper functions used throughout the repo
 * outlier_detection_helper.R
   * Contains helper functions for the outlier detection scheme, mainly helper functions related to computing likelihoods (for hyperparameter optimization) and for plotting results
 * plotting_helper.R
-  * one additional plotting function
+  * one additional plotting function used in the section titled "Dropping Orgs with less than 5" in preprocessing.Rmd
 * reviewing_duplicate_EIN.R
   * this contains two helpder functions for the data cleaning stage, related to identifying and analyzing duplicated records (in particular, there were times when there were multiple records for an EIN in the BMF file or for one year, so we had to resolve those duplicates)
+  * for examples on how these were used, refer to preprocessing.Rmd section "Cleaning: Checking for duplicates""
