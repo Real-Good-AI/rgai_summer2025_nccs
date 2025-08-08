@@ -112,7 +112,7 @@ res.outliers <- foreach(ein = all.orgs[200001:length(all.orgs)], .packages = c("
       df.sub <- filter(df, EIN2==ein)
       all_years <- df.sub$YEAR + 1 # all the years we have data for that org
       
-      my.list <- list(EIN = ein, sigs = numeric(length(all_years)), predictions = numeric(length(all_years)), standard_errors = numeric(length(all_years)), candidates = numeric(0))
+      my.list <- list(EIN = ein, sigs = numeric(length(all_years)), predictions = numeric(length(all_years)), standard_errors = numeric(length(all_years)), candidates = numeric(0), residuals = numeric(0))
       mu_2 <- numeric(nrow(df.sub) - 1) # all zeros
       
       for(i in 1:length(all_years)){
@@ -138,8 +138,9 @@ res.outliers <- foreach(ein = all.orgs[200001:length(all.orgs)], .packages = c("
             my.list[["standard_errors"]][i] <- sqrt(as.numeric(SIGMA.11 - (SIGMA.12 %*% SIGMA.22.inv %*% t(SIGMA.12))))
       }
       
-      residuals <- abs(df.sub$LOG_REV - my.list[["predictions"]]) / my.list[["standard_errors"]] # standardized residuals
-      my.list[["candidates"]] <-  all_years[which(residuals > 3)] - 1 + 1989
+      my.residuals <- abs(df.sub$LOG_REV - my.list[["predictions"]]) / my.list[["standard_errors"]] # standardized residuals
+      my.list[["residuals"]] <- my.residuals
+      my.list[["candidates"]] <-  all_years[which(my.residuals > 3)] - 1 + 1989
       my.list
 }
 print(Sys.time() - start.time)

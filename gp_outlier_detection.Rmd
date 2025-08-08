@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = FALSE, eval = FALSE)
 ```
 
 # Outlier Analysis - Full
+NOTE: To run this, you would need to have run SCRIPTS/outlier_detection.R as well as the preprocessing.Rmd notebook section "Outlier Flagging and Removal"
 ```{r}
 df <- readRDS("PREPROCESSING/df_orginal_processed.rds")
 df.candidates <- readRDS("PREPROCESSING/candidate_outliers_df.rds")
@@ -56,29 +57,16 @@ all.years <- c(unlist(candidates))
 ```
 
 ```{r}
-# cluster <- makeCluster(7)
-# registerDoParallel(cluster)
-# 
-# start.time <- Sys.time() #31 min
-# residuals <- foreach(ein = names(candidates), .packages = c("dplyr"), .verbose = TRUE) %dopar% {
-#       df.sub <- df |> filter(EIN2==ein)
-#       res <- (df.sub$LOG_REV - predictions[[ein]]) / standard_errors[[ein]] # standardized residuals
-#       res[which(df.sub$TAX_YEAR %in% candidates[[ein]])]
-# }
-# print(Sys.time() - start.time)
-# stopCluster(cl = cluster)
-# 
-# names(residuals) <- names(candidates)
-# saveRDS(residuals, "PREPROCESSING/all_outlier_residuals.rds")
-```
-
-```{r}
-# df.stres <- do.call(rbind, lapply(names(candidates), function(id) {
-#   data.frame(EIN = id, Value = candidates[[id]], STDRES = residuals[[id]])
-# }))
-# 
-# df.stres <- df.stres |> rename(EIN2 = EIN, TAX_YEAR = Value)
-# df.candidates <- left_join(df.candidates, df.stres)
+residuals <- c(lapply(res.out.1, function(x){x[["residuals"]]}),
+                lapply(res.out.2, function(x){x[["residuals"]]}),
+                lapply(res.out.3, function(x){x[["residuals"]]}),
+                lapply(res.out.4, function(x){x[["residuals"]]}),
+                lapply(res.out.5, function(x){x[["residuals"]]})
+                )
+df.stres <- do.call(rbind, lapply(names(candidates), function(id) {data.frame(EIN = id, Value = candidates[[id]], STDRES = residuals[[id]])}
+                                  ))
+df.stres <- df.stres |> rename(EIN2 = EIN, TAX_YEAR = Value)
+df.candidates <- left_join(df.candidates, df.stres)
 
 # saveRDS(df.candidates, "PREPROCESSING/candidate_outliers_df.rds")
 
