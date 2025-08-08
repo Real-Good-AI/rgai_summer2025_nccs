@@ -82,18 +82,20 @@ clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, 
             print(paste(i, ":", dat[,1]))
       }
       
-      # Create ORG_TYPE column containing a number indicating the type of 501(c) org
-      for (i in year_values){
-            varname <- paste("core", i, sep = "")
-            dat <- get(varname)
-      
-            if ("F9_00_EXEMPT_STAT_501C3_X" %in% names(dat)) {
-                  dat <- dat |> rename(ORG_TYPE = `F9_00_EXEMPT_STAT_501C3_X`)
-                  dat$ORG_TYPE <- as.numeric(dat$ORG_TYPE)
-            } else { dat <- dat |> mutate(ORG_TYPE = -1) }
+      # If F9_00_EXEMPT_STAT_501C3_X is one of the relevant variables, create ORG_TYPE column containing a number indicating the type of 501(c) org
+      if ("F9_00_EXEMPT_STAT_501C3_X" %in% all_relevant_vars){      
+            for (i in year_values){
+                  varname <- paste("core", i, sep = "")
+                  dat <- get(varname)
             
-            # save data into variable
-            assign(varname, dat)
+                  if ("F9_00_EXEMPT_STAT_501C3_X" %in% names(dat)) {
+                        dat <- dat |> rename(ORG_TYPE = `F9_00_EXEMPT_STAT_501C3_X`)
+                        dat$ORG_TYPE <- as.numeric(dat$ORG_TYPE)
+                  } else { dat <- dat |> mutate(ORG_TYPE = -1) } 
+                  
+                  # save data into variable
+                  assign(varname, dat)
+            }
       }
       
       # Get the column names that are common to all data frames and only keep those columns and save to .csv
