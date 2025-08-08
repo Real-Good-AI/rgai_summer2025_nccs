@@ -1,10 +1,12 @@
 # Nonprofit Revenue Prediction Tool
 
 Note: Data is from open source NCCS Core Series Data: [website link](https://nccs.urban.org/nccs/datasets/core/) 
+
 Citation: Jesse Lecy, (2024). NCCS Core Series.
 
 ## Main Directory
-* app.R : the code for the UI for our revenue prediction tool RShiny App
+* app.R
+      * the code for the UI for our revenue prediction tool RShiny App
 * app_helper.R : helpder code for the app 
 * demo.Rmd: walks you through downloading data, cleaning it, and making some plots.
 * docs_cleaning.md: walks you through out data cleaning steps and reasoning
