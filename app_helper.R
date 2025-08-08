@@ -17,6 +17,7 @@ readMegaDF <- memoise(function() {
       readRDS("PREPROCESSING/processed_mega_df_app.rds")
 })
 
+# This function finds the top 5 nearest neighbors for the current organization
 nn.search <- function(category, user.EIN, user.years, user.history, n.predict){
       df <- df |> filter(NTEE == category) |> mutate(IMPUTED = (IMPUTE_STATUS != "original"))
       
@@ -99,6 +100,7 @@ nn.search <- function(category, user.EIN, user.years, user.history, n.predict){
       return(res)
 }
 
+# This function is to help compute likelihoods
 get_likelihood_sigma <- function(row, dist_mat, rho, all_years, data){
       # Compute Matérn Covariance Matrix
       mat_cov <- Matern(d = dist_mat, smoothness = row[1], range = rho, phi = 1) + diag(row[2], dim(dist_mat)[1])
@@ -114,6 +116,7 @@ get_likelihood_sigma <- function(row, dist_mat, rho, all_years, data){
       return(likelihood)
 }
 
+# This function does hyperparameter optimization for a Gaussian Process -- finds the "optimal" nu and nugget term
 gp.param.opt <- function(res, user.EIN, user.years, user.history, n.predict){
       df.nn <- res |> 
             group_by(EIN2, DISTANCE) |> 
@@ -151,8 +154,8 @@ gp.param.opt <- function(res, user.EIN, user.years, user.history, n.predict){
             res.opt <- constrOptim(theta = initial.conds[i,], 
                                    f = likelihood_wrapper,
                                    grad = NULL,
-                                   ui = rbind(c(1,0),c(-1,0),c(0,1)), #rbind(c(1,0),c(-1,0),c(0,1))
-                                   ci = c(0.001,-3.5,0.001)) #c(0.001,-3.5, 0)
+                                   ui = rbind(c(1,0),c(-1,0),c(0,1)), 
+                                   ci = c(0.001,-3.5,0.001)) # Constraints: 0.001 < nu < 3.5 and 0.001 < nugget
             res.pars[nrow(res.pars)+1,1] <- user.EIN
             res.pars[nrow(res.pars),2:ncol(res.pars)] <- c(c(res.opt$par[1], res.opt$par[2], -1*res.opt$value, i))
       }
@@ -162,6 +165,7 @@ gp.param.opt <- function(res, user.EIN, user.years, user.history, n.predict){
       return(res.pars)
 }
 
+# This function uses the nu and nugget from gp.param.opt to predict the current organization's future revenue!
 gp.predict <- function(res, res.pars, user.EIN, user.years, user.history, n.predict){     
       df.nn <- res |> 
             group_by(EIN2, DISTANCE) |> 
@@ -227,32 +231,7 @@ gp.predict <- function(res, res.pars, user.EIN, user.years, user.history, n.pred
       return(user.data)
 }
 
-# res <- nn.search("ART", "EIN-00-0000000", c(2022, 2023), c(1, 1), 2)
-# res.pars <- gp.param.opt(res, "EIN-00-0000000", c(2022, 2023), c(1, 1), 2)
-# res.gp <- gp.predict(res, res.pars, "EIN-00-0000000", c(2022, 2023), c(1, 1), 2)
-
+# Example: 
 # res <- nn.search("ART", "EIN-00-0000000", c(2022, 2023, 2024), c(62369, 100199, 185830), 2)
 # res.pars <- gp.param.opt(res, "EIN-00-0000000", c(2022, 2023, 2024), c(62369, 100199, 185830), 2)
 # res.gp <- gp.predict(res, res.pars, "EIN-00-0000000", c(2022, 2023, 2024), c(62369, 100199, 185830), 2)
-
-# res.gp$TAX_YEAR <- seq(2022, 2024 + 2)
-# 
-# deg.freedom <- nrow(res |> filter(IMPUTE_STATUS=="original")) - 1
-# user_data_df <- res.gp |>
-#       mutate(CI.LOWER = case_when(
-#             IMPUTE_STATUS == "Reported" ~ TOT_REV,
-#             IMPUTE_STATUS == "Predicted" ~ TOT_REV - qt(0.95, df = deg.freedom) * SE)) |>
-#       mutate(CI.UPPER = case_when(
-#             IMPUTE_STATUS == "Reported" ~ TOT_REV,
-#             IMPUTE_STATUS == "Predicted" ~ TOT_REV + qt(0.95, df = deg.freedom) * SE)) 
-# 
-# df_reported <- user_data_df %>% filter(IMPUTE_STATUS == "Reported")
-# df_predicted <- user_data_df %>% filter(IMPUTE_STATUS == "Predicted")
-# df_transition <- user_data_df %>% filter((TAX_YEAR == 2024) | (TAX_YEAR == 2024+1))
-# 
-# df_peers <- res |> 
-#       mutate(label = paste("Organization ", NEIGHBOR_ID, ": ", EIN2, sep = "")) |> 
-#       group_by(NEIGHBOR_ID) |> 
-#       mutate(TAX_YEAR = seq(2022, 2024 + 2)) |> 
-#       ungroup() |> 
-#       mutate(label = factor(label, levels = unique(label[order(NEIGHBOR_ID)])))
