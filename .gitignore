@@ -30,5 +30,6 @@ MODEL/linear_models/*.rds
 MODEL/plots/*
 MODEL/
 ParBayesianOptimization/
-PREPROCESSING/
+PREPROCESSING/*.rds
+PREPROCESSING/outlier_detection
 CORE/harmonized_data_dictionary.xlsx

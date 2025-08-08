@@ -145,4 +145,4 @@ res.outliers <- foreach(ein = all.orgs[200001:length(all.orgs)], .packages = c("
 print(Sys.time() - start.time)
 stopCluster(cl = cluster)
 
-saveRDS(res.outliers, "PREPROCESSING/outlier_res_4.rds") # MAKE SURE THIS IS THE RIGHT NUMBER e.g. if df.4 then outlier_res_4.rds
+saveRDS(res.outliers, "PREPROCESSING/gp_res_4.rds") # MAKE SURE THIS IS THE RIGHT NUMBER e.g. if df.4 then gp_res_4.rds
