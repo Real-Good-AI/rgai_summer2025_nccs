@@ -1003,6 +1003,21 @@ print(Sys.time()-start.time)
 start.time <- Sys.time()
 unified_bmf <- as.data.frame(read.csv("CORE/BMF_UNIFIED_V1.1.csv"))
 print(Sys.time()-start.time)
+
+for (category in unique(df$NTEE)){
+      print(category)
+      start.time <- Sys.time()
+      filename <- paste("PREPROCESSING/processed_mega_df_",category, ".rds", sep="")
+      df.cat <- readRDS(filename)
+      print(Sys.time()-start.time)
+}
+
+df <- df |> select(EIN2, TAX_YEAR, TOT_REV, NTEE, IMPUTE_STATUS, ORG_NAME_CURRENT)
+saveRDS(df, "PREPROCESSING/processed_mega_df_app.rds")
+
+start.time <- Sys.time()
+df <- readRDS("PREPROCESSING/processed_mega_df_app.rds")
+print(Sys.time()-start.time)
 ```
 
 ```{r}
