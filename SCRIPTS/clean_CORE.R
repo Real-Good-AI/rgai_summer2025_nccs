@@ -2,10 +2,11 @@ library(readr)
 library(tidyverse)
 library(data.table)
 library(dplyr)
-source("SCRIPTS/reviewing_duplicate_EIN.R")
-source("SCRIPTS/clean_helper.R")
 
 clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, save_dir, prop_NA, filename_save){
+      source("SCRIPTS/clean_helper.R")
+      source("SCRIPTS/reviewing_duplicate_EIN.R")
+      
       for (i in year_values){
         filename <- paste(file_dir, i, file_name_tag, sep = "")
         varname <- paste("core", i, sep = "")
@@ -146,4 +147,80 @@ clean_CORE <- function(all_relevant_vars, year_values, file_name_tag, file_dir, 
       if (missing(filename_save)){filename_save <- paste(save_dir, "cleanCORE_", year_values[1], "-", year_values[length(year_values)], ".csv", sep="")}
       print(filename_save)
       write_csv(long_core, filename_save)
+}
+
+row_na_count <- function(x) rowSums(is.na(x))
+
+pf_clean.step1 <- function(current_year, dt){
+      original.cols <- colnames(dt)
+      
+      # Step 1: Fill missing years if all missing for an org
+      dt[, F9_00_FISCAL_YEAR_START := as.numeric(F9_00_FISCAL_YEAR_START)]
+      dt[, F9_00_FISCAL_YEAR_START := if (all(is.na(F9_00_FISCAL_YEAR_START))) current_year else F9_00_FISCAL_YEAR_START,
+         by = EIN2]
+      
+      # Step 2: If some years missing but others not, drop missing
+      dt <- dt[, .SD[!is.na(F9_00_FISCAL_YEAR_START) | all(is.na(F9_00_FISCAL_YEAR_START))], by = EIN2] # keep row if year not missing OR if all records are missing the year / drops rows where year missing and at least one record is not missing the year
+      
+      # Step 3: Resolve duplicates within org-year
+      dt[, na_count := row_na_count(.SD), .SDcols = !c("EIN2","F9_00_FISCAL_YEAR_START")]
+      
+      # Mark duplicates to drop
+      dt[, max_na := max(na_count), by = .(EIN2, F9_00_FISCAL_YEAR_START)]
+      dt[, min_na := min(na_count), by = .(EIN2, F9_00_FISCAL_YEAR_START)]
+      
+      # If more than one record for org-year, drop record with strictly more missing values
+      dt_clean <- dt[!(na_count == max_na & max_na > min_na)] # keep row if na_count is not max or there is no actual max / drop row if its na_count is the max and there actually is a max
+      # TODO: possible issue, what if two are tied for max but there are other records with less... should I keep all or still drop the ones with the most na's
+      
+      # Step 4: Track unresolved duplicates (ties)
+      unresolved <- dt_clean[, .N, by = .(EIN2, F9_00_FISCAL_YEAR_START)][N > 1]
+      
+      return(list(cleaned_data = dt_clean[, ..original.cols], unresolved_cases = unresolved))
+}
+
+# Function to compute pairwise comparison metrics
+compare_pair_dt <- function(dt_group) {
+      # drop keys
+      mat <- as.matrix(dt_group)
+      r1 <- as.numeric(mat[1, ])
+      r2 <- as.numeric(mat[2, ])
+      
+      diffs <- r1 - r2
+      abs_diffs <- abs(diffs)
+      
+      data.table(
+            n_diff_cols   = sum(abs_diffs != 0 & !is.na(abs_diffs)),
+            n_diff_gt1    = sum(abs_diffs > 1, na.rm = TRUE),
+            max_abs_diff  = max(abs_diffs, na.rm = TRUE),
+            multi_col_diff = sum(abs_diffs != 0, na.rm = TRUE) > 1,
+            euclidean_dist = sqrt(sum(diffs^2, na.rm = TRUE))
+      )
+}
+
+pf_clean.step2 <- function(cdt, unresolved){
+      unres.records <- cdt[EIN2 %in% unique(unresolved$EIN2)] 
+      unres.records <- unres.records[, if (.N == 2L) .SD, by = .(EIN2, F9_00_FISCAL_YEAR_START)] # it's possible we picked back up some records from an org that are resolved e.g. if they have one unique record in one year but an unresolved duplicate in another year
+      if (nrow(unres.records) == 0L){
+            return(list(info = data.table(), final_data = cdt, unresolved_cases = data.table()))
+      } else {
+            diagnostics <- unres.records[, compare_pair_dt(.SD), by = .(EIN2, F9_00_FISCAL_YEAR_START)]
+            
+            still_unresolved <- diagnostics[max_abs_diff > 1, .(EIN2, F9_00_FISCAL_YEAR_START)]$EIN2
+            still_unresolved <- unres.records[EIN2 %in% still_unresolved]
+            
+            close_groups <- diagnostics[max_abs_diff == 1, .(EIN2, F9_00_FISCAL_YEAR_START)]
+            
+            resolved <- unres.records[close_groups, on = .(EIN2, F9_00_FISCAL_YEAR_START)][
+                  , .SD[1], by = .(EIN2, F9_00_FISCAL_YEAR_START)]
+            
+            # Final clean dataset
+            final_dt <- rbindlist(list(
+                  cdt[!unres.records, on = .(EIN2, F9_00_FISCAL_YEAR_START)],  # rows never unresolved
+                  resolved,                                                     # resolved by rule
+                  still_unresolved                                              # groups still unresolved
+            ), use.names = TRUE, fill = TRUE)
+            
+            return(list(info = diagnostics, final_data = final_dt, unresolved_cases = still_unresolved))
+      }
 }

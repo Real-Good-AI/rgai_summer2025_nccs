@@ -4,10 +4,11 @@ library(cchsflow) # for is_equal(), which will return TRUE for NA==NA
 
 # function that takes in data_file and returns a data table with information about which
 # columns differ when a set of rows have the same EIN
-duplicateEIN2_info <- function(data_file, duplicate_groups){
+duplicateEIN2_info <- function(data_file, duplicate_groups, track.skips = FALSE){
     # Initialize counters, one for counting differences and one for counting differences that may be due to missing value
     count_list <- rep(0, ncol(data_file))
     count_list_NA <- rep(0, ncol(data_file))
+    skips <- 0
     
     # For each EIN2 in list, compare the corresponding rows and note columns where there are differences
     for (subset in duplicate_groups) {
@@ -20,6 +21,7 @@ duplicateEIN2_info <- function(data_file, duplicate_groups){
             diff_cols_NA <- ((subset[1,] == subset[2,]) & (subset[2,] == subset[3,]) & (subset[1,] == subset[3,]))
         } else {
             print(paste("EIN", subset[1,1], "occurs", nrow(subset), "times, skipped", sep = " "))
+            skips <- skips + 1
             next
         }
         # indices of columns where there was a mismatch (or missing value)
@@ -33,7 +35,7 @@ duplicateEIN2_info <- function(data_file, duplicate_groups){
     
     # Create and return a table with the info we just gathered
     duplicates_info <- data.table(variable_name = colnames(data_file), num_differences = count_list, num_NA = count_list_NA, dtype = sapply(data_file, class))
-    return(duplicates_info)
+    if (track.skips){return(list(info = duplicates_info, skips = skips))} else {return(duplicates_info)}
 }
 
 dupes <- function(data_file){
