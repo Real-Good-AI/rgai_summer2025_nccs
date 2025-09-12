@@ -1,0 +1,370 @@
+---
+title: "fall2025_mayleen"
+author: "Mayleen"
+date: "2025-09-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Private Foundation CORE files
+```{r}
+source("../SCRIPTS/download_data.R")
+tscope_values <- c("501c3") # Download files from Tax Exempt Types in this list; possible values: "501c3", "501ce" 
+fscope_values <- c("-pf") # Download files from IRS 990 Form Scope in this list; possible values: "-pz", "-pc", "-pf"
+year_values <- seq(from = 1991, to = 2021, by = 1) # Download files from years in this list
+download_CORE(tscope_values, fscope_values, year_values)
+```
+
+## Exploring Duplicates
+```{r, message=F}
+library(data.table)
+library(readr)
+source("../SCRIPTS/clean_helper.R")
+source("../SCRIPTS/reviewing_duplicate_EIN.R")
+
+vars.keep <- c("F9_00_FISCAL_YEAR_START", "EIN2", "PF_01_REV_GRO_PROFIT_BOOKS", "PF_01_REV_TOT_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_BOOKS", "PF_02_ASSET_TOT_EOY_BV", "PF_02_LIAB_TOT_EOY_BV", "PF_01_EXP_CONTR_PAID_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_DISBMT")
+
+year_values <- seq(from = 2012, to = 2021, by = 1)
+for (year in year_values){
+      file_name <- sprintf("../CORE/pf/CORE-%s-501C3-PRIVFOUND-PF-HRMN-V0.csv", year)
+      dt <- as.data.table(read_csv(file_name, show_col_types = FALSE))
+      
+      # vars.keep %in% unique(dt.na_counts$var_name)
+      
+      dt <- dt[, ..vars.keep]
+      setcolorder(dt, c("EIN2", setdiff(names(dt), "EIN2")))
+      
+      dt.na_counts <- na_counts_df(dt)
+      
+      dt.dupes.list <- dupes(unique(dt))
+      dt.dupes <- dt.dupes.list$dupes
+      dt.info <- duplicateEIN2_info(dt, dt.dupes.list$dupes_groups, track.skips = TRUE)
+      
+      # Print information to file
+      cat(year, "NA spread:", quantile(dt.na_counts$na_cnt), "\n", file = "PFdupes.txt", append = TRUE)
+      cat(sprintf("The variable with the most NAs is %s (%s).", dt.na_counts$var_name[which.max(dt.na_counts$na_cnt)], max(dt.na_counts$na_cnt)), "\n", file = "PFdupes.txt", append = TRUE)
+      
+      my_message <- sprintf("In %s, there are %s orgs with duplicate records out of %s, or %s percent.", year, nrow(dt.dupes), length(unique(dt$EIN2)), round(nrow(dt.dupes)/length(unique(dt$EIN2))*100, digits=3))
+      cat(my_message, "\n", file = "PFdupes.txt", append = TRUE)
+      
+      dt.info.df <- dt.info$info |> filter(variable_name != "EIN2")
+      diff_col <- dt.info.df$num_differences
+      cat(sprintf("There are %s differences in the FISCAL_YEAR_START variable. \nThe variable with the most differences is %s (%s). \nThe variable with the least differences is %s (%s). \nThe total number of differences is %s. The number of those that are due to NAs are %s.", 
+                            dt.info.df |> filter(variable_name == "F9_00_FISCAL_YEAR_START") |> select(num_differences),
+                            dt.info.df$variable_name[which.max(diff_col)],
+                            max(diff_col),
+                            with(subset(dt.info.df, num_differences > 0), variable_name[which.min(num_differences)]),
+                            min(diff_col[diff_col > 0]),
+                            sum(dt.info.df$num_differences),
+                            sum(dt.info.df$num_NA)), "\n", file = "PFdupes.txt", append = TRUE)
+      
+      cat(sprintf("There were %s orgs with more than 3 duplicates.", dt.info$skips), "\n", file = "PFdupes.txt", append = TRUE)
+      cat("===================================================", "\n", file = "PFdupes.txt", append = TRUE)
+}
+```
+
+## Initial Cleaning of Duplicates
+```{r}
+row_na_count <- function(x) rowSums(is.na(x))
+
+pf_clean.step1 <- function(current_year, dt){
+      original.cols <- colnames(dt)
+      
+      # Step 1: Fill missing years if all missing for an org
+      dt[, F9_00_FISCAL_YEAR_START := if (all(is.na(F9_00_FISCAL_YEAR_START))) current_year else F9_00_FISCAL_YEAR_START,
+         by = EIN2]
+      
+      # Step 2: If some years missing but others not, drop missing
+      dt <- dt[, .SD[!is.na(F9_00_FISCAL_YEAR_START) | all(is.na(F9_00_FISCAL_YEAR_START))], by = EIN2] # keep row if year not missing OR if all records are missing the year / drops rows where year missing and at least one record is not missing the year
+      
+      # Step 3: Resolve duplicates within org-year
+      dt[, na_count := row_na_count(.SD), .SDcols = !c("EIN2","F9_00_FISCAL_YEAR_START")]
+        
+      # Mark duplicates to drop
+      dt[, max_na := max(na_count), by = .(EIN2, F9_00_FISCAL_YEAR_START)]
+      dt[, min_na := min(na_count), by = .(EIN2, F9_00_FISCAL_YEAR_START)]
+      
+      # If more than one record for org-year, drop record with strictly more missing values
+      dt_clean <- dt[!(na_count == max_na & max_na > min_na)] # keep row if na_count is not max or there is no actual max / drop row if its na_count is the max and there actually is a max
+      # TODO: possible issue, what if two are tied for max but there are other records with less... should I keep all or still drop the ones with the most na's
+      
+      # Step 4: Track unresolved duplicates (ties)
+      unresolved <- dt_clean[, .N, by = .(EIN2, F9_00_FISCAL_YEAR_START)][N > 1]
+      
+      return(list(cleaned_data = dt_clean[, ..original.cols], unresolved_cases = unresolved))
+}
+
+# Function to compute pairwise comparison metrics
+compare_pair_dt <- function(dt_group) {
+  # drop keys
+  mat <- as.matrix(dt_group)
+  r1 <- as.numeric(mat[1, ])
+  r2 <- as.numeric(mat[2, ])
+  
+  diffs <- r1 - r2
+  abs_diffs <- abs(diffs)
+  
+  data.table(
+    n_diff_cols   = sum(abs_diffs != 0 & !is.na(abs_diffs)),
+    n_diff_gt1    = sum(abs_diffs > 1, na.rm = TRUE),
+    max_abs_diff  = max(abs_diffs, na.rm = TRUE),
+    multi_col_diff = sum(abs_diffs != 0, na.rm = TRUE) > 1,
+    euclidean_dist = sqrt(sum(diffs^2, na.rm = TRUE))
+  )
+}
+
+pf_clean.step2 <- function(cdt, unresolved){
+      unres.records <- cdt[EIN2 %in% unique(unresolved$EIN2)] 
+      unres.records <- unres.records[, if (.N == 2L) .SD, by = .(EIN2, F9_00_FISCAL_YEAR_START)] # it's possible we picked back up some records from an org that are resolved e.g. if they have one unique record in one year but an unresolved duplicate in another year
+      if (nrow(unres.records) == 0L){
+            return(list(info = data.table(), final_data = cdt, unresolved_cases = data.table))
+      } else {
+            diagnostics <- unres.records[, compare_pair_dt(.SD), by = .(EIN2, F9_00_FISCAL_YEAR_START)]
+      
+            still_unresolved <- diagnostics[max_abs_diff > 1, .(EIN2, F9_00_FISCAL_YEAR_START)]$EIN2
+            still_unresolved <- unres.records[EIN2 %in% still_unresolved]
+            
+            close_groups <- diagnostics[max_abs_diff == 1, .(EIN2, F9_00_FISCAL_YEAR_START)]
+            
+            resolved <- unres.records[close_groups, on = .(EIN2, F9_00_FISCAL_YEAR_START)][
+              , .SD[1], by = .(EIN2, F9_00_FISCAL_YEAR_START)]
+            
+            # Final clean dataset
+            final_dt <- rbindlist(list(
+              cdt[!unres.records, on = .(EIN2, F9_00_FISCAL_YEAR_START)],  # rows never unresolved
+              resolved,                                                     # resolved by rule
+              still_unresolved                                              # groups still unresolved
+            ), use.names = TRUE, fill = TRUE)
+            
+            return(list(info = diagnostics, final_data = final_dt, unresolved_cases = still_unresolved))
+      }
+}
+
+```
+
+```{r, message=FALSE}
+library(data.table)
+library(readr)
+source("../SCRIPTS/clean_CORE.R")
+
+vars.keep <- c("F9_00_FISCAL_YEAR_START", "EIN2", "PF_01_REV_GRO_PROFIT_BOOKS", "PF_01_REV_TOT_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_BOOKS", "PF_02_ASSET_TOT_EOY_BV", "PF_02_LIAB_TOT_EOY_BV", "PF_01_EXP_CONTR_PAID_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_DISBMT")
+
+year_values <- seq(from = 2003, to = 2021, by = 1)
+for (year in year_values){
+      # Get data, restrict to variables we care about, remove records that are exact duplicates, and make EIN2 the first column
+      file_name <- sprintf("../CORE/pf/CORE-%s-501C3-PRIVFOUND-PF-HRMN-V0.csv", year)
+      dt <- as.data.table(read_csv(file_name, show_col_types = FALSE))
+      dt <- unique(dt[, ..vars.keep])
+      setcolorder(dt, c("EIN2", setdiff(names(dt), "EIN2")))
+      
+      clean.step1 <-  pf_clean.step1(year, dt)
+      clean.step2 <- pf_clean.step2(clean.step1$cleaned_data, clean.step1$unresolved_cases)
+      info.dupes <- clean.step2$info
+      dt.clean <- clean.step2$final_data
+      unresolved <- clean.step2$unresolved_cases
+      
+      if (nrow(unresolved > 0)){n.unresolved <- length(unique(unresolved$EIN2))} else {n.unresolved <- 0}
+      cat(sprintf("Year: %d, num orgs: %d, unresolved orgs: %d, initial unresolved: %d, num records: %d", 
+              year, length(unique(dt.clean$EIN2)), n.unresolved, nrow(info.dupes), nrow(dt.clean)),
+          "\n", file = "unresolvedPF.txt", append = TRUE)
+      cat("===================================================", "\n", file = "unresolvedPF.txt", append = TRUE)
+     
+      rm(clean.step1, clean.step2) 
+}
+
+unres.records <- clean.step1$cleaned_data[EIN2 %in% unique(clean.step1$unresolved_cases$EIN2)] 
+unres.records <- unres.records[, if (.N == 2L) .SD, by = .(EIN2, F9_00_FISCAL_YEAR_START)]
+```
+
+```{r, message = F}
+library(data.table)
+library(readr)
+source("../SCRIPTS/clean_helper.R")
+source("../SCRIPTS/reviewing_duplicate_EIN.R")
+
+dt.2011 <- as.data.table(read_csv(sprintf("../CORE/pf/CORE-%s-501C3-PRIVFOUND-PF-HRMN-V0.csv", 2011), show_col_types = FALSE))
+
+dt.2012 <- as.data.table(read_csv(sprintf("../CORE/pf/CORE-%s-501C3-PRIVFOUND-PF-HRMN-V0.csv", 2012), show_col_types = FALSE))
+
+dt.2013 <- as.data.table(read_csv(sprintf("../CORE/pf/CORE-%s-501C3-PRIVFOUND-PF-HRMN-V0.csv", 2013), show_col_types = FALSE))
+
+vars.keep <- c("F9_00_FISCAL_YEAR_START", "EIN2", "PF_01_REV_GRO_PROFIT_BOOKS", "PF_01_REV_TOT_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_BOOKS", "PF_02_ASSET_TOT_EOY_BV", "PF_02_LIAB_TOT_EOY_BV", "PF_01_EXP_CONTR_PAID_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_DISBMT")
+               
+dt.2011 <- dt.2011[, ..vars.keep]
+dt.2012 <- dt.2012[, ..vars.keep]
+dt.2013 <- dt.2013[, ..vars.keep]
+
+dt.2011 <- unique(dt.2011)
+dt.2012 <- unique(dt.2012)
+dt.2013 <- unique(dt.2013)
+
+setcolorder(dt.2011, c("EIN2", setdiff(names(dt.2011), "EIN2")))
+setcolorder(dt.2012, c("EIN2", setdiff(names(dt.2012), "EIN2")))
+setcolorder(dt.2013, c("EIN2", setdiff(names(dt.2013), "EIN2")))
+
+clean2011 <- pf_duplicates(2011, dt.2011)
+clean2012 <- pf_duplicates(2012, dt.2012)
+clean2013 <- pf_duplicates(2013, dt.2013)
+
+cdt.2011 <- clean2011$clean
+cdt.2012 <- clean2012$clean
+cdt.2013 <- clean2013$clean
+
+unresolved2011 <- clean2011$unresolved
+unresolved2012 <- clean2012$unresolved
+unresolved2013 <- clean2013$unresolved
+
+cdupes11 <- dupes(cdt.2011)$dupes
+cdupes12 <- dupes(cdt.2012)$dupes
+cdupes13 <- dupes(cdt.2013)$dupes
+
+duped.records <- cdt.2013[EIN2 %in% unique(cdupes13$EIN2)] 
+unres.records <- cdt.2013[EIN2 %in% unique(unresolved2013$EIN2)] 
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(purrr)
+
+# Function to compute pairwise comparison metrics
+compare_pair_dt <- function(dt_group) {
+  # drop keys
+  mat <- as.matrix(dt_group)
+  r1 <- as.numeric(mat[1, ])
+  r2 <- as.numeric(mat[2, ])
+  
+  diffs <- r1 - r2
+  abs_diffs <- abs(diffs)
+  
+  data.table(
+    n_diff_cols   = sum(abs_diffs != 0 & !is.na(abs_diffs)),
+    n_diff_gt1    = sum(abs_diffs > 1, na.rm = TRUE),
+    max_abs_diff  = max(abs_diffs, na.rm = TRUE),
+    multi_col_diff = sum(abs_diffs != 0, na.rm = TRUE) > 1,
+    euclidean_dist = sqrt(sum(diffs^2, na.rm = TRUE))
+  )
+}
+
+# Apply per group (org-year)
+diagnostics <- unres.records[, compare_pair_dt(.SD), by = .(EIN2, F9_00_FISCAL_YEAR_START)]
+
+still_unresolved <- diagnostics[max_abs_diff > 1, .(EIN2, F9_00_FISCAL_YEAR_START)]$EIN2
+still_unresolved <- unres.records[EIN2 %in% still_unresolved]
+
+close_groups <- diagnostics[max_abs_diff == 1, .(EIN2, F9_00_FISCAL_YEAR_START)]
+
+resolved <- unres.records[close_groups, on = .(EIN2, F9_00_FISCAL_YEAR_START)][
+  , .SD[1], by = .(EIN2, F9_00_FISCAL_YEAR_START)]
+
+# Final clean dataset
+final_dt <- rbindlist(list(
+  cdt.2013[!unres.records, on = .(EIN2, F9_00_FISCAL_YEAR_START)],  # rows never unresolved
+  resolved,                                                     # resolved by rule
+  still_unresolved                                              # groups still unresolved
+), use.names = TRUE, fill = TRUE)
+
+pf_duplicates(2011, final_dt)$unresolved
+
+tst <- dupes(final_dt)$dupes$EIN2
+final_dt[EIN2 %in% tst]
+```
+
+
+### Example
+```{r}
+# Load data
+dt <- as.data.table(read_csv("example.csv", show_col_types = FALSE))
+dt.sol <- as.data.table(read_csv("example_solution.csv", show_col_types = FALSE))
+
+# Define current year for imputation
+current_year <- 2013
+
+# Function to count missing values per row
+row_na_count <- function(x) rowSums(is.na(x))
+
+# Step 1: Fill missing years if all missing for an org
+dt[, FISCAL_YEAR_START := if (all(is.na(FISCAL_YEAR_START))) current_year else FISCAL_YEAR_START,
+   by = EIN2]
+
+# Step 2: If some years missing but others not, drop missing
+dt <- dt[, .SD[!is.na(FISCAL_YEAR_START) | all(is.na(FISCAL_YEAR_START))], by = EIN2]
+# keep row if year not missing OR if all records are missing the year
+# drops rows where year missing and at least one record is not missing the year
+
+# Step 3: Resolve duplicates within org-year
+dt[, na_count := row_na_count(.SD), .SDcols = !c("EIN2","FISCAL_YEAR_START")]
+  
+# Mark duplicates to drop
+dt[, max_na := max(na_count), by = .(EIN2, FISCAL_YEAR_START)]
+dt[, min_na := min(na_count), by = .(EIN2, FISCAL_YEAR_START)]
+
+# If more than one record for org-year, drop record with strictly more missing values
+dt_clean <- dt[!(na_count == max_na & max_na > min_na)] # keep row if na_count is not max or there is no actual max / drop row if its na_count is the max and there actually is a max
+# TODO: possible issue, what if two are tied for max but there are other records with less... should I keep all or still drop the ones with the most na's
+
+# Step 4: Track unresolved duplicates (ties)
+unresolved <- dt_clean[, .N, by = .(EIN2, FISCAL_YEAR_START)][N > 1]
+
+myvec <- colnames(dt.sol)
+dt_clean <- dt_clean[, ..myvec]
+
+identical(dt_clean, dt.sol)
+```
+
+
+# Scratchwork
+```{r, message=F}
+library(data.table)
+library(readr)
+source("../SCRIPTS/clean_helper.R")
+source("../SCRIPTS/reviewing_duplicate_EIN.R")
+
+dt.2011 <- as.data.table(read_csv(sprintf("../CORE/pf/CORE-%s-501C3-PRIVFOUND-PF-HRMN-V0.csv", 2011), show_col_types = FALSE))
+
+dt.2012 <- as.data.table(read_csv(sprintf("../CORE/pf/CORE-%s-501C3-PRIVFOUND-PF-HRMN-V0.csv", 2012), show_col_types = FALSE))
+
+dt.2013 <- as.data.table(read_csv(sprintf("../CORE/pf/CORE-%s-501C3-PRIVFOUND-PF-HRMN-V0.csv", 2013), show_col_types = FALSE))
+
+vars.keep <- c("F9_00_FISCAL_YEAR_START", "EIN2", "PF_01_REV_GRO_PROFIT_BOOKS", "PF_01_REV_TOT_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_BOOKS", "PF_02_ASSET_TOT_EOY_BV", "PF_02_LIAB_TOT_EOY_BV", "PF_01_EXP_CONTR_PAID_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_DISBMT")
+               
+dt.2011 <- dt.2011[, ..vars.keep]
+dt.2012 <- dt.2012[, ..vars.keep]
+dt.2013 <- dt.2013[, ..vars.keep]
+
+dt.2011 <- unique(dt.2011)
+dt.2012 <- unique(dt.2012)
+dt.2013 <- unique(dt.2013)
+
+setcolorder(dt.2011, c("EIN2", setdiff(names(dt.2011), "EIN2")))
+setcolorder(dt.2012, c("EIN2", setdiff(names(dt.2012), "EIN2")))
+setcolorder(dt.2013, c("EIN2", setdiff(names(dt.2013), "EIN2")))
+
+na.2011 <- na_counts_df(dt.2011)
+na.2012 <- na_counts_df(dt.2012)
+na.2013 <- na_counts_df(dt.2013)
+
+dlist.2011 <- dupes(dt.2011)
+dlist.2012 <- dupes(dt.2012)
+dlist.2013 <- dupes(dt.2013)
+
+dupes.2011 <- dlist.2011$dupes
+dupes.2012 <- dlist.2012$dupes
+dupes.2013 <- dlist.2013$dupes
+
+groups.2011 <- dlist.2011$dupes_groups
+groups.2012 <- dlist.2012$dupes_groups
+groups.2013 <- dlist.2013$dupes_groups
+
+rm(dlist.2011, dlist.2012, dlist.2013)
+
+info.2011 <- duplicateEIN2_info(dt.2011, groups.2011, track.skips = TRUE)
+info.2012 <- duplicateEIN2_info(dt.2012, groups.2012, track.skips = TRUE)
+info.2013 <- duplicateEIN2_info(dt.2013, groups.2013, track.skips = TRUE)
+
+mult.2013 <- (dupes.2013 |> filter(n > 3))$EIN2
+sub.2013 <- dt.2013[EIN2 %in% mult.2013]
+```

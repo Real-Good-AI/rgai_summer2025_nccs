@@ -1,0 +1,73 @@
+
+Year: 1991, num orgs: 39555, unresolved orgs: 949, initial unresolved: 951, num records: 40505 
+=================================================== 
+Year: 1992, num orgs: 40230, unresolved orgs: 57, initial unresolved: 57, num records: 40287 
+=================================================== 
+Year: 1993, num orgs: 10897, unresolved orgs: 9, initial unresolved: 9, num records: 10906 
+=================================================== 
+Year: 1994, num orgs: 38602, unresolved orgs: 69, initial unresolved: 69, num records: 38671 
+=================================================== 
+Year: 1995, num orgs: 45221, unresolved orgs: 35, initial unresolved: 36, num records: 45256 
+=================================================== 
+Year: 1996, num orgs: 48165, unresolved orgs: 94, initial unresolved: 95, num records: 48260 
+=================================================== 
+Year: 1997, num orgs: 52364, unresolved orgs: 79, initial unresolved: 84, num records: 52461 
+=================================================== 
+Year: 1998, num orgs: 58613, unresolved orgs: 7, initial unresolved: 8, num records: 58652 
+=================================================== 
+Year: 1999, num orgs: 56955, unresolved orgs: 7, initial unresolved: 7, num records: 57013 
+=================================================== 
+Year: 2000, num orgs: 63190, unresolved orgs: 8, initial unresolved: 8, num records: 63249 
+=================================================== 
+Year: 2001, num orgs: 64434, unresolved orgs: 20, initial unresolved: 21, num records: 64515 
+=================================================== 
+Year: 2002, num orgs: 69146, unresolved orgs: 41, initial unresolved: 46, num records: 69239 
+=================================================== 
+Year: 2003, num orgs: 73209, unresolved orgs: 54, initial unresolved: 61, num records: 73328 
+=================================================== 
+Year: 2004, num orgs: 75384, unresolved orgs: 48, initial unresolved: 59, num records: 75516 
+=================================================== 
+Year: 2005, num orgs: 79844, unresolved orgs: 98, initial unresolved: 139, num records: 80003 
+=================================================== 
+Year: 2006, num orgs: 78744, unresolved orgs: 67, initial unresolved: 90, num records: 78890 
+=================================================== 
+Year: 2007, num orgs: 81538, unresolved orgs: 21, initial unresolved: 854, num records: 81612 
+=================================================== 
+Year: 2008, num orgs: 85263, unresolved orgs: 19, initial unresolved: 1760, num records: 85352 
+=================================================== 
+Year: 2009, num orgs: 91342, unresolved orgs: 8, initial unresolved: 2180, num records: 91440 
+=================================================== 
+Year: 2010, num orgs: 94938, unresolved orgs: 34, initial unresolved: 492, num records: 95026 
+=================================================== 
+Year: 2011, num orgs: 98879, unresolved orgs: 4, initial unresolved: 53, num records: 98928 
+=================================================== 
+Year: 2012, num orgs: 99584, unresolved orgs: 10, initial unresolved: 55, num records: 99629 
+=================================================== 
+Year: 2013, num orgs: 100601, unresolved orgs: 5, initial unresolved: 22, num records: 100650 
+=================================================== 
+Year: 2014, num orgs: 102640, unresolved orgs: 5, initial unresolved: 5, num records: 102686 
+=================================================== 
+Year: 2015, num orgs: 101372, unresolved orgs: 1, initial unresolved: 1, num records: 101414 
+=================================================== 
+Year: 2016, num orgs: 11936, unresolved orgs: 0, initial unresolved: 0, num records: 11936 
+=================================================== 
+Year: 2017, num orgs: 639, unresolved orgs: 0, initial unresolved: 0, num records: 639 
+=================================================== 
+Year: 2018, num orgs: 3251, unresolved orgs: 3, initial unresolved: 3, num records: 3254 
+=================================================== 
+Year: 2019, num orgs: 100008, unresolved orgs: 14, initial unresolved: 16, num records: 100022 
+=================================================== 
+Year: 2020, num orgs: 111060, unresolved orgs: 80, initial unresolved: 81, num records: 111140 
+=================================================== 
+Year: 2021, num orgs: 112760, unresolved orgs: 83, initial unresolved: 83, num records: 112843 
+=================================================== 
+Year: 2017, num orgs: 639, unresolved orgs: 0, initial unresolved: 0, num records: 639 
+=================================================== 
+Year: 2018, num orgs: 3251, unresolved orgs: 3, initial unresolved: 3, num records: 3254 
+=================================================== 
+Year: 2019, num orgs: 100008, unresolved orgs: 14, initial unresolved: 16, num records: 100022 
+=================================================== 
+Year: 2020, num orgs: 111060, unresolved orgs: 80, initial unresolved: 81, num records: 111140 
+=================================================== 
+Year: 2021, num orgs: 112760, unresolved orgs: 83, initial unresolved: 83, num records: 112843 
+=================================================== 

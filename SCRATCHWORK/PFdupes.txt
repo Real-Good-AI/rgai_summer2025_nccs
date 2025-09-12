@@ -1,0 +1,279 @@
+1991 NA spread: 0 0 0 0 0 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (0). 
+In 1991, there are 951 orgs with duplicate records out of 39555, or 2.404 percent. 
+There are 0 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_02_LIAB_TOT_EOY_BV (900). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (1). 
+The total number of differences is 1267. The number of those that are due to NAs are 0. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+1992 NA spread: 0 0 0 0 0 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (0). 
+In 1992, there are 57 orgs with duplicate records out of 40230, or 0.142 percent. 
+There are 0 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_01_EXP_TOT_EXP_DISBMT_BOOKS (57). 
+The variable with the least differences is PF_02_LIAB_TOT_EOY_BV (12). 
+The total number of differences is 290. The number of those that are due to NAs are 0. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+1993 NA spread: 0 0 0 0 0 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (0). 
+In 1993, there are 9 orgs with duplicate records out of 10897, or 0.083 percent. 
+There are 0 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_01_REV_TOT_BOOKS (8). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (2). 
+The total number of differences is 42. The number of those that are due to NAs are 0. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+1994 NA spread: 0 0 0 0 0 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (0). 
+In 1994, there are 69 orgs with duplicate records out of 38602, or 0.179 percent. 
+There are 0 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_01_EXP_TOT_EXP_DISBMT_BOOKS (69). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (1). 
+The total number of differences is 345. The number of those that are due to NAs are 0. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+1995 NA spread: 0 0 0 0 1 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (1). 
+In 1995, there are 36 orgs with duplicate records out of 45221, or 0.08 percent. 
+There are 0 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_01_REV_TOT_BOOKS (34). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (1). 
+The total number of differences is 170. The number of those that are due to NAs are 0. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+1996 NA spread: 0 0 0 0 1 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (1). 
+In 1996, there are 96 orgs with duplicate records out of 48165, or 0.199 percent. 
+There are 1 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_01_EXP_TOT_EXP_DISBMT_BOOKS (90). 
+The variable with the least differences is F9_00_FISCAL_YEAR_START (1). 
+The total number of differences is 467. The number of those that are due to NAs are 0. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+1997 NA spread: 0 0 0 0 2 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (2). 
+In 1997, there are 102 orgs with duplicate records out of 52364, or 0.195 percent. 
+There are 18 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_02_ASSET_TOT_EOY_BV (99). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (5). 
+The total number of differences is 490. The number of those that are due to NAs are 0. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+1998 NA spread: 0 0 0 0 3 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (3). 
+In 1998, there are 40 orgs with duplicate records out of 58613, or 0.068 percent. 
+There are 32 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_02_ASSET_TOT_EOY_BV (37). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (1). 
+The total number of differences is 208. The number of those that are due to NAs are 0. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+1999 NA spread: 0 0 0 0 7 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (7). 
+In 1999, there are 58 orgs with duplicate records out of 56955, or 0.102 percent. 
+There are 51 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_01_EXP_TOT_EXP_DISBMT_BOOKS (58). 
+The variable with the least differences is PF_02_LIAB_TOT_EOY_BV (11). 
+The total number of differences is 339. The number of those that are due to NAs are 0. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2000 NA spread: 0 0 0 0 9 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (9). 
+In 2000, there are 60 orgs with duplicate records out of 63190, or 0.095 percent. 
+There are 52 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_01_REV_TOT_BOOKS (56). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (5). 
+The total number of differences is 331. The number of those that are due to NAs are 1. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2001 NA spread: 0 0 0 0 9 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (9). 
+In 2001, there are 82 orgs with duplicate records out of 64434, or 0.127 percent. 
+There are 61 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_01_EXP_TOT_EXP_DISBMT_BOOKS (77). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (4). 
+The total number of differences is 453. The number of those that are due to NAs are 0. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2002 NA spread: 0 0 0 0 15 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (15). 
+In 2002, there are 98 orgs with duplicate records out of 69146, or 0.142 percent. 
+There are 53 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_01_REV_TOT_BOOKS (91). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (2). 
+The total number of differences is 511. The number of those that are due to NAs are 1. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2003 NA spread: 0 0 0 0 18 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (18). 
+In 2003, there are 126 orgs with duplicate records out of 73209, or 0.172 percent. 
+There are 65 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_01_REV_TOT_BOOKS (121). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (6). 
+The total number of differences is 653. The number of those that are due to NAs are 0. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2004 NA spread: 0 0 0 0 26 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (26). 
+In 2004, there are 143 orgs with duplicate records out of 75384, or 0.19 percent. 
+There are 84 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_02_ASSET_TOT_EOY_BV (136). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (1). 
+The total number of differences is 716. The number of those that are due to NAs are 0. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2005 NA spread: 0 0 0 0 45 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (45). 
+In 2005, there are 198 orgs with duplicate records out of 79844, or 0.248 percent. 
+There are 57 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_01_REV_TOT_BOOKS (133). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (10). 
+The total number of differences is 648. The number of those that are due to NAs are 0. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2006 NA spread: 0 0 0 0 65 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (65). 
+In 2006, there are 170 orgs with duplicate records out of 78744, or 0.216 percent. 
+There are 80 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_02_ASSET_TOT_EOY_BV (119). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (3). 
+The total number of differences is 624. The number of those that are due to NAs are 2. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2007 NA spread: 0 0 0 0 169 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (169). 
+In 2007, there are 902 orgs with duplicate records out of 81538, or 1.106 percent. 
+There are 56 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_02_ASSET_TOT_EOY_BV (892). 
+The variable with the least differences is F9_00_FISCAL_YEAR_START (56). 
+The total number of differences is 1243. The number of those that are due to NAs are 4. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2008 NA spread: 0 0 0 0 329 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (329). 
+In 2008, there are 1815 orgs with duplicate records out of 85263, or 2.129 percent. 
+There are 54 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_02_ASSET_TOT_EOY_BV (1806). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (1). 
+The total number of differences is 2190. The number of those that are due to NAs are 2. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2009 NA spread: 0 0 0 0 689 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (689). 
+In 2009, there are 2275 orgs with duplicate records out of 91342, or 2.491 percent. 
+There are 95 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_02_ASSET_TOT_EOY_BV (2239). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (4). 
+The total number of differences is 2770. The number of those that are due to NAs are 33. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2010 NA spread: 0 0 0 0 3405 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (3405). 
+In 2010, there are 1128 orgs with duplicate records out of 94938, or 1.188 percent. 
+There are 637 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is F9_00_FISCAL_YEAR_START (637). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (1). 
+The total number of differences is 1578. The number of those that are due to NAs are 588. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2011 NA spread: 0 0 0 0 88106 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (88106). 
+In 2011, there are 77902 orgs with duplicate records out of 98879, or 78.785 percent. 
+There are 77885 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is F9_00_FISCAL_YEAR_START (77885). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (5). 
+The total number of differences is 78631. The number of those that are due to NAs are 77843. 
+There were 1 orgs with more than 3 duplicates. 
+=================================================== 
+2012 NA spread: 0 0 0 0 99712 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (99712). 
+In 2012, there are 87569 orgs with duplicate records out of 99584, or 87.935 percent. 
+There are 87528 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is F9_00_FISCAL_YEAR_START (87528). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (5). 
+The total number of differences is 88194. The number of those that are due to NAs are 87532. 
+There were 36 orgs with more than 3 duplicates. 
+=================================================== 
+2013 NA spread: 0 0 0 0 100736 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (100736). 
+In 2013, there are 88815 orgs with duplicate records out of 100601, or 88.284 percent. 
+There are 88766 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is F9_00_FISCAL_YEAR_START (88766). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (2). 
+The total number of differences is 90208. The number of those that are due to NAs are 88771. 
+There were 45 orgs with more than 3 duplicates. 
+=================================================== 
+2014 NA spread: 0 0 0 0 102781 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (102781). 
+In 2014, there are 92603 orgs with duplicate records out of 102640, or 90.221 percent. 
+There are 92558 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is F9_00_FISCAL_YEAR_START (92558). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (3). 
+The total number of differences is 93077. The number of those that are due to NAs are 92559. 
+There were 43 orgs with more than 3 duplicates. 
+=================================================== 
+2015 NA spread: 0 0 0 0 101492 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (101492). 
+In 2015, there are 93680 orgs with duplicate records out of 101372, or 92.412 percent. 
+There are 93639 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is F9_00_FISCAL_YEAR_START (93639). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (1). 
+The total number of differences is 94005. The number of those that are due to NAs are 93639. 
+There were 41 orgs with more than 3 duplicates. 
+=================================================== 
+2016 NA spread: 0 0 0 0 11938 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (11938). 
+In 2016, there are 10673 orgs with duplicate records out of 11936, or 89.419 percent. 
+There are 10673 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is F9_00_FISCAL_YEAR_START (10673). 
+The variable with the least differences is PF_01_REV_TOT_BOOKS (1). 
+The total number of differences is 10683. The number of those that are due to NAs are 10673. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2017 NA spread: 0 0 0 0 639 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (639). 
+In 2017, there are 49 orgs with duplicate records out of 639, or 7.668 percent. 
+There are 49 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is F9_00_FISCAL_YEAR_START (49). 
+The variable with the least differences is F9_00_FISCAL_YEAR_START (49). 
+The total number of differences is 49. The number of those that are due to NAs are 49. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2018 NA spread: 0 0 0 0 3258 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (3258). 
+In 2018, there are 842 orgs with duplicate records out of 3251, or 25.9 percent. 
+There are 839 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is F9_00_FISCAL_YEAR_START (839). 
+The variable with the least differences is PF_01_EXP_CONTR_PAID_BOOKS (2). 
+The total number of differences is 856. The number of those that are due to NAs are 842. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2019 NA spread: 0 0 0 0 100111 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (100111). 
+In 2019, there are 75422 orgs with duplicate records out of 100008, or 75.416 percent. 
+There are 75406 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is F9_00_FISCAL_YEAR_START (75406). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (3). 
+The total number of differences is 75903. The number of those that are due to NAs are 75422. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2020 NA spread: 0 0 0 0 111178 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (111178). 
+In 2020, there are 8277 orgs with duplicate records out of 111060, or 7.453 percent. 
+There are 8196 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is F9_00_FISCAL_YEAR_START (8196). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (3). 
+The total number of differences is 8804. The number of those that are due to NAs are 8277. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
+2021 NA spread: 0 0 0 0 112844 
+The variable with the most NAs is F9_00_FISCAL_YEAR_START (112844). 
+In 2021, there are 83 orgs with duplicate records out of 112760, or 0.074 percent. 
+There are 0 differences in the FISCAL_YEAR_START variable. 
+The variable with the most differences is PF_01_REV_TOT_BOOKS (81). 
+The variable with the least differences is PF_01_REV_GRO_PROFIT_BOOKS (2). 
+The total number of differences is 405. The number of those that are due to NAs are 83. 
+There were 0 orgs with more than 3 duplicates. 
+=================================================== 
