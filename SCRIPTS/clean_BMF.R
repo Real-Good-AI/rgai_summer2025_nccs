@@ -2,11 +2,11 @@ library(tidyverse, warn.conflicts = FALSE)
 library(data.table)
 library(dplyr)
 library(tibble)
-source("SCRIPTS/reviewing_duplicate_EIN.R")
-source("SCRIPTS/clean_helper.R")
+source("../SCRIPTS/reviewing_duplicate_EIN.R")
+source("../SCRIPTS/clean_helper.R")
 
 clean_BMF <- function(vars_to_keep, thresh, saveFlag = TRUE){
-    unified_bmf <- as.data.frame(read.csv("CORE/BMF_UNIFIED_V1.1.csv"))
+    unified_bmf <- as.data.frame(read.csv("../CORE/BMF_UNIFIED_V1.1.csv"))
     # Replace any empty strings '' with NA values (so later when checking for missing values is easier)
     unified_bmf <- unified_bmf |> mutate_if(is.character, ~na_if(.,''))
     
