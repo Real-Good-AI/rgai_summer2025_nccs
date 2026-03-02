@@ -1,0 +1,1557 @@
+---
+title: "Analysis"
+author: "Mayleen"
+date: "2026-01-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+# PanelMatch - No Interference
+## Setup
+```{r, message = F}
+library(data.table)
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+
+df <- readRDS("county_long.rds")
+df <- df |> 
+      group_by(geoid_2010) |>
+      mutate(CountyID = as.integer(cur_group_id())) |>
+      ungroup()
+
+# These are some socioeconomic covariates we may evaluate balance for but need to convert from string to num
+covs_to_check <- c("white_perc", "bachelors_perc", "poverty_perc", "unemployment", "med_family_income_adj", "med_household_income_adj")
+df <- df |> mutate(across(all_of(covs_to_check), as.numeric)) # make sure these are numeric
+
+# These are the variables we will assess balance for
+covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "pop_estimate", "med_precip", "med_avg_temp", "TOT_REV", "TOT_ASSET", "NUM_ORGS")
+
+#TODO: add spatially varying coefficients
+
+# https://stackoverflow.com/questions/74815244/panelmatch-r-errors-please-convert-time-id-to-consecutive-integers-and-pleas
+panel_df <- PanelData(panel.data = as.data.frame(df),
+                      unit.id = "CountyID",
+                      time.id = "TAX_YEAR",
+                      treatment = "treat.FEMA",
+                      outcome = "TOT_REV")
+```
+
+```{r}
+sum(is.na(panel_df$treat.FEMA)) # county_FEMA_indicator <- 3.78 #2019
+
+sum(df$TotPerCapADJ >= 2.78 & df$TotPerCapADJ < 3.78) # how many "suss" control units: 3433 or ~3.5% of total records
+sum(df$TotPerCapADJ >= 3.78 & df$TotPerCapADJ < 4.78) # how many "suss" treated units: 2698 or ~2.8% of total records
+sum(df$TotPerCapADJ <= 1) # 41983
+quantile(df$TotPerCapADJ, probs = seq(0,1,0.1))
+
+treatVarPlot <- DisplayTreatment(panel.data = panel_df, legend.position = "none", xlab = "TAX_YEAR", ylab = "County Code", hide.x.tick.label = TRUE, hide.y.tick.label = TRUE, dense.plot = TRUE)
+
+treatVarPlot
+#ggsave("treatment_variation_plot.png", plot = treatVarPlot, width = 7.5, height = 10, units = "in")
+```
+
+## Initial Imbalance
+### Outcome 1-year post-disaster
+```{r}
+init.L1F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "none",
+                 qoi = "att",
+                 match.missing = FALSE,
+                 lead = 1,
+                 matching = FALSE,
+                 placebo.test = TRUE)
+
+summary(init.L1F1)
+
+bal.init.L1F1 <- get_covariate_balance(init.L1F1, panel.data = panel_df, covariates = covs_to_check)
+
+temp <- summary(bal.init.L1F1, include.unrefined = FALSE)
+bal_df <- as.data.frame(temp$init.L1F1)
+write.csv(bal_df, file = "balance_tables.csv")
+
+bal_df
+plot(bal.init.L1F1, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.3, 0.3)) 
+plot(bal.init.L1F1, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2))
+```
+
+```{r}
+init.L3F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "none",
+                 qoi = "att",
+                 match.missing = FALSE,
+                 lead = 1,
+                 matching = FALSE,
+                 placebo.test = TRUE)
+
+summary(init.L3F1)
+
+bal.init.L3F1 <- get_covariate_balance(init.L3F1, panel.data = panel_df, covariates = covs_to_check)
+
+temp <- summary(bal.init.L3F1, include.unrefined = FALSE)
+bal_df <- as.data.frame(temp$init.L3F1)
+write.csv(bal_df, file = "balance_tables.csv")
+
+bal_df
+plot(bal.init.L3F1, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2, 0.2)) # ylim = c(-0.5, 0.5)
+plot(bal.init.L3F1, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2))
+```
+
+```{r}
+init.L5F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "none",
+                 qoi = "att",
+                 match.missing = FALSE,
+                 lead = 1,
+                 matching = FALSE,
+                 placebo.test = TRUE)
+
+summary(init.L5F1)
+
+bal.init.L5F1 <- get_covariate_balance(init.L5F1, panel.data = panel_df, covariates = covs_to_check)
+
+temp <- summary(bal.init.L5F1, include.unrefined = FALSE)
+bal_df <- as.data.frame(temp$init.L5F1)
+write.csv(bal_df, file = "balance_tables.csv")
+
+bal_df
+plot(bal.init.L5F1, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2, 0.2)) # ylim = c(-0.2, 0.4)
+plot(bal.init.L5F1, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2))
+```
+
+
+
+### Outcome 3-years post-disaster
+```{r}
+init.L1F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "none",
+                 qoi = "att",
+                 match.missing = FALSE,
+                 lead = 3,
+                 matching = FALSE,
+                 placebo.test = TRUE)
+
+summary(init.L1F3)
+
+bal.init.L1F3 <- get_covariate_balance(init.L1F3, panel.data = panel_df, covariates = covs_to_check)
+
+temp <- summary(bal.init.L1F3, include.unrefined = FALSE)
+bal_df <- as.data.frame(temp$init.L1F3)
+write.csv(bal_df, file = "balance_tables.csv")
+
+bal_df
+plot(bal.init.L1F3, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2, 0.2))
+plot(bal.init.L1F3, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2)) 
+```
+
+
+```{r}
+init.L3F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "none",
+                 qoi = "att",
+                 match.missing = FALSE,
+                 lead = 3,
+                 matching = FALSE,
+                 placebo.test = TRUE)
+
+summary(init.L3F3)
+
+bal.init.L3F3 <- get_covariate_balance(init.L3F3, panel.data = panel_df, covariates = covs_to_check)
+
+temp <- summary(bal.init.L3F3, include.unrefined = FALSE)
+bal_df <- as.data.frame(temp$init.L3F3)
+write.csv(bal_df, file = "balance_tables.csv")
+
+bal_df
+plot(bal.init.L3F3, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2, 0.2))
+plot(bal.init.L3F3, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2))
+```
+
+```{r}
+init.L5F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "none",
+                 qoi = "att",
+                 match.missing = FALSE,
+                 lead = 3,
+                 matching = FALSE,
+                 placebo.test = TRUE)
+
+summary(init.L5F3)
+
+bal.init.L5F3 <- get_covariate_balance(init.L5F3, panel.data = panel_df, covariates = covs_to_check)
+
+temp <- summary(bal.init.L5F3, include.unrefined = FALSE)
+bal_df <- as.data.frame(temp$init.L5F3)
+write.csv(bal_df, file = "balance_tables.csv")
+
+bal_df
+plot(bal.init.L5F3, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2, 0.2))
+plot(bal.init.L5F3, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2)) 
+```
+
+### Outcome 5-years post-disaster
+```{r}
+init.L1F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "none",
+                 qoi = "att",
+                 match.missing = FALSE,
+                 lead = 5,
+                 matching = FALSE,
+                 placebo.test = TRUE)
+
+summary(init.L1F5)
+
+bal.init.L1F5 <- get_covariate_balance(init.L1F5, panel.data = panel_df, covariates = covs_to_check)
+
+temp <- summary(bal.init.L1F5, include.unrefined = FALSE)
+bal_df <- as.data.frame(temp$init.L1F5)
+write.csv(bal_df, file = "balance_tables.csv")
+
+bal_df
+plot(bal.init.L1F5, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2, 0.2)) 
+plot(bal.init.L1F5, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2))
+```
+
+```{r}
+init.L3F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "none",
+                 qoi = "att",
+                 match.missing = FALSE,
+                 lead = 5,
+                 matching = FALSE,
+                 placebo.test = TRUE)
+
+summary(init.L3F5)
+
+bal.init.L3F5 <- get_covariate_balance(init.L3F5, panel.data = panel_df, covariates = covs_to_check)
+
+temp <- summary(bal.init.L3F5, include.unrefined = FALSE)
+bal_df <- as.data.frame(temp$init.L3F5)
+write.csv(bal_df, file = "balance_tables.csv")
+
+bal_df
+plot(bal.init.L3F5, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2, 0.2))
+plot(bal.init.L3F5, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2))
+```
+
+
+```{r}
+init.L5F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "none",
+                 qoi = "att",
+                 match.missing = FALSE,
+                 lead = 5,
+                 matching = FALSE,
+                 placebo.test = TRUE)
+
+summary(init.L5F5)
+
+bal.init.L5F5 <- get_covariate_balance(init.L5F5, panel.data = panel_df, covariates = covs_to_check)
+
+temp <- summary(bal.init.L5F5, include.unrefined = FALSE)
+bal_df <- as.data.frame(temp$init.L5F5)
+write.csv(bal_df, file = "balance_tables.csv")
+
+bal_df
+plot(bal.init.L5F5, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2, 0.2))
+plot(bal.init.L5F5, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2))
+```
+
+
+## Matching Methods - No SVC
+```{r}
+formula_L1 <- "~ TAX_YEAR + lat*lng + I(lag(NUM_ORGS, 1:1)) + I(lag(TOT_ASSET, 1:1)) + I(lag(bachelors_perc, 0:1)) + I(lag(med_household_income_adj, 0:1)) + I(lag(white_perc, 0:1)) + I(lag(pop_estimate, 0:1)) + I(lag(TOT_REV, 1:1)"
+
+formula_L3 <- "~ TAX_YEAR + lat*lng + I(lag(NUM_ORGS, 1:3)) + I(lag(TOT_ASSET, 1:3)) + I(lag(bachelors_perc, 0:3)) + I(lag(med_household_income_adj, 0:3)) + I(lag(white_perc, 0:3)) + I(lag(pop_estimate, 0:3)) + I(lag(TOT_REV, 1:3)"
+
+formula_L5 <- "~ TAX_YEAR + lat*lng + I(lag(NUM_ORGS, 1:5)) + I(lag(TOT_ASSET, 1:5)) + I(lag(bachelors_perc, 0:5)) + I(lag(med_household_income_adj, 0:5)) + I(lag(white_perc, 0:5)) + I(lag(pop_estimate, 0:5)) + I(lag(TOT_REV, 1:5)"
+```
+
+### Outcome 1-year post-disaster
+#### Propensity Score Matching
+```{r}
+ps.matchL1F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "ps.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L1),
+                 lead = 1,
+                 placebo.test = TRUE)
+
+ps.matchL3F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "ps.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L3),
+                 lead = 1,
+                 placebo.test = TRUE)
+
+ps.matchL5F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "ps.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L5),
+                 lead = 1,
+                 placebo.test = TRUE)
+
+summary(ps.matchL1F1)
+summary(ps.matchL3F1)
+summary(ps.matchL5F1)
+```
+
+
+```{r}
+plot(ps.matchL1F1)
+plot(ps.matchL3F1)
+plot(ps.matchL5F1)
+```
+
+
+```{r}
+bal.ps.matchF1 <- get_covariate_balance(ps.matchL1F1, ps.matchL3F1, ps.matchL5F1, 
+                                     panel.data = panel_df,
+                                     covariates = covs_to_check)
+#summary(bal.ps.matchF1)
+
+temp <- summary(bal.ps.matchF1)
+temp <- lapply(temp, as.data.frame)
+temp <- lapply(temp, tibble::rownames_to_column, var = "time")
+
+write_xlsx(temp, "balances/ps_matchF1.xlsx")
+```
+
+
+```{r}
+plot(bal.ps.matchF1, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, ylim = c(-0.05,0.05))
+plot(bal.ps.matchF1, type = "scatter", legend = TRUE, ylim = c(-0.05, 0.2))
+```
+
+#### CBPS Matching
+```{r}
+cbps.matchL1F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "CBPS.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L1),
+                 lead = 1,
+                 placebo.test = TRUE)
+
+cbps.matchL3F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "CBPS.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L3),
+                 lead = 1,
+                 placebo.test = TRUE)
+
+cbps.matchL5F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "CBPS.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L5),
+                 lead = 1,
+                 placebo.test = TRUE)
+
+summary(cbps.matchL1F1)
+summary(cbps.matchL3F1)
+summary(cbps.matchL5F1)
+```
+
+
+```{r}
+plot(cbps.matchL1F1)
+plot(cbps.matchL3F1)
+plot(cbps.matchL5F1)
+```
+
+
+```{r}
+bal.cbps.matchF1 <- get_covariate_balance(cbps.matchL1F1, cbps.matchL3F1, cbps.matchL5F1, 
+                                     panel.data = panel_df,
+                                     covariates = covs_to_check)
+#summary(bal.ps.matchF1)
+
+temp <- summary(bal.cbps.matchF1)
+temp <- lapply(temp, as.data.frame)
+temp <- lapply(temp, tibble::rownames_to_column, var = "time")
+
+write_xlsx(temp, "balances/cbps_matchF1.xlsx")
+```
+
+```{r}
+plot(bal.cbps.matchF1, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, ylim = c(-0.05,0.05))
+plot(bal.cbps.matchF1, type = "scatter", legend = TRUE, ylim = c(-0.05, 0.2))
+```
+
+#### Propensity Score Weighting
+
+```{r}
+ps.weightL1F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "ps.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L1),
+                 lead = 1,
+                 placebo.test = TRUE)
+
+ps.weightL3F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "ps.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L3),
+                 lead = 1,
+                 placebo.test = TRUE)
+
+ps.weightL5F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "ps.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L5),
+                 lead = 1,
+                 placebo.test = TRUE)
+
+summary(ps.weightL1F1)
+summary(ps.weightL3F1)
+summary(ps.weightL5F1)
+```
+
+
+```{r}
+plot(ps.weightL1F1)
+plot(ps.weightL3F1)
+plot(ps.weightL5F1)
+```
+
+
+```{r}
+bal.ps.weightF1 <- get_covariate_balance(ps.weightL1F1, ps.weightL3F1, ps.weightL5F1, 
+                                     panel.data = panel_df,
+                                     covariates = covs_to_check)
+#summary(bal.ps.matchF1)
+
+temp <- summary(bal.ps.weightF1)
+temp <- lapply(temp, as.data.frame)
+temp <- lapply(temp, tibble::rownames_to_column, var = "time")
+
+write_xlsx(temp, "balances/ps.weightF1.xlsx")
+```
+
+```{r}
+plot(bal.ps.weightF1, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, ylim = c(-0.2,0.2))
+plot(bal.ps.weightF1, type = "scatter", legend = TRUE, ylim = c(-0.05, 0.2))
+```
+
+#### CBPS Weighting
+```{r}
+cbps.weightL1F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "CBPS.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L1),
+                 lead = 1,
+                 placebo.test = TRUE)
+
+cbps.weightL3F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "CBPS.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L3),
+                 lead = 1,
+                 placebo.test = TRUE)
+
+cbps.weightL5F1 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "CBPS.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L5),
+                 lead = 1,
+                 placebo.test = TRUE)
+
+summary(cbps.weightL1F1)
+summary(cbps.weightL3F1)
+summary(cbps.weightL5F1)
+```
+
+
+```{r}
+plot(cbps.weightL1F1)
+plot(cbps.weightL3F1)
+plot(cbps.weightL5F1)
+```
+
+
+```{r}
+bal.cbps.weightF1 <- get_covariate_balance(cbps.weightL1F1, cbps.weightL3F1, cbps.weightL5F1, 
+                                     panel.data = panel_df,
+                                     covariates = covs_to_check)
+#summary(bal.cbps.weightF1)
+
+temp <- summary(bal.cbps.weightF1)
+temp <- lapply(temp, as.data.frame)
+temp <- lapply(temp, tibble::rownames_to_column, var = "time")
+
+write_xlsx(temp, "balances/cbps_weightF1.xlsx")
+
+saveRDS(list("L1F1" = cbps.weightL1F1, "L3F1" = cbps.weightL3F1, "L5F1" = cbps.weightL5F1), 
+        file = "matches/cbps_weightF1.rds")
+
+saveRDS(bal.cbps.weightF1, file = "balances/cbps_weightF1.rds")
+```
+
+```{r}
+plot(bal.cbps.weightF1, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2,0.2))
+plot(bal.cbps.weightF1, type = "scatter", legend = TRUE, ylim = c(-0.05, 0.2))
+```
+
+
+### Outcome 3-year post-disaster
+#### Propensity Score Matching
+```{r}
+ps.matchL1F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "ps.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L1),
+                 lead = 3,
+                 placebo.test = TRUE)
+
+ps.matchL3F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "ps.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L3),
+                 lead = 3,
+                 placebo.test = TRUE)
+
+ps.matchL5F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "ps.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L5),
+                 lead = 3,
+                 placebo.test = TRUE)
+
+summary(ps.matchL1F3)
+summary(ps.matchL3F3)
+summary(ps.matchL5F3)
+```
+
+
+```{r}
+plot(ps.matchL1F3)
+plot(ps.matchL3F3)
+plot(ps.matchL5F3)
+```
+
+
+```{r}
+bal.ps.matchF3 <- get_covariate_balance(ps.matchL1F3, ps.matchL3F3, ps.matchL5F3, 
+                                     panel.data = panel_df,
+                                     covariates = covs_to_check)
+#summary(bal.ps.matchF1)
+
+temp <- summary(bal.ps.matchF3)
+temp <- lapply(temp, as.data.frame)
+temp <- lapply(temp, tibble::rownames_to_column, var = "time")
+
+write_xlsx(temp, "balances/ps_matchF3.xlsx")
+```
+
+
+```{r}
+plot(bal.ps.matchF3, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, ylim = c(-0.2,0.2))
+plot(bal.ps.matchF3, type = "scatter", legend = TRUE, ylim = c(-0.05, 0.2))
+```
+
+#### CBPS Matching
+```{r}
+cbps.matchL1F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "CBPS.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L1),
+                 lead = 3,
+                 placebo.test = TRUE)
+
+cbps.matchL3F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "CBPS.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L3),
+                 lead = 3,
+                 placebo.test = TRUE)
+
+cbps.matchL5F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "CBPS.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L5),
+                 lead = 3,
+                 placebo.test = TRUE)
+
+summary(cbps.matchL1F3)
+summary(cbps.matchL3F3)
+summary(cbps.matchL5F3)
+```
+
+
+```{r}
+plot(cbps.matchL1F3)
+plot(cbps.matchL3F3)
+plot(cbps.matchL5F3)
+```
+
+
+```{r}
+bal.cbps.matchF3 <- get_covariate_balance(cbps.matchL1F3, cbps.matchL3F3, cbps.matchL5F3, 
+                                     panel.data = panel_df,
+                                     covariates = covs_to_check)
+#summary(bal.ps.matchF3)
+
+temp <- summary(bal.cbps.matchF3)
+temp <- lapply(temp, as.data.frame)
+temp <- lapply(temp, tibble::rownames_to_column, var = "time")
+
+write_xlsx(temp, "balances/cbps_matchF3.xlsx")
+```
+
+```{r}
+plot(bal.cbps.matchF3, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2,0.2))
+plot(bal.cbps.matchF3, type = "scatter", legend = TRUE, ylim = c(-0.05, 0.2))
+```
+
+#### Propensity Score Weighting
+
+```{r}
+ps.weightL1F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "ps.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L1),
+                 lead = 3,
+                 placebo.test = TRUE)
+
+ps.weightL3F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "ps.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L3),
+                 lead = 3,
+                 placebo.test = TRUE)
+
+ps.weightL5F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "ps.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L5),
+                 lead = 3,
+                 placebo.test = TRUE)
+
+summary(ps.weightL1F3)
+summary(ps.weightL3F3)
+summary(ps.weightL5F3)
+```
+
+
+```{r}
+plot(ps.weightL1F3)
+plot(ps.weightL3F3)
+plot(ps.weightL5F3)
+```
+
+
+```{r}
+bal.ps.weightF3 <- get_covariate_balance(ps.weightL1F3, ps.weightL3F3, ps.weightL5F3, 
+                                     panel.data = panel_df,
+                                     covariates = covs_to_check)
+#summary(bal.ps.matchF1)
+
+temp <- summary(bal.ps.weightF3)
+temp <- lapply(temp, as.data.frame)
+temp <- lapply(temp, tibble::rownames_to_column, var = "time")
+
+write_xlsx(temp, "balances/ps_weightF3.xlsx")
+```
+
+```{r}
+plot(bal.ps.weightF3, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2,0.2))
+plot(bal.ps.weightF3, type = "scatter", legend = TRUE, ylim = c(-0.05, 0.2))
+```
+
+#### CBPS Weighting
+```{r}
+cbps.weightL1F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "CBPS.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L1),
+                 lead = 3,
+                 placebo.test = TRUE)
+
+cbps.weightL3F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "CBPS.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L3),
+                 lead = 3,
+                 placebo.test = TRUE)
+
+cbps.weightL5F3 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "CBPS.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L5),
+                 lead = 3,
+                 placebo.test = TRUE)
+
+summary(cbps.weightL1F3)
+summary(cbps.weightL3F3)
+summary(cbps.weightL5F3)
+```
+
+
+```{r}
+plot(cbps.weightL1F3)
+plot(cbps.weightL3F3)
+plot(cbps.weightL5F3)
+```
+
+
+```{r}
+bal.cbps.weightF3 <- get_covariate_balance(cbps.weightL1F3, cbps.weightL3F3, cbps.weightL5F3, 
+                                     panel.data = panel_df,
+                                     covariates = covs_to_check)
+#summary(bal.cbps.weightF3)
+
+temp <- summary(bal.cbps.weightF3)
+temp <- lapply(temp, as.data.frame)
+temp <- lapply(temp, tibble::rownames_to_column, var = "time")
+
+write_xlsx(temp, "balances/cbps_weightF3.xlsx")
+
+saveRDS(list("L1F3" = cbps.weightL1F3, "L3F3" = cbps.weightL3F3, "L5F3" = cbps.weightL5F3), 
+        file = "matches/cbps_weightF3.rds")
+
+saveRDS(bal.cbps.weightF3, file = "balances/cbps_weightF3.rds")
+```
+
+```{r}
+plot(bal.cbps.weightF3, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, ylim = c(-0.2,0.2))
+plot(bal.cbps.weightF3, type = "scatter", legend = TRUE, ylim = c(-0.05, 0.2))
+```
+
+
+### Outcome 5-year post-disaster
+#### Propensity Score Matching
+```{r}
+ps.matchL1F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "ps.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L1),
+                 lead = 5,
+                 placebo.test = TRUE)
+
+ps.matchL3F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "ps.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L3),
+                 lead = 5,
+                 placebo.test = TRUE)
+
+ps.matchL5F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "ps.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L5),
+                 lead = 5,
+                 placebo.test = TRUE)
+
+summary(ps.matchL1F5)
+summary(ps.matchL3F5)
+summary(ps.matchL5F5)
+```
+
+
+```{r}
+plot(ps.matchL1F5)
+plot(ps.matchL3F5)
+plot(ps.matchL5F5)
+```
+
+
+```{r}
+bal.ps.matchF5 <- get_covariate_balance(ps.matchL1F5, ps.matchL3F5, ps.matchL5F5, 
+                                     panel.data = panel_df,
+                                     covariates = covs_to_check)
+#summary(bal.ps.matchF5)
+
+temp <- summary(bal.ps.matchF5)
+temp <- lapply(temp, as.data.frame)
+temp <- lapply(temp, tibble::rownames_to_column, var = "time")
+
+write_xlsx(temp, "balances/ps_matchF5.xlsx")
+```
+
+
+```{r}
+plot(bal.ps.matchF5, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, ylim = c(-0.2,0.2))
+plot(bal.ps.matchF5, type = "scatter", legend = TRUE, ylim = c(-0.05, 0.2))
+```
+
+#### CBPS Matching
+```{r}
+cbps.matchL1F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "CBPS.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L1),
+                 lead = 5,
+                 placebo.test = TRUE)
+
+cbps.matchL3F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "CBPS.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L3),
+                 lead = 5,
+                 placebo.test = TRUE)
+
+cbps.matchL5F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "CBPS.match",
+                 qoi = "att",
+                 size.match = 10,
+                 covs.formula = as.formula(formula_L5),
+                 lead = 5,
+                 placebo.test = TRUE)
+
+summary(cbps.matchL1F5)
+summary(cbps.matchL3F5)
+summary(cbps.matchL5F5)
+```
+
+
+```{r}
+plot(cbps.matchL1F5)
+plot(cbps.matchL3F5)
+plot(cbps.matchL5F5)
+```
+
+
+```{r}
+bal.cbps.matchF5 <- get_covariate_balance(cbps.matchL1F5, cbps.matchL3F5, cbps.matchL5F5, 
+                                     panel.data = panel_df,
+                                     covariates = covs_to_check)
+#summary(bal.ps.matchF3)
+
+temp <- summary(bal.cbps.matchF5)
+temp <- lapply(temp, as.data.frame)
+temp <- lapply(temp, tibble::rownames_to_column, var = "time")
+
+write_xlsx(temp, "balances/cbps_matchF5.xlsx")
+```
+
+```{r}
+plot(bal.cbps.matchF5, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2,0.2))
+plot(bal.cbps.matchF5, type = "scatter", legend = TRUE, ylim = c(-0.05, 0.2))
+```
+
+#### Propensity Score Weighting
+
+```{r}
+ps.weightL1F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "ps.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L1),
+                 lead = 5,
+                 placebo.test = TRUE)
+
+ps.weightL3F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "ps.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L3),
+                 lead = 5,
+                 placebo.test = TRUE)
+
+ps.weightL5F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "ps.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L5),
+                 lead = 5,
+                 placebo.test = TRUE)
+
+summary(ps.weightL1F5)
+summary(ps.weightL3F5)
+summary(ps.weightL5F5)
+```
+
+
+```{r}
+plot(ps.weightL1F5)
+plot(ps.weightL3F5)
+plot(ps.weightL5F5)
+```
+
+
+```{r}
+bal.ps.weightF5 <- get_covariate_balance(ps.weightL1F5, ps.weightL3F5, ps.weightL5F5, 
+                                     panel.data = panel_df,
+                                     covariates = covs_to_check)
+#summary(bal.ps.matchF1)
+
+temp <- summary(bal.ps.weightF5)
+temp <- lapply(temp, as.data.frame)
+temp <- lapply(temp, tibble::rownames_to_column, var = "time")
+
+write_xlsx(temp, "balances/ps_weightF5.xlsx")
+```
+
+```{r}
+plot(bal.ps.weightF5, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2,0.2))
+plot(bal.ps.weightF5, type = "scatter", legend = TRUE, ylim = c(-0.05, 0.2))
+```
+
+#### CBPS Weighting
+```{r}
+cbps.weightL1F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 1,
+                 refinement.method = "CBPS.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L1),
+                 lead = 5,
+                 placebo.test = TRUE)
+
+cbps.weightL3F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "CBPS.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L3),
+                 lead = 5,
+                 placebo.test = TRUE)
+
+cbps.weightL5F5 <- PanelMatch(panel.data = panel_df,
+                 lag = 5,
+                 refinement.method = "CBPS.weight",
+                 qoi = "att",
+                 covs.formula = as.formula(formula_L5),
+                 lead = 5,
+                 placebo.test = TRUE)
+
+summary(cbps.weightL1F5)
+summary(cbps.weightL3F5)
+summary(cbps.weightL5F5)
+```
+
+
+```{r}
+plot(cbps.weightL1F5)
+plot(cbps.weightL3F5)
+plot(cbps.weightL5F5)
+```
+
+
+```{r}
+bal.cbps.weightF5 <- get_covariate_balance(cbps.weightL1F5, cbps.weightL3F5, cbps.weightL5F5, 
+                                     panel.data = panel_df,
+                                     covariates = covs_to_check)
+#summary(bal.cbps.weightF5)
+
+temp <- summary(bal.cbps.weightF5)
+temp <- lapply(temp, as.data.frame)
+temp <- lapply(temp, tibble::rownames_to_column, var = "time")
+
+write_xlsx(temp, "balances/cbps_weightF5.xlsx")
+
+saveRDS(list("L1F5" = cbps.weightL1F5, "L3F5" = cbps.weightL3F5, "L5F5" = cbps.weightL5F5), 
+        file = "matches/cbps_weightF5.rds")
+
+saveRDS(bal.cbps.weightF5, file = "balances/cbps_weightF5.rds")
+```
+
+```{r}
+plot(bal.cbps.weightF5, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2,0.2))
+plot(bal.cbps.weightF5, type = "scatter", legend = TRUE, ylim = c(-0.05, 0.2))
+```
+
+
+## Matching Methods - SVC
+```{r}
+# File: perform_refinement.R
+# glm(reformulate(response = treatment, termlabels = colnames(pooled)[-c(1:3)]), family = binomial(link = "logit"), data = pooled)
+# CBPS::CBPS(reformulate(response = treatment, termlabels = colnames(pooled)[-c(1:3)]), family = binomial(link = "logit"), data = pooled)
+
+library(fields)
+library(MASS)
+
+set.seed(2727)
+county_subset <- sample.int(n = max(df$CountyID), size = 100, replace = FALSE)
+df_sub <- df |> filter(CountyID %in% county_subset)
+
+x <- cbind(df_sub$lat, df_sub$lng) # inputs: latitude and longitude
+
+# SVC
+d <- rdist(x)
+K <- Matern(d, smoothness=.5) # for smoothness paramter, should we do some sort of optimization?
+E <- eigen(K)
+
+y <- as.matrix(df_sub$treat.FEMA)
+x_s <- cbind(x[,1] * E$vectors[,1:45], x[,2] * E$vectors[,1:45]) # would have to play around with this number
+
+# add SVC back into panel data
+xs_vars <- paste0("x_s", seq_len(ncol(x_s)))
+colnames(x_s) <- xs_vars
+df_sub <- cbind(df_sub, x_s)
+
+formula_tst <- paste(
+  "y ~ bachelors_perc + med_household_income_adj + white_perc + pop_estimate + med_precip + med_avg_temp +",
+  paste(xs_vars, collapse = " + "))
+
+# regression
+ls <- glm(as.formula(formula_tst), data = df_sub, family = binomial(link = "logit"))
+summary(ls)
+```
+
+
+```{r}
+panel_df <- PanelData(panel.data = df_sub,
+                      unit.id = "CountyID",
+                      time.id = "TAX_YEAR",
+                      treatment = "treat.FEMA",
+                      outcome = "TOT_REV")
+
+
+formula_L1 <- paste(
+  "~ I(lag(bachelors_perc, 0:1)) + I(lag(med_household_income_adj, 0:1)) + I(lag(white_perc, 0:1)) + I(lag(pop_estimate, 0:1)) + med_precip + med_avg_temp +",
+  paste(xs_vars, collapse = " + "))
+
+formula_L3 <- paste(
+  "~ I(lag(bachelors_perc, 0:3)) + I(lag(med_household_income_adj, 0:3)) + I(lag(white_perc, 0:3)) + I(lag(pop_estimate, 0:3)) + med_precip + med_avg_temp +",
+  paste(xs_vars, collapse = " + "))
+
+formula_L5 <- paste(
+  "~ I(lag(bachelors_perc, 0:5)) + I(lag(med_household_income_adj, 0:5)) + I(lag(white_perc, 0:5)) + I(lag(pop_estimate, 0:5)) + med_precip + med_avg_temp +",
+  paste(xs_vars, collapse = " + "))
+```
+
+# MATCHIT: Total Effect of a County Experiencing 1 or More Disasters on the County's Nonprofit Revenue
+Let the unit of analysis $i$ represent a US county.
+Let $A_i^X$ represent the treatment of county $i$ in year $X$. If county $i$ had nonzero disaster damage in the year $X$, then $A_i^X=1$. Otherwise, $A_i^X=0$.
+Let $Y_{tot,i}^X$ be the total nonprofit revenue of county $i$ reported in the year $X$. Let $Y_{med,i}^X$ be the median nonprofit revenue of county $i$ reported in the year $X$. 
+
+First, let's create a county-level dataset where each row corresponds to a county and we have a column `treatment` representing $A_i^{2000}$. We will also include the following:
+- geoid of the county (FIPS code)
+- state the county is in 
+- latitude and longitude of the centroid of the county
+- the median temperature for the state the county belongs to for the years 1997, 1998, 1999
+- socioeconomic factors for the year 1990
+- the total number of disasters in that county in the period 1997-1999
+- US Census Region or Division
+## Data Pre-processing
+```{r, message = F}
+library(data.table)
+library(readr)
+library(dplyr)
+library(tidyverse)
+
+YEAR <- 2000
+
+# Basic county information (lat/long of centroid, county FIPS, county name, state)
+counties <- as.data.table(read_csv("counties_data/uscounties.csv", show_col_types = FALSE)) # https://simplemaps.com/data/us-counties
+
+# socioeconomic factors
+source("https://raw.githubusercontent.com/UI-Research/nccs-geo/main/get_census_data.R")
+census_df  <- get_census_data( geo="county", years=c(1990))   #3,142 counties
+
+df <- merge(census_df, counties, by.x = "geoid_2010", by.y = "county_fips", all.x = TRUE)
+
+# removing unnecessary columns
+df <- df |> select(-population, -county_ascii)
+
+# disaster data
+disasters <- readRDS("disasters.rds")
+disasters <- disasters |> 
+      filter(TAX_YEAR >= YEAR-3 & TAX_YEAR <= YEAR) |> 
+      group_by(county.census.geoid, TAX_YEAR) |>
+      summarize(
+            n_disasters = n(),
+            across(where(is.numeric), sum, .names = "{.col}_TOT")
+      )
+
+df <- merge(df, disasters |> 
+                  filter(TAX_YEAR == YEAR) |> 
+                  mutate(LOG_TotPropDmg2015 = log(`PropertyDmg(ADJ 2015)_TOT` + 1)) |> 
+                  select(county.census.geoid, n_disasters, LOG_TotPropDmg2015), 
+            by.x = 'geoid_2010', by.y = 'county.census.geoid', all.x = TRUE)
+
+df <- df |> mutate(n_disasters = replace_na(n_disasters, 0),
+                   LOG_TotPropDmg2015 = replace_na(LOG_TotPropDmg2015, 0))
+
+df <- merge(df, disasters |> filter(TAX_YEAR < YEAR) |> group_by(county.census.geoid) |> summarize(n_disasters.PRE = sum(n_disasters)),
+            by.x = 'geoid_2010', by.y = 'county.census.geoid', all.x = TRUE )
+
+# If missing, that means there was no corresponding record in disasters df, which means county did not have any disasters in the period 1997-1999
+df <- df |> mutate(n_disasters.PRE = replace_na(n_disasters.PRE, 0))
+
+# location (categorical)
+source("../SCRIPTS/clean_helper.R")
+df <- add_regions_and_divisions(df |> rename(CENSUS_STATE_ABBR = state_id))
+```
+
+There are some missing values we need to handle.
+```{r}
+missing_dat <- na_counts_df(df)
+
+missing_counties <- df |> filter(is.na(county)) |> select(geoid_2010)
+missing_counties <- missing_counties$geoid_2010
+```
+From [County Geography Changes 1990 to Present](https://www.cdc.gov/nchs/nvss/bridged_race/county_geography-_changes1990-present.pdf#:~:text=Valdez%2DCordova%20Census%20Area%2C%20Alaska%20(FIPS,Census%20Area%20(FIPS%20Code%3D%2002066).)
+- "02261" : Valdez-Cordova Census Area (Alaska). In 2019, was split into two areas: 02063 and 02066
+- "02270" : Wade Hampton Census Area (Alaska). In 2015, was renamed and given new FIPS: 02158
+- "46113" : Shannon County (South Dakota). In 2015, was renamed and given new FIPS: 46102
+
+```{r}
+cols_to_fill <- c("county", "county_full", "CENSUS_STATE_ABBR", "state_name", "lat", "lng", "REGION", "DIVISION")
+
+df[df$geoid_2010 == "02261", cols_to_fill] <- list("Valdez-Cordova",
+                                                   "Valdez-Cordova Census Area",
+                                                   "AK",
+                                                   "Alaska",
+                                                   61.34984,
+                                                   -145.023141,
+                                                   "WEST",
+                                                   "PACIFIC")
+
+df[df$geoid_2010 == "02270", cols_to_fill] <- list("Kusilvak",
+                                                   "Kusilvak Census Area",
+                                                   "AK",
+                                                   "Alaska",
+                                                   62.1547,
+                                                   -163.3812,
+                                                   "WEST",
+                                                   "PACIFIC")
+
+df[df$geoid_2010 == "46113", cols_to_fill] <- list("Oglala Lakota",
+                                                   "Oglala Lakota County",
+                                                   "SD",
+                                                   "South Dakota",
+                                                   43.3355,
+                                                   -102.5516,
+                                                   "MIDWEST",
+                                                   "CENTRAL-NW")
+```
+
+From [Bureau of Labor Statistics - New 2024 Connecticut Counties](https://www.bls.gov/cew/classifications/areas/new-2024-connecticut-counties.htm#:~:text=Table_title:%20New%20County%20Codes%20and%20Titles%20Table_content:,Title:%20Northeastern%20Connecticut%20Planning%20Region%2C%20Connecticut%20%7C):
+"In 2022, the State of Connecticut requested that The U.S. Census Bureau adopt its nine planning regions as county-equivalents. These nine planning regions replace Connecticut's eight counties used historically... There is no direct mapping between the old and new counties."
+- "09001" : Fairfield County
+- "09003" : Hartford County
+- "09005" : Litchfield County
+- "09007" : Middlesex County
+- "09009" : New Haven County
+- "09011" : New London County
+- "09013" : Tolland County
+- "09015" : Windham County
+
+```{r}
+df[df$geoid_2010 == "09001", cols_to_fill] <- list("Fairfield", "Fairfield County",
+                                                   "CT", "Connecticut",
+                                                   41.227413, -73.367061,
+                                                   "NORTHEAST", "NEW-ENGLAND")
+
+df[df$geoid_2010 == "09003", cols_to_fill] <- list("Hartford", "Hartford County",
+                                                   "CT", "Connecticut",
+                                                   41.806053, -72.732916,
+                                                   "NORTHEAST", "NEW-ENGLAND")
+
+df[df$geoid_2010 == "09005", cols_to_fill] <- list("Litchfield", "Litchfield County",
+                                                   "CT", "Connecticut",
+                                                   41.791883, -73.235404,
+                                                   "NORTHEAST", "NEW-ENGLAND")
+
+df[df$geoid_2010 == "09007", cols_to_fill] <- list("Middlesex", "Middlesex County",
+                                                   "CT", "Connecticut",
+                                                   41.433003, -72.52278,
+                                                   "NORTHEAST", "NEW-ENGLAND")
+
+df[df$geoid_2010 == "09009", cols_to_fill] <- list("New Haven", "New Haven County",
+                                                   "CT", "Connecticut",
+                                                   41.349717, -72.900204,
+                                                   "NORTHEAST", "NEW-ENGLAND")
+
+df[df$geoid_2010 == "09011", cols_to_fill] <- list("New London", "New London County",
+                                                   "CT", "Connecticut",
+                                                   41.472652, -72.108634,
+                                                   "NORTHEAST", "NEW-ENGLAND")
+
+df[df$geoid_2010 == "09013", cols_to_fill] <- list("Tolland", "Tolland County",
+                                                   "CT", "Connecticut",
+                                                   41.858081, -72.340978,
+                                                   "NORTHEAST", "NEW-ENGLAND")
+
+df[df$geoid_2010 == "09015", cols_to_fill] <- list("Windham", "Windham County",
+                                                   "CT", "Connecticut",
+                                                   41.824999, -71.990702,
+                                                   "NORTHEAST", "NEW-ENGLAND")
+```
+
+Now, add climate data and handle missing values.
+```{r}
+# The following counties had a data download failure: 02261, 02270, 11001, 46113, 51678
+# I will fix these by hand below
+# Starting with precipitation
+precipitation <- readRDS("climate_data/all_county_precip_data.rds")
+
+url_pars <- list(scope = "county",
+                 parameter = "pcp",
+                 timescale = 1,
+                 month = 0,
+                 begYear = 1990,
+                 endYear = 2020,
+                 format = "csv")
+
+all_counties <- data.frame(state = character(), geoid = character(), year = integer(), month = integer(), value = numeric())
+
+# 02261 : Valdez-Cordova Census Area (Alaska). In 2019, was split into two areas: 02063 (Chugach Census Area) and 02066 (Copper River Census Area). 
+# Will combine the data via a weighted average: https://data.census.gov/profile gives area (in square miles) of US counties
+# Chugach (9,575 qmi) + Copper River (24,647 sqmi) = Valdez-Cordova (34,222 sqmi)
+
+url <- sprintf("https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/%s/time-series/%s/%s/%d/%d/%d-%d/data.%s", 
+               url_pars$scope, "AK-063", url_pars$parameter, url_pars$timescale, 
+               url_pars$month, url_pars$begYear, url_pars$endYear, url_pars$format)
+
+chugach <- read.csv(url) |> slice(3:n()) # first two rows are unecessary
+dates <- chugach[[1]] # Note these dates, years, and months vectors will be the same for all records!
+dat.year <- as.integer(substr(dates, 1, 4))
+dat.month <- as.integer(substr(dates, 5, 6))
+chugach.values <- as.double(chugach[[2]])
+
+url <- sprintf("https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/%s/time-series/%s/%s/%d/%d/%d-%d/data.%s", 
+               url_pars$scope, "AK-066", url_pars$parameter, url_pars$timescale, 
+               url_pars$month, url_pars$begYear, url_pars$endYear, url_pars$format)
+
+copper <- read.csv(url) |> slice(3:n()) # first two rows are unecessary
+copper.values <- as.double(copper[[2]])
+
+weighted_avg.values <- (0.28 * chugach.values) + (0.72 * copper.values)
+
+all_counties <- rbind(all_counties, 
+                      data.frame(state = "Alaska", geoid = "02261", year = dat.year, month = dat.month, val = weighted_avg.values))
+
+# 02270 : Wade Hampton Census Area (Alaska). In 2015, was renamed and given new FIPS: 02158 (Kusilvak Census Area)
+url <- sprintf("https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/%s/time-series/%s/%s/%d/%d/%d-%d/data.%s", 
+               url_pars$scope, "AK-158", url_pars$parameter, url_pars$timescale, 
+               url_pars$month, url_pars$begYear, url_pars$endYear, url_pars$format)
+
+dat <- read.csv(url) |> slice(3:n()) # first two rows are unecessary
+dat.values <- as.double(dat[[2]])
+all_counties <- rbind(all_counties, 
+                      data.frame(state = "Alaska", geoid = "02270", year = dat.year, month = dat.month, val = dat.values))
+
+# 11001 : Washington D.C. is listed as a county in Maryland (MD-511) in the NOAA API
+url <- sprintf("https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/%s/time-series/%s/%s/%d/%d/%d-%d/data.%s", 
+               url_pars$scope, "MD-511", url_pars$parameter, url_pars$timescale, 
+               url_pars$month, url_pars$begYear, url_pars$endYear, url_pars$format)
+
+dat <- read.csv(url) |> slice(3:n()) # first two rows are unecessary
+dat.values <- as.double(dat[[2]])
+all_counties <- rbind(all_counties, 
+                      data.frame(state = "District of Columbia", geoid = "11001", year = dat.year, month = dat.month, val = dat.values))
+
+# 46113 : Shannon County (South Dakota). In 2015, was renamed and given new FIPS: 46102 (Oglala Lakota County)
+url <- sprintf("https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/%s/time-series/%s/%s/%d/%d/%d-%d/data.%s", 
+               url_pars$scope, "SD-102", url_pars$parameter, url_pars$timescale, 
+               url_pars$month, url_pars$begYear, url_pars$endYear, url_pars$format)
+
+dat <- read.csv(url) |> slice(3:n()) # first two rows are unecessary
+dat.year <- as.integer(substr(dat[[1]], 1, 4))
+dat.month <- as.integer(substr(dat[[1]], 5, 6))
+dat.values <- as.double(dat[[2]])
+all_counties <- rbind(all_counties, 
+                      data.frame(state = "South Dakota", geoid = "46113", year = dat.year, month = dat.month, val = dat.values))
+
+# 51678 : Lexington City (VA) - an independent city meaning not part of a county; either drop or impute as average/median values of Virginia. From Wikipedia: "It is the county seat of Rockbridge County, although the two are separate jurisdictions, and is combined with it for statistical purposes by the Bureau of Economic Analysis." - will impute with Rockbridge County values
+url <- sprintf("https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/%s/time-series/%s/%s/%d/%d/%d-%d/data.%s", 
+               url_pars$scope, "VA-163", url_pars$parameter, url_pars$timescale, 
+               url_pars$month, url_pars$begYear, url_pars$endYear, url_pars$format)
+
+dat <- read.csv(url) |> slice(3:n()) # first two rows are unecessary
+dat.year <- as.integer(substr(dat[[1]], 1, 4))
+dat.month <- as.integer(substr(dat[[1]], 5, 6))
+dat.values <- as.double(dat[[2]])
+all_counties <- rbind(all_counties, 
+                      data.frame(state = "Virginia", geoid = "51678", year = dat.year, month = dat.month, val = dat.values))
+
+precipitation <- rbind(precipitation, all_counties)
+saveRDS(precipitation, "climate_data/precipitation.rds")
+```
+
+```{r}
+# Moving on to average temperature
+rm(list=ls())
+average_temp <- readRDS("climate_data/all_county_avg_temp_data.rds")
+
+url_pars <- list(scope = "county",
+                 parameter = "tavg",
+                 timescale = 1,
+                 month = 0,
+                 begYear = 1990,
+                 endYear = 2020,
+                 format = "csv")
+
+all_counties <- data.frame(state = character(), geoid = character(), year = integer(), month = integer(), value = numeric())
+
+# 02261 : Valdez-Cordova Census Area (Alaska). In 2019, was split into two areas: 02063 (Chugach Census Area) and 02066 (Copper River Census Area). 
+# Will combine the data via a weighted average: https://data.census.gov/profile gives area (in square miles) of US counties
+# Chugach (9,575 qmi) + Copper River (24,647 sqmi) = Valdez-Cordova (34,222 sqmi)
+
+url <- sprintf("https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/%s/time-series/%s/%s/%d/%d/%d-%d/data.%s", 
+               url_pars$scope, "AK-063", url_pars$parameter, url_pars$timescale, 
+               url_pars$month, url_pars$begYear, url_pars$endYear, url_pars$format)
+
+chugach <- read.csv(url) |> slice(3:n()) # first two rows are unecessary
+dates <- chugach[[1]] # Note these dates, years, and months vectors will be the same for all records!
+dat.year <- as.integer(substr(dates, 1, 4))
+dat.month <- as.integer(substr(dates, 5, 6))
+chugach.values <- as.double(chugach[[2]])
+
+url <- sprintf("https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/%s/time-series/%s/%s/%d/%d/%d-%d/data.%s", 
+               url_pars$scope, "AK-066", url_pars$parameter, url_pars$timescale, 
+               url_pars$month, url_pars$begYear, url_pars$endYear, url_pars$format)
+
+copper <- read.csv(url) |> slice(3:n()) # first two rows are unecessary
+copper.values <- as.double(copper[[2]])
+
+weighted_avg.values <- (0.28 * chugach.values) + (0.72 * copper.values)
+
+all_counties <- rbind(all_counties, 
+                      data.frame(state = "Alaska", geoid = "02261", year = dat.year, month = dat.month, val = weighted_avg.values))
+
+# 02270 : Wade Hampton Census Area (Alaska). In 2015, was renamed and given new FIPS: 02158 (Kusilvak Census Area)
+url <- sprintf("https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/%s/time-series/%s/%s/%d/%d/%d-%d/data.%s", 
+               url_pars$scope, "AK-158", url_pars$parameter, url_pars$timescale, 
+               url_pars$month, url_pars$begYear, url_pars$endYear, url_pars$format)
+
+dat <- read.csv(url) |> slice(3:n()) # first two rows are unecessary
+dat.values <- as.double(dat[[2]])
+all_counties <- rbind(all_counties, 
+                      data.frame(state = "Alaska", geoid = "02270", year = dat.year, month = dat.month, val = dat.values))
+
+# 11001 : Washington D.C. is listed as a county in Maryland (MD-511) in the NOAA API
+url <- sprintf("https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/%s/time-series/%s/%s/%d/%d/%d-%d/data.%s", 
+               url_pars$scope, "MD-511", url_pars$parameter, url_pars$timescale, 
+               url_pars$month, url_pars$begYear, url_pars$endYear, url_pars$format)
+
+dat <- read.csv(url) |> slice(3:n()) # first two rows are unecessary
+dat.values <- as.double(dat[[2]])
+all_counties <- rbind(all_counties, 
+                      data.frame(state = "District of Columbia", geoid = "11001", year = dat.year, month = dat.month, val = dat.values))
+
+# 46113 : Shannon County (South Dakota). In 2015, was renamed and given new FIPS: 46102 (Oglala Lakota County)
+url <- sprintf("https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/%s/time-series/%s/%s/%d/%d/%d-%d/data.%s", 
+               url_pars$scope, "SD-102", url_pars$parameter, url_pars$timescale, 
+               url_pars$month, url_pars$begYear, url_pars$endYear, url_pars$format)
+
+dat <- read.csv(url) |> slice(3:n()) # first two rows are unecessary
+dat.year <- as.integer(substr(dat[[1]], 1, 4))
+dat.month <- as.integer(substr(dat[[1]], 5, 6))
+dat.values <- as.double(dat[[2]])
+all_counties <- rbind(all_counties, 
+                      data.frame(state = "South Dakota", geoid = "46113", year = dat.year, month = dat.month, val = dat.values))
+
+# 51678 : Lexington City (VA) - an independent city meaning not part of a county; either drop or impute as average/median values of Virginia. From Wikipedia: "It is the county seat of Rockbridge County, although the two are separate jurisdictions, and is combined with it for statistical purposes by the Bureau of Economic Analysis." - will impute with Rockbridge County values
+url <- sprintf("https://www.ncei.noaa.gov/access/monitoring/climate-at-a-glance/%s/time-series/%s/%s/%d/%d/%d-%d/data.%s", 
+               url_pars$scope, "VA-163", url_pars$parameter, url_pars$timescale, 
+               url_pars$month, url_pars$begYear, url_pars$endYear, url_pars$format)
+
+dat <- read.csv(url) |> slice(3:n()) # first two rows are unecessary
+dat.year <- as.integer(substr(dat[[1]], 1, 4))
+dat.month <- as.integer(substr(dat[[1]], 5, 6))
+dat.values <- as.double(dat[[2]])
+all_counties <- rbind(all_counties, 
+                      data.frame(state = "Virginia", geoid = "51678", year = dat.year, month = dat.month, val = dat.values))
+
+average_temp <- rbind(average_temp, all_counties)
+saveRDS(average_temp, "climate_data/average_temperature.rds")
+```
+
+```{r}
+# climate data
+precipitation <- readRDS("climate_data/precipitation.rds") |> filter(year >= YEAR-3 & year < YEAR) 
+
+df <- merge(df, precipitation |> group_by(geoid) |> summarize(med_precip = median(val, na.rm = TRUE), mean_precip = mean(val, na.rm = TRUE)),
+      by.x = "geoid_2010", by.y = "geoid", all.x = TRUE)
+
+avg_temp <- readRDS("climate_data/average_temperature.rds") |> filter(year >= YEAR-3 & year < YEAR)
+
+df <- merge(df, avg_temp |> group_by(geoid) |> summarize(med_avg_temp = median(val, na.rm = TRUE), mean_avg_temp = mean(val, na.rm = TRUE)),
+      by.x = "geoid_2010", by.y = "geoid", all.x = TRUE)
+
+missing_dat <- na_counts_df(df)
+```
+
+Let's add in a few treatment options.
+```{r}
+df <- df |> mutate(treat.n_disasters = as.numeric(n_disasters > 0),
+                   treat.median_log_damage = as.numeric(LOG_TotPropDmg2015 > 11), # about 60K of property damage
+                   treat.cat = case_when(
+                         LOG_TotPropDmg2015 <= 0 ~ "none",
+                         LOG_TotPropDmg2015 <= 11 ~ "small", # up to ~60K
+                         LOG_TotPropDmg2015 <= 13 ~ "med", # up to ~442K
+                         LOG_TotPropDmg2015 <= 22 ~ "large", # up to 3.5 trillion
+                   ))
+
+df |> select(geoid_2010, LOG_TotPropDmg2015, n_disasters, treat.n_disasters, treat.median_log_damage, treat.cat)
+```
+
+
+## Pre-matching Balance
+Now we can assess covariate balance prior to matching.
+```{r}
+library(MatchIt)
+
+m.initial <- matchit(treat.median_log_damage ~ lat*lng + med_precip + med_avg_temp,
+                     data = df,
+                     method = NULL,
+                     distance = "glm")
+
+summary(m.initial)
+```
+
+# Scratchwork
+```{r}
+library(data.table)
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(fastDummies)
+
+df <- readRDS("mega.rds") # 1773 orgs have "00000" as geoid; 86,752 are missing NTEE code (~6.74%) -- 1,285,846 total orgs
+
+# Split up NTEEV2 into 14 dummy variables (12 categories, 1 unknown category, 1 missing category)
+ntee <- df |> 
+      select(EIN2, NTEEV2, TAX_YEAR, county.census.geoid) |>
+      filter(county.census.geoid != "00000") |>
+      dummy_cols(select_columns = c("NTEEV2"), ignore_na = FALSE, remove_selected_columns = TRUE)
+
+# Add aggregate the totals of each NTEEV2 category by county and year
+ntee <- ntee |> select(-EIN2) |>
+      group_by(county.census.geoid, TAX_YEAR) |>
+      summarise(across(everything(), ~sum(.x, na.rm = TRUE))) |>
+      ungroup()
+
+# Add in total number of organizations and proportion missing column
+ntee <- ntee |> mutate(NUM_ORGS = rowSums(ntee |> select(-county.census.geoid, -TAX_YEAR)),
+                       NTEE_NA_PROP = NTEEV2_NA/NUM_ORGS)
+
+# Within each county,year pair, I want to keep track of the proportion of records with missing financial data
+# I also want to compute the total revenue, expenses, and assets across that county in that year
+# For now, we are dropping records that listed the invalid county code "00000" (1773 orgs)
+df <- df |> select(TAX_YEAR, TOT_REV, TOT_EXP, TOT_ASSET, county.census.geoid) |>
+      rename(REV = TOT_REV, EXP = TOT_EXP, ASSET = TOT_ASSET) |>
+      group_by(county.census.geoid, TAX_YEAR) |> 
+      summarize(across(where(is.numeric), ~sum(is.na(.x))/n(), .names = "{.col}_prop_miss"),
+                across(any_of(c("REV", "EXP", "ASSET")), ~sum(.x, na.rm = TRUE), .names = "TOT_{.col}"),
+                .groups = "drop") |>
+      ungroup() |>
+      filter(county.census.geoid != "00000")
+
+df <- merge(df, ntee, by = c("county.census.geoid", "TAX_YEAR")) 
+
+# IDs for two counties were changed after 2010. Some datasets use latest ID, others use 2010 ID
+df <- df |> mutate(geoid_2010 = county.census.geoid)
+df$geoid_2010[df$county.census.geoid == "02158"] <- "02270"
+df$geoid_2010[df$county.census.geoid == "46102"] <- "46113"
+```
+
+
+```{r}
+# File: perform_refinement.R
+# glm(reformulate(response = treatment, termlabels = colnames(pooled)[-c(1:3)]), family = binomial(link = "logit"), data = pooled)
+# CBPS::CBPS(reformulate(response = treatment, termlabels = colnames(pooled)[-c(1:3)]), family = binomial(link = "logit"), data = pooled)
+
+library(fields)
+library(MASS)
+
+## Nonprofit data
+set.seed(2727)
+county_subset <- sample.int(n = max(df$CountyID), size = 500, replace = FALSE)
+df_sub <- df |> filter(CountyID %in% county_subset)
+
+x <- cbind(df_sub$lat, df_sub$lng) # inputs: latitude and longitude
+
+d <- rdist(x)
+K <- Matern(d, smoothness=.5) # for smoothness paramter, should we do some sort of optimization?
+E <- eigen(K)
+
+y <- as.matrix(df_sub$treat.FEMA)
+x_s <- cbind(x[,1] * E$vectors[,1:45], x[,2] * E$vectors[,1:45]) # would have to play around with this number
+
+xs_vars <- paste0("x_s", seq_len(ncol(x_s)))
+colnames(x_s) <- xs_vars
+df_sub <- cbind(df_sub, x_s)
+
+# c("bachelors_perc", "med_household_income_adj", "white_perc",  "pop_estimate", "med_precip", "med_avg_temp", "TOT_REV")
+formula_string <- paste(
+  "y ~ bachelors_perc + med_household_income_adj + white_perc + pop_estimate + med_precip + med_avg_temp +",
+  paste(xs_vars, collapse = " + "))
+
+ls <- glm(as.formula(formula_string), data = df_sub, family = binomial(link = "logit"))
+summary(ls)
+
+panel_df <- PanelData(panel.data = df_sub,
+                      unit.id = "CountyID",
+                      time.id = "TAX_YEAR",
+                      treatment = "treat.FEMA",
+                      outcome = "TOT_REV")
+
+
+formula_L1 <- paste(
+  "~ I(lag(bachelors_perc, 0:1)) + I(lag(med_household_income_adj, 0:1)) + I(lag(white_perc, 0:1)) + I(lag(pop_estimate, 0:1)) + med_precip + med_avg_temp +",
+  paste(xs_vars, collapse = " + "))
+
+formula_L3 <- paste(
+  "~ I(lag(bachelors_perc, 0:3)) + I(lag(med_household_income_adj, 0:3)) + I(lag(white_perc, 0:3)) + I(lag(pop_estimate, 0:3)) + med_precip + med_avg_temp +",
+  paste(xs_vars, collapse = " + "))
+
+formula_L5 <- paste(
+  "~ I(lag(bachelors_perc, 0:5)) + I(lag(med_household_income_adj, 0:5)) + I(lag(white_perc, 0:5)) + I(lag(pop_estimate, 0:5)) + med_precip + med_avg_temp +",
+  paste(xs_vars, collapse = " + "))
+
+```
+

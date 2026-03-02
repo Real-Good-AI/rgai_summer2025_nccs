@@ -1,0 +1,466 @@
+---
+title: "visualizations"
+author: "Mayleen"
+date: "2025-12-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(data.table)
+library(readr)
+library(dplyr)
+
+disaster <- readRDS("disasters.rds")
+dt <- readRDS("mega.rds")
+
+disaster.N <- disaster[, .(N_DISASTERS = .N), by = .(county.census.geoid, TAX_YEAR)] # how many disasters per county per year?
+
+dt <- merge(dt, disaster.N, by = c("TAX_YEAR", "county.census.geoid"), all.x = TRUE, sort = FALSE)
+setorder(dt, EIN2, TAX_YEAR)
+setnafill(dt, fill = 0, cols = c("N_DISASTERS")) # If there was no match, there likely was not a disaster in that county in that year
+dt[, N_DISASTERS := fifelse(county.census.geoid == "00000", NA_integer_, N_DISASTERS)] # If the county ID is 00000 then we should consider N_DISASTERS missing
+
+key_var <- c("EIN2", "TAX_YEAR")
+dup_groups <- dt[, .N, by = key_var]
+setnames(dup_groups, "N", "N_KEY_PAIR")
+
+dt <- merge(dt, dup_groups, all = TRUE, by = key_var)
+
+dt[, N_YEARS := uniqueN(TAX_YEAR), by = EIN2]
+
+dt[, NTEE_FACTOR := as.factor(NTEEV2)]
+dt[is.na(NTEE_FACTOR), NTEE_FACTOR := "Missing (NA)"]
+
+dt[, no_location := county.census.geoid == "00000"]
+dt[, duplicate := N_KEY_PAIR >= 2]
+dt[, less_than_6 := N_YEARS < 6]
+dt[, normal := !no_location & !duplicate & !less_than_6]
+
+ntee.totals <- dt[, 
+      .(no_location  = sum(no_location,  na.rm = TRUE),
+        duplicate    = sum(duplicate,    na.rm = TRUE),
+        less_than_6  = sum(less_than_6,  na.rm = TRUE),
+        normal       = sum(normal,       na.rm = TRUE),
+        total        = .N),
+      by = NTEE_FACTOR]
+
+ntee_labels <- c(
+  "ART" = "Arts, Culture, and Humanities",
+  "EDU" = "Education (minus Universities)",
+  "ENV" = "Environment and Animals",
+  "HEL" = "Health (minus Hospitals)",
+  "HMS" = "Human Services",
+  "HOS" = "Hospitals",
+  "IFA" = "International, Foreign Affairs",
+  "MMB" = "Mutual/Membership Benefit",
+  "PSB" = "Public, Societal Benefit",
+  "REL" = "Religion Related",
+  "UNI" = "Universities",
+  "UNU" = "Other",
+  "Missing (NA)" = "Missing (NA)"
+)
+
+ntee.totals[
+  , NTEE_FACTOR := ntee_labels[NTEE_FACTOR]
+]
+
+# dt[, REC_FLAG := fcase(
+#   county.census.geoid == "00000", "no_location",
+#   N_KEY_PAIR >= 2,               "duplicate",
+#   N_YEARS < 6,              "less_than_6",
+#   default = "normal"
+# )]
+# 
+# ntee.totals <- dt[, .N, by = .(NTEE_FACTOR, REC_FLAG)]
+# ntee.totals <- dcast(
+#   ntee.totals,
+#   NTEE_FACTOR ~ REC_FLAG,
+#   value.var = "N",
+#   fill = 0
+# )
+      
+```
+
+# NTEE
+```{r}
+library(ggplot2) 
+#library(forcats)
+
+ntee.totals[, Prop := round(total/nrow(dt) * 100, digits = 2)]
+
+ggplot(ntee.totals, aes(x = NTEE_FACTOR, y = Prop)) +
+      geom_bar(stat= "identity", fill="#FDC010", color='black') +
+      xlab("NTEE Category") +
+      ylab("Percent %") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) + # so that y-axis has labels with commas in the thousands place 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Percent of NTEE Categories in the Dataset") +
+      geom_text(aes(label = Prop), vjust = -0.3, size = 3)
+
+```
+
+```{r}
+long <- melt(
+  ntee.totals,
+  id.vars = c("NTEE_FACTOR", "total"),
+  measure.vars = c("no_location", "duplicate", "less_than_6", "normal"),
+  variable.name = "REC_FLAG",
+  value.name = "count"
+)
+
+long[, proportion := count / total]
+
+# long <- melt(
+#   ntee.totals,
+#   id.vars = c("NTEE_FACTOR", "total"),
+#   variable.name = "REC_FLAG",
+#   value.name = "count"
+# )
+# long[, proportion := count / total]
+
+ggplot(long, aes(x = NTEE_FACTOR, y = proportion, fill = REC_FLAG)) +
+  geom_col(width = 0.8) +
+  scale_y_continuous(breaks = seq(0,1,0.025), labels = scales::percent) +
+  labs(
+    x = "NTEE Category",
+    y = "Proportion",
+    fill = "Data Type") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      scale_fill_manual(values = c("#FDC010", "#e70ed1", "#ffa996", "#1796D2")) +
+  coord_cartesian(ylim = c(0.8, 1))
+      
+```
+
+```{r}
+total.no_loc = sum(ntee.totals$no_location)
+ntee.totals[, no_loc_perc.within := round(no_location/total.no_loc * 100, digits = 2)]
+ntee.totals[, no_loc_perc.all := round(no_location/total * 100, digits = 2)]
+
+ggplot(ntee.totals, aes(x = NTEE_FACTOR, y = no_loc_perc.within)) +
+      geom_bar(stat= "identity", fill="#1796D2", color='black') +
+      xlab("NTEE Category") +
+      ylab("Percent %") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) + # so that y-axis has labels with commas in the thousands place 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Percent of Total Records: Missing Location Information") +
+      geom_text(aes(label = no_loc_perc.within), vjust = -0.3, size = 3)
+
+ggplot(ntee.totals, aes(x = NTEE_FACTOR, y = no_loc_perc.all)) +
+      geom_bar(stat= "identity", fill="#65008d", color='black') +
+      xlab("NTEE Category") +
+      ylab("Percent %") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) + # so that y-axis has labels with commas in the thousands place 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Percent of Each NTEE Category: Missing Location Information") +
+      geom_text(aes(label = no_loc_perc.all), vjust = -0.3, size = 3)
+```
+
+
+```{r}
+total.dups = sum(ntee.totals$duplicate)
+ntee.totals[, dup_perc.within := round(duplicate/total.dups * 100, digits = 2)]
+ntee.totals[, dup_perc.all := round(duplicate/total * 100, digits = 2)]
+
+ggplot(ntee.totals, aes(x = NTEE_FACTOR, y = dup_perc.within)) +
+      geom_bar(stat= "identity", fill="#1796D2", color='black') +
+      xlab("NTEE Category") +
+      ylab("Percent %") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) + # so that y-axis has labels with commas in the thousands place 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Percent of Total Records: Duplicates") +
+      geom_text(aes(label =  dup_perc.within), vjust = -0.3, size = 3)
+
+ggplot(ntee.totals, aes(x = NTEE_FACTOR, y = dup_perc.all)) +
+      geom_bar(stat= "identity", fill="#65008d", color='black') +
+      xlab("NTEE Category") +
+      ylab("Percent %") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) + # so that y-axis has labels with commas in the thousands place 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Percent of Each NTEE Category: Duplicates") +
+      geom_text(aes(label = dup_perc.all), vjust = -0.3, size = 3)
+```
+
+
+```{r}
+total.lt6 = sum(ntee.totals$less_than_6)
+ntee.totals[, lt6_perc.within := round(less_than_6/total.lt6 * 100, digits = 2)]
+ntee.totals[, lt6_perc.all := round(less_than_6/total * 100, digits = 2)]
+
+ggplot(ntee.totals, aes(x = NTEE_FACTOR, y = lt6_perc.within)) +
+      geom_bar(stat= "identity", fill="#1796D2", color='black') +
+      xlab("NTEE Category") +
+      ylab("Percent %") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) + # so that y-axis has labels with commas in the thousands place 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Percent of Total Records: Less Than 6 Years of Data") +
+      geom_text(aes(label =  lt6_perc.within), vjust = -0.3, size = 3)
+
+ggplot(ntee.totals, aes(x = NTEE_FACTOR, y = lt6_perc.all)) +
+      geom_bar(stat= "identity", fill="#65008d", color='black') +
+      xlab("NTEE Category") +
+      ylab("Percent %") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) + # so that y-axis has labels with commas in the thousands place 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Percent of Each NTEE Category: Less Than 6 Years of Data") +
+      geom_text(aes(label = lt6_perc.all), vjust = -0.3, size = 3)
+```
+
+
+# SIZE
+```{r}
+library(ggplot2) 
+
+ggplot(dt, aes(x=log(SIZE+1))) +
+      geom_histogram(binwidth = 2, fill="#FDC010", color='black') + 
+      ggtitle("Distribution of LOG(SIZE+1) in Dataset") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) # so that y-axis has labels with commas in the thousands place 
+```
+
+```{r}
+ggplot(dt[county.census.geoid == "00000"], aes(x=log(SIZE+1))) +
+      geom_histogram(binwidth = 2, fill="#1796D2", color='black') + 
+      ggtitle("Distribution of LOG(SIZE+1) in Records with Missing Location Information") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) # so that y-axis has labels with commas in the thousands place 
+```
+
+```{r}
+key_var <- c("EIN2", "TAX_YEAR")
+dup_groups <- dt[, .N, by = key_var][N > 1]
+dups <- dt[dup_groups, on = key_var]
+
+ggplot(dups, aes(x=log(SIZE+1))) +
+      geom_histogram(binwidth = 2, fill="#1796D2", color='black') + 
+      ggtitle('Distribution of Log(SIZE+1) in "Duplicated" Records') +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) # so that y-axis has labels with commas in the thousands place 
+```
+
+```{r}
+ggplot(dt[DATA_COUNT < 6], aes(x=log(SIZE+1))) +
+      geom_histogram(binwidth = 2, fill="#1796D2", color='black') + 
+      ggtitle("Distribution of LOG(SIZE+1) in Records from Orgs with < 6 Data Points") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) # so that y-axis has labels with commas in the thousands place 
+```
+
+# Number of Disasters
+```{r}
+temp <- as.data.frame(table(as.factor(merged.dt$N_DISASTERS), useNA = "always")) |> mutate(Var1 = as.factor(Var1))
+temp$Var1 <- fct_na_value_to_level(temp$Var1)
+temp$Prop <- round(temp$Freq / nrow(dt), digits = 4)*100
+
+ggplot(temp, aes(x = Var1, y = Prop)) +
+      geom_bar(stat= "identity", fill="#FDC010", color='black') +
+      xlab("Number of Disasters") +
+      ylab("Percent % of Total Records") +
+      ggtitle("Number of Disasters Overall 1991 - 2021") +
+      geom_text(aes(label = Prop), vjust = -0.3, size = 3)
+```
+
+```{r}
+library(ggplot2)
+library(forcats)
+library(dplyr)
+
+# If they have missing location information, then I don't know if there was a disaster in their county... so missing values for all
+
+key_var <- c("EIN2", "TAX_YEAR")
+dup_groups <- merged.dt[, .N, by = key_var][N > 1]
+dups <- merged.dt[dup_groups, on = key_var]
+
+temp.tab <- as.data.frame(table(as.factor(dups$N_DISASTERS), useNA = "always")) |> mutate(Var1 = as.factor(Var1))
+temp.tab$Var1 <- fct_na_value_to_level(temp.tab$Var1)
+temp.tab$Prop <- round(temp.tab$Freq / nrow(dups), digits = 3)*100
+
+ggplot(temp.tab, aes(x = Var1, y = Prop)) +
+      geom_bar(stat= "identity", fill="#1796D2", color='black') +
+      xlab("Number of Disasters") +
+      ylab("Percent % of Total \"Duplicated\" Records") +
+      ggtitle('Number of Disasters Overall (1991-2021) in "Duplicated" Records') +
+      geom_text(aes(label = Prop), vjust = -0.3, size = 3)
+```
+
+```{r}
+temp <- merged.dt[DATA_COUNT < 6]
+temp <- temp |> mutate(N_DISASTERS = as.factor(N_DISASTERS))
+temp$N_DISASTERS <- fct_na_value_to_level(temp$N_DISASTERS)
+
+temp.tab <- as.data.frame(table(as.factor(temp$N_DISASTERS), useNA = "always")) |> mutate(Var1 = as.factor(Var1))
+temp.tab$Var1 <- fct_na_value_to_level(temp.tab$Var1)
+temp.tab$Prop <- round(temp.tab$Freq / nrow(temp), digits = 3)*100
+
+ggplot(temp.tab, aes(x = Var1, y = Prop)) +
+      geom_bar(stat= "identity", fill="#1796D2", color='black') +
+      xlab("Number of Disasters") +
+      ylab("Percent % of Records (From <6)") +
+      ggtitle('Number of Disasters Overall (1991-2021) in Records from Orgs with < 6 Data Points') +
+      geom_text(aes(label = Prop), vjust = -0.3, size = 3)
+```
+
+
+```{r}
+dt[, DIS_FACTOR := as.factor(N_DISASTERS)]
+dt[is.na(DIS_FACTOR), DIS_FACTOR := "Missing"]
+
+disaster.totals <- dt[, 
+      .(no_location  = sum(no_location,  na.rm = TRUE),
+        duplicate    = sum(duplicate,    na.rm = TRUE),
+        less_than_6  = sum(less_than_6,  na.rm = TRUE),
+        normal       = sum(normal,       na.rm = TRUE),
+        total        = .N),
+      by = DIS_FACTOR]
+
+disaster.totals[, lt6_perc.within := round(less_than_6/total.lt6 * 100, digits = 2)]
+disaster.totals[, lt6_perc.all := round(less_than_6/total * 100, digits = 2)]
+
+ggplot(disaster.totals, aes(x = DIS_FACTOR, y = lt6_perc.within)) +
+      geom_bar(stat= "identity", fill="#1796D2", color='black') +
+      xlab("# of Disasters") +
+      ylab("Percent %") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) + # so that y-axis has labels with commas in the thousands place 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Percent of Total Records: Less Than 6 Years of Data") +
+      geom_text(aes(label =  lt6_perc.within), vjust = -0.3, size = 3)
+
+ggplot(disaster.totals, aes(x = DIS_FACTOR, y = lt6_perc.all)) +
+      geom_bar(stat= "identity", fill="#65008d", color='black') +
+      xlab("# of Disasters") +
+      ylab("Percent %") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) + # so that y-axis has labels with commas in the thousands place 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Percent of Each # of Disasters: Less Than 6 Years of Data") +
+      geom_text(aes(label = lt6_perc.all), vjust = -0.3, size = 3)
+```
+
+
+# Years
+```{r}
+temp <- as.data.frame(table(as.factor(merged.dt$TAX_YEAR), useNA = "always")) |> mutate(Var1 = as.factor(Var1))
+temp$Var1 <- fct_na_value_to_level(temp$Var1)
+temp$Prop <- round(temp$Freq / nrow(dt), digits = 3)*100
+
+ggplot(temp, aes(x = Var1, y = Prop)) +
+      geom_bar(stat= "identity", fill="#FDC010", color='black') +
+      xlab("TAX_YEAR") +
+      ylab("Percent % of Total Records") +
+      ggtitle("Percent of Records Per Year from Overall Dataset") +
+      geom_text(aes(label = Prop), vjust = -0.3, size = 3) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r}
+temp <- dt[county.census.geoid == "00000"]
+temp <- temp |> mutate(TAX_YEAR = as.factor(TAX_YEAR))
+temp$TAX_YEAR <- fct_na_value_to_level(temp$TAX_YEAR)
+
+temp.tab <- as.data.frame(table(as.factor(temp$TAX_YEAR), useNA = "always")) |> mutate(Var1 = as.factor(Var1))
+temp.tab$Var1 <- fct_na_value_to_level(temp.tab$Var1)
+temp.tab$Prop <- round(temp.tab$Freq / nrow(temp), digits = 3)*100
+
+ggplot(temp.tab, aes(x = Var1, y = Prop)) +
+      geom_bar(stat= "identity", fill="#1796D2", color='black') +
+      xlab("TAX_YEAR") +
+      ylab("Percent %") +
+      ggtitle("Percent of Records with Missing Location Information") +
+      geom_text(aes(label = Prop), vjust = -0.3, size = 3) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r}
+key_var <- c("EIN2", "TAX_YEAR")
+dup_groups <- dt[, .N, by = key_var][N > 1]
+dups <- dt[dup_groups, on = key_var]
+
+temp.tab <- as.data.frame(table(as.factor(dups$TAX_YEAR), useNA = "always")) |> mutate(Var1 = as.factor(Var1))
+temp.tab$Var1 <- fct_na_value_to_level(temp.tab$Var1)
+temp.tab$Prop <- round(temp.tab$Freq / nrow(dups), digits = 3)*100
+
+ggplot(temp.tab, aes(x = Var1, y = Prop)) +
+      geom_bar(stat= "identity", fill="#1796D2", color='black') +
+      xlab("TAX_YEAR") +
+      ylab("Percent %") +
+      ggtitle("Percent of Each Year in \"Duplicated\" Records") +
+      geom_text(aes(label = Prop), vjust = -0.3, size = 3) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r}
+# 'Percent of NTEE Categories in Records from Orgs with < 6 Data Points'
+temp <- merged.dt[DATA_COUNT < 6]
+temp <- temp |> mutate(TAX_YEAR = as.factor(TAX_YEAR))
+temp$TAX_YEAR <- fct_na_value_to_level(temp$TAX_YEAR)
+
+temp.tab <- as.data.frame(table(as.factor(temp$TAX_YEAR), useNA = "always")) |> mutate(Var1 = as.factor(Var1))
+temp.tab$Var1 <- fct_na_value_to_level(temp.tab$Var1)
+temp.tab$Prop <- round(temp.tab$Freq / nrow(temp), digits = 3)*100
+
+ggplot(temp.tab, aes(x = Var1, y = Prop)) +
+      geom_bar(stat= "identity", fill="#1796D2", color='black') +
+      xlab("TAX_YEAR") +
+      ylab("Percent %") +
+      ggtitle("Percent from in Records from Orgs with < 6 Data Points") +
+      geom_text(aes(label = Prop), vjust = -0.3, size = 3) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r}
+dt[, YEAR_FACTOR := as.factor(TAX_YEAR)]
+
+year.totals <- dt[, 
+      .(no_location  = sum(no_location,  na.rm = TRUE),
+        duplicate    = sum(duplicate,    na.rm = TRUE),
+        less_than_6  = sum(less_than_6,  na.rm = TRUE),
+        normal       = sum(normal,       na.rm = TRUE),
+        total        = .N),
+      by = YEAR_FACTOR]
+
+year.totals[, lt6_perc.within := round(less_than_6/total.lt6 * 100, digits = 1)]
+year.totals[, lt6_perc.all := round(less_than_6/total * 100, digits = 1)]
+
+ggplot(year.totals, aes(x = YEAR_FACTOR, y = lt6_perc.within)) +
+      geom_bar(stat= "identity", fill="#1796D2", color='black') +
+      xlab("Year") +
+      ylab("Percent %") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) + # so that y-axis has labels with commas in the thousands place 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Percent of Total Records: Less Than 6 Years of Data") +
+      geom_text(aes(label =  lt6_perc.within), vjust = -0.3, size = 3)
+
+ggplot(year.totals, aes(x = YEAR_FACTOR, y = lt6_perc.all)) +
+      geom_bar(stat= "identity", fill="#65008d", color='black') +
+      xlab("Year") +
+      ylab("Percent %") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) + # so that y-axis has labels with commas in the thousands place 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Percent of Each Year: Less Than 6 Years of Data") +
+      geom_text(aes(label = lt6_perc.all), vjust = -0.3, size = 3)
+```
+```{r}
+year.totals[,no_loc_perc.within := round(no_location/total.no_loc * 100, digits = 1)]
+year.totals[, no_loc_perc.all := round(no_location/total * 100, digits = 2)]
+
+ggplot(year.totals, aes(x = YEAR_FACTOR, y = no_loc_perc.within)) +
+      geom_bar(stat= "identity", fill="#1796D2", color='black') +
+      xlab("Year") +
+      ylab("Percent %") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) + # so that y-axis has labels with commas in the thousands place 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Percent of Total Records: No Location") +
+      geom_text(aes(label =  no_loc_perc.within), vjust = -0.3, size = 3)
+
+ggplot(year.totals, aes(x = YEAR_FACTOR, y = no_loc_perc.all)) +
+      geom_bar(stat= "identity", fill="#65008d", color='black') +
+      xlab("Year") +
+      ylab("Percent %") +
+      scale_y_continuous(labels = function(x) format(x, big.mark = ",", scientific = FALSE)) + # so that y-axis has labels with commas in the thousands place 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ggtitle("Percent of Each Year: No Location")
+```
+

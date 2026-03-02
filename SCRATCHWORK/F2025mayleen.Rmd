@@ -6,11 +6,11 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 ```
 
 # Private Foundation CORE files
-```{r}
+```{r} 
 source("../SCRIPTS/download_data.R")
 tscope_values <- c("501c3") # Download files from Tax Exempt Types in this list; possible values: "501c3", "501ce" 
 fscope_values <- c("-pf") # Download files from IRS 990 Form Scope in this list; possible values: "-pz", "-pc", "-pf"
@@ -67,92 +67,15 @@ for (year in year_values){
 ```
 
 ## Initial Cleaning of Duplicates
-```{r}
-row_na_count <- function(x) rowSums(is.na(x))
 
-pf_clean.step1 <- function(current_year, dt){
-      original.cols <- colnames(dt)
-      
-      # Step 1: Fill missing years if all missing for an org
-      dt[, F9_00_FISCAL_YEAR_START := if (all(is.na(F9_00_FISCAL_YEAR_START))) current_year else F9_00_FISCAL_YEAR_START,
-         by = EIN2]
-      
-      # Step 2: If some years missing but others not, drop missing
-      dt <- dt[, .SD[!is.na(F9_00_FISCAL_YEAR_START) | all(is.na(F9_00_FISCAL_YEAR_START))], by = EIN2] # keep row if year not missing OR if all records are missing the year / drops rows where year missing and at least one record is not missing the year
-      
-      # Step 3: Resolve duplicates within org-year
-      dt[, na_count := row_na_count(.SD), .SDcols = !c("EIN2","F9_00_FISCAL_YEAR_START")]
-        
-      # Mark duplicates to drop
-      dt[, max_na := max(na_count), by = .(EIN2, F9_00_FISCAL_YEAR_START)]
-      dt[, min_na := min(na_count), by = .(EIN2, F9_00_FISCAL_YEAR_START)]
-      
-      # If more than one record for org-year, drop record with strictly more missing values
-      dt_clean <- dt[!(na_count == max_na & max_na > min_na)] # keep row if na_count is not max or there is no actual max / drop row if its na_count is the max and there actually is a max
-      # TODO: possible issue, what if two are tied for max but there are other records with less... should I keep all or still drop the ones with the most na's
-      
-      # Step 4: Track unresolved duplicates (ties)
-      unresolved <- dt_clean[, .N, by = .(EIN2, F9_00_FISCAL_YEAR_START)][N > 1]
-      
-      return(list(cleaned_data = dt_clean[, ..original.cols], unresolved_cases = unresolved))
-}
-
-# Function to compute pairwise comparison metrics
-compare_pair_dt <- function(dt_group) {
-  # drop keys
-  mat <- as.matrix(dt_group)
-  r1 <- as.numeric(mat[1, ])
-  r2 <- as.numeric(mat[2, ])
-  
-  diffs <- r1 - r2
-  abs_diffs <- abs(diffs)
-  
-  data.table(
-    n_diff_cols   = sum(abs_diffs != 0 & !is.na(abs_diffs)),
-    n_diff_gt1    = sum(abs_diffs > 1, na.rm = TRUE),
-    max_abs_diff  = max(abs_diffs, na.rm = TRUE),
-    multi_col_diff = sum(abs_diffs != 0, na.rm = TRUE) > 1,
-    euclidean_dist = sqrt(sum(diffs^2, na.rm = TRUE))
-  )
-}
-
-pf_clean.step2 <- function(cdt, unresolved){
-      unres.records <- cdt[EIN2 %in% unique(unresolved$EIN2)] 
-      unres.records <- unres.records[, if (.N == 2L) .SD, by = .(EIN2, F9_00_FISCAL_YEAR_START)] # it's possible we picked back up some records from an org that are resolved e.g. if they have one unique record in one year but an unresolved duplicate in another year
-      if (nrow(unres.records) == 0L){
-            return(list(info = data.table(), final_data = cdt, unresolved_cases = data.table))
-      } else {
-            diagnostics <- unres.records[, compare_pair_dt(.SD), by = .(EIN2, F9_00_FISCAL_YEAR_START)]
-      
-            still_unresolved <- diagnostics[max_abs_diff > 1, .(EIN2, F9_00_FISCAL_YEAR_START)]$EIN2
-            still_unresolved <- unres.records[EIN2 %in% still_unresolved]
-            
-            close_groups <- diagnostics[max_abs_diff == 1, .(EIN2, F9_00_FISCAL_YEAR_START)]
-            
-            resolved <- unres.records[close_groups, on = .(EIN2, F9_00_FISCAL_YEAR_START)][
-              , .SD[1], by = .(EIN2, F9_00_FISCAL_YEAR_START)]
-            
-            # Final clean dataset
-            final_dt <- rbindlist(list(
-              cdt[!unres.records, on = .(EIN2, F9_00_FISCAL_YEAR_START)],  # rows never unresolved
-              resolved,                                                     # resolved by rule
-              still_unresolved                                              # groups still unresolved
-            ), use.names = TRUE, fill = TRUE)
-            
-            return(list(info = diagnostics, final_data = final_dt, unresolved_cases = still_unresolved))
-      }
-}
-
-```
-
-```{r, message=FALSE}
+```{r, message=FALSE, warning=FALSE}
 library(data.table)
 library(readr)
 source("../SCRIPTS/clean_CORE.R")
 
 vars.keep <- c("F9_00_FISCAL_YEAR_START", "EIN2", "PF_01_REV_GRO_PROFIT_BOOKS", "PF_01_REV_TOT_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_BOOKS", "PF_02_ASSET_TOT_EOY_BV", "PF_02_LIAB_TOT_EOY_BV", "PF_01_EXP_CONTR_PAID_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_DISBMT")
 
-year_values <- seq(from = 2003, to = 2021, by = 1)
+year_values <- seq(from = 2021, to = 2021, by = 1)
 for (year in year_values){
       # Get data, restrict to variables we care about, remove records that are exact duplicates, and make EIN2 the first column
       file_name <- sprintf("../CORE/pf/CORE-%s-501C3-PRIVFOUND-PF-HRMN-V0.csv", year)
@@ -174,105 +97,7 @@ for (year in year_values){
      
       rm(clean.step1, clean.step2) 
 }
-
-unres.records <- clean.step1$cleaned_data[EIN2 %in% unique(clean.step1$unresolved_cases$EIN2)] 
-unres.records <- unres.records[, if (.N == 2L) .SD, by = .(EIN2, F9_00_FISCAL_YEAR_START)]
 ```
-
-```{r, message = F}
-library(data.table)
-library(readr)
-source("../SCRIPTS/clean_helper.R")
-source("../SCRIPTS/reviewing_duplicate_EIN.R")
-
-dt.2011 <- as.data.table(read_csv(sprintf("../CORE/pf/CORE-%s-501C3-PRIVFOUND-PF-HRMN-V0.csv", 2011), show_col_types = FALSE))
-
-dt.2012 <- as.data.table(read_csv(sprintf("../CORE/pf/CORE-%s-501C3-PRIVFOUND-PF-HRMN-V0.csv", 2012), show_col_types = FALSE))
-
-dt.2013 <- as.data.table(read_csv(sprintf("../CORE/pf/CORE-%s-501C3-PRIVFOUND-PF-HRMN-V0.csv", 2013), show_col_types = FALSE))
-
-vars.keep <- c("F9_00_FISCAL_YEAR_START", "EIN2", "PF_01_REV_GRO_PROFIT_BOOKS", "PF_01_REV_TOT_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_BOOKS", "PF_02_ASSET_TOT_EOY_BV", "PF_02_LIAB_TOT_EOY_BV", "PF_01_EXP_CONTR_PAID_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_DISBMT")
-               
-dt.2011 <- dt.2011[, ..vars.keep]
-dt.2012 <- dt.2012[, ..vars.keep]
-dt.2013 <- dt.2013[, ..vars.keep]
-
-dt.2011 <- unique(dt.2011)
-dt.2012 <- unique(dt.2012)
-dt.2013 <- unique(dt.2013)
-
-setcolorder(dt.2011, c("EIN2", setdiff(names(dt.2011), "EIN2")))
-setcolorder(dt.2012, c("EIN2", setdiff(names(dt.2012), "EIN2")))
-setcolorder(dt.2013, c("EIN2", setdiff(names(dt.2013), "EIN2")))
-
-clean2011 <- pf_duplicates(2011, dt.2011)
-clean2012 <- pf_duplicates(2012, dt.2012)
-clean2013 <- pf_duplicates(2013, dt.2013)
-
-cdt.2011 <- clean2011$clean
-cdt.2012 <- clean2012$clean
-cdt.2013 <- clean2013$clean
-
-unresolved2011 <- clean2011$unresolved
-unresolved2012 <- clean2012$unresolved
-unresolved2013 <- clean2013$unresolved
-
-cdupes11 <- dupes(cdt.2011)$dupes
-cdupes12 <- dupes(cdt.2012)$dupes
-cdupes13 <- dupes(cdt.2013)$dupes
-
-duped.records <- cdt.2013[EIN2 %in% unique(cdupes13$EIN2)] 
-unres.records <- cdt.2013[EIN2 %in% unique(unresolved2013$EIN2)] 
-```
-
-```{r}
-library(dplyr)
-library(tidyr)
-library(purrr)
-
-# Function to compute pairwise comparison metrics
-compare_pair_dt <- function(dt_group) {
-  # drop keys
-  mat <- as.matrix(dt_group)
-  r1 <- as.numeric(mat[1, ])
-  r2 <- as.numeric(mat[2, ])
-  
-  diffs <- r1 - r2
-  abs_diffs <- abs(diffs)
-  
-  data.table(
-    n_diff_cols   = sum(abs_diffs != 0 & !is.na(abs_diffs)),
-    n_diff_gt1    = sum(abs_diffs > 1, na.rm = TRUE),
-    max_abs_diff  = max(abs_diffs, na.rm = TRUE),
-    multi_col_diff = sum(abs_diffs != 0, na.rm = TRUE) > 1,
-    euclidean_dist = sqrt(sum(diffs^2, na.rm = TRUE))
-  )
-}
-
-# Apply per group (org-year)
-diagnostics <- unres.records[, compare_pair_dt(.SD), by = .(EIN2, F9_00_FISCAL_YEAR_START)]
-
-still_unresolved <- diagnostics[max_abs_diff > 1, .(EIN2, F9_00_FISCAL_YEAR_START)]$EIN2
-still_unresolved <- unres.records[EIN2 %in% still_unresolved]
-
-close_groups <- diagnostics[max_abs_diff == 1, .(EIN2, F9_00_FISCAL_YEAR_START)]
-
-resolved <- unres.records[close_groups, on = .(EIN2, F9_00_FISCAL_YEAR_START)][
-  , .SD[1], by = .(EIN2, F9_00_FISCAL_YEAR_START)]
-
-# Final clean dataset
-final_dt <- rbindlist(list(
-  cdt.2013[!unres.records, on = .(EIN2, F9_00_FISCAL_YEAR_START)],  # rows never unresolved
-  resolved,                                                     # resolved by rule
-  still_unresolved                                              # groups still unresolved
-), use.names = TRUE, fill = TRUE)
-
-pf_duplicates(2011, final_dt)$unresolved
-
-tst <- dupes(final_dt)$dupes$EIN2
-final_dt[EIN2 %in% tst]
-```
-
 
 ### Example
 ```{r}
@@ -314,6 +139,447 @@ dt_clean <- dt_clean[, ..myvec]
 
 identical(dt_clean, dt.sol)
 ```
+
+## Stacking all the years of data
+```{r, message=F, warning=F}
+library(data.table)
+library(readr)
+
+vars.keep <- c("EIN2", "TAX_YEAR", "PF_01_REV_GRO_PROFIT_BOOKS", "PF_01_REV_TOT_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_BOOKS", "PF_02_ASSET_TOT_EOY_BV", "PF_02_LIAB_TOT_EOY_BV", "PF_01_EXP_CONTR_PAID_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_DISBMT")
+
+dt.original <- data.table(matrix(ncol=length(vars.keep),nrow=0))
+colnames(dt.original) <- vars.keep
+
+dt <- data.table(matrix(ncol=length(vars.keep),nrow=0))
+colnames(dt) <- vars.keep
+
+year_values <- seq(from = 1991, to = 2021, by = 1)
+for (year in year_values){
+      # Get data, restrict to variables we care about, remove records that are exact duplicates, and make EIN2 the first column
+      file_name <- sprintf("../CORE/pf/CORE-%s-501C3-PRIVFOUND-PF-HRMN-V0.csv", year)
+      
+      # load data into environment 
+      temp <- as.data.table(read_csv(file_name, show_col_types = FALSE))
+      temp <- unique(temp[, ..vars.keep])
+      
+      # Combine
+      dt.original <- rbindlist(list(dt.original, temp))
+      dt <- rbindlist(list(dt, temp))
+}
+
+source("../SCRIPTS/clean_helper.R")
+dt.na_counts <- na_counts_df(dt.original)
+rm(temp)
+
+key_var <- c("EIN2", "TAX_YEAR")
+# duplicates that need to be resolved
+dup_groups <- dt[, .N, by = key_var][N > 1]
+
+# subset duplicate records
+dups <- dt[dup_groups, on = key_var]
+```
+
+
+```{r, warning=FALSE}
+# Distribution of differences
+compare_pair_dt <- function(dt_group) {
+      # number of records in this group
+      n_records <- nrow(dt_group)
+      
+      # drop keys (convert to numeric matrix)
+      mat <- as.matrix(dt_group)
+      
+      # names of all columns in the group
+      coln <- colnames(dt_group)
+      
+      # pick out the dollar-valued columns
+      dollar_cols <- c("PF_01_REV_GRO_PROFIT_BOOKS", "PF_01_REV_TOT_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_BOOKS",
+                       "PF_02_ASSET_TOT_EOY_BV", "PF_02_LIAB_TOT_EOY_BV", "PF_01_EXP_CONTR_PAID_BOOKS",
+                       "PF_01_EXP_TOT_EXP_DISBMT_DISBMT")
+      
+      # indices of dollar columns
+      dollar_idx <- match(dollar_cols, coln)
+      
+      # compute differences only if there are exactly 2 rows
+      if (n_records == 2) {
+            r1 <- as.numeric(mat[1, ])
+            r2 <- as.numeric(mat[2, ])
+            
+            diffs <- r1 - r2
+            abs_diffs <- abs(diffs)
+            
+            # check missing-caused differences only for dollar columns
+            had_missing_diff <- any(xor(is.na(r1[dollar_idx]), is.na(r2[dollar_idx])))
+
+      } else {
+            # for groups with != 2 rows, set diffs to NA
+            diffs <- abs_diffs <- numeric(ncol(dt_group))
+            diffs[] <- NA
+            abs_diffs[] <- NA
+            had_missing_diff <- NA
+      }
+      
+      # differences for dollar columns (NA if group != 2 rows)
+      diffs_named <- as.list(setNames(diffs[match(dollar_cols, coln)], dollar_cols))
+      
+      # combine into one data.table row
+      data.table(
+      n_records      = n_records,                 # <-- new column
+      n_diff_cols    = sum(abs_diffs != 0 & !is.na(abs_diffs)),
+      n_diff_gt1     = sum(abs_diffs > 1, na.rm = TRUE),
+      max_abs_diff   = max(abs_diffs, na.rm = TRUE),
+      had_missing_diff = had_missing_diff,
+      multi_col_diff = sum(abs_diffs != 0, na.rm = TRUE) > 1
+      )[, c(.SD, diffs_named)]
+}
+
+diagnostics <- dups[, compare_pair_dt(.SD), by = .(EIN2, TAX_YEAR)] #10060
+
+probs <- seq(0,1,0.1)
+quantile(diagnostics$max_abs_diff, probs = probs)
+```
+
+```{r}
+# identify the dollar-valued columns (the raw diffs you added)
+dollar_cols <- c("PF_01_REV_GRO_PROFIT_BOOKS", "PF_01_REV_TOT_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_BOOKS", "PF_02_ASSET_TOT_EOY_BV", "PF_02_LIAB_TOT_EOY_BV", "PF_01_EXP_CONTR_PAID_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_DISBMT")
+
+# build the summary table
+gt1000_summary <- data.table(
+  VAR_NAME = dollar_cols,
+  N_GT1000 = sapply(diagnostics[, ..dollar_cols], function(x) sum(abs(x) > 1000, na.rm = TRUE))
+)
+# groups where differences are all small and there are exactly two rows; exclude cases where there is a difference in one of the financial variables due to a missing variable
+insignificant_groups <- diagnostics[max_abs_diff <= 1000 & n_records == 2 & !had_missing_diff, .(EIN2, TAX_YEAR)] #6799
+
+# keep first row within each insignificant group
+# add a temporary flag column
+dt[, keep := TRUE]  # default: keep everything
+
+# for insignificant groups, keep only the first row per group
+dt[insignificant_groups,
+          on = .(EIN2, TAX_YEAR),
+          keep := seq_len(.N) == 1,
+          by = .EACHI]
+
+dt <- dt[keep == TRUE]
+dt[, keep := NULL]  # optional: drop temporary column
+```
+
+```{r}
+# update the duplicates that need to be resolved
+dup_groups <- dt[, .N, by = key_var][N > 1] #10060 down to 3261
+
+# subset duplicate records
+dups <- dt[dup_groups, on = key_var] # 20173 down to 6575
+
+diagnostics <- dups[, compare_pair_dt(.SD), by = .(EIN2, TAX_YEAR)]
+
+trips <- dups[EIN2 %in% diagnostics[max_abs_diff==-Inf, EIN2]]
+trips <- trips[N > 2]
+
+dups.1.col.diff <- dups[EIN2 %in% diagnostics[multi_col_diff == FALSE, EIN2]]
+
+dups.mult.col.diff <- dups[EIN2 %in% diagnostics[multi_col_diff == TRUE, EIN2]]
+
+
+# Step 1: Find EIN2s with at least one NA in other columns
+ein_with_na <- dt[ , if (anyNA(.SD)) .BY$EIN2, by = EIN2]
+
+# Step 2: Extract all rows for those EIN2s
+dt_with_na <- dt[EIN2 %in% ein_with_na$V1]
+
+# Inspect
+dt_with_na[order(EIN2)]
+
+# This is a duplicate we can resolve by hand because the two records were exactly the same in every column except PF_02_LIAB_TOT_EOY_BV, where the difference was that the value was missing in one of the records but not in the other
+dt <- dt[-which(EIN2 == "EIN-26-3424915" & is.na(PF_02_LIAB_TOT_EOY_BV))]
+saveRDS(dt, "pf_merged.rds")
+```
+
+## Merge with BMF
+```{r}
+library(data.table)
+library(readr)
+source("../SCRIPTS/clean_BMF.R")
+
+dt <- readRDS("pf_merged.rds")
+
+unified_bmf <- as.data.frame(read_csv("../CORE/BMF_UNIFIED_V1.1.csv", show_col_types = FALSE))
+unified_bmf <- unified_bmf[!(unified_bmf$EIN2 %in% "EIN-00-0000000"),]
+
+#bmf <- as.data.table(read_csv("../CLEAN/cleanBMF.csv", show_col_types = FALSE))
+vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_ASSETS_RECENT","CENSUS_BLOCK_FIPS", "LATITUDE", "LONGITUDE", "CENSUS_COUNTY_NAME", "CENSUS_STATE_ABBR")
+thresh <- 7
+bmf <- clean_BMF(vars_to_keep, thresh, saveFlag = FALSE)
+na_counts <- bmf$na.count
+bmf <- bmf$clean.data
+
+# 1. Find organizations only in dt not cleaned bmf
+# Use the `key_col` as the join key and perform an anti-join
+only_in_dt1_clean_bmf <- dt[!bmf, on = .(EIN2)]
+
+# 2. Count the occurrences of these keys in dt
+# Group by `key_col` and count the number of rows (.N)
+count_only_in_dt1_clean <- only_in_dt1_clean_bmf[, .N, by = EIN2]
+
+print(nrow(count_only_in_dt1_clean)) # 1166
+
+only_in_dt1_bmf <- dt[!unified_bmf, on = .(EIN2)]
+count_only_in_dt1_bmf <- only_in_dt1_bmf[, .N, by = EIN2]
+print(nrow(count_only_in_dt1_bmf)) # 1166
+
+nrow(count_only_in_dt1_clean[N >= 3]) # 100
+
+length(intersect(count_only_in_dt1_clean[N >= 7, EIN2], unique(unified_bmf$EIN2))) # 0
+
+merged.dt <- merge(dt, bmf, by = "EIN2")
+
+saveRDS(merged.dt, "pf_merged_bmf.rds")
+```
+
+```{r}
+library(data.table)
+library(readr)
+
+dt <- readRDS("pf_merged_bmf.rds")
+
+key_var <- c("EIN2", "TAX_YEAR")
+# duplicates that need to be resolved
+dup_groups <- dt[, .N, by = key_var][N > 1]
+
+# subset duplicate records
+dups <- dt[dup_groups, on = key_var]
+
+unified_bmf <- as.data.frame(read_csv("../CORE/BMF_UNIFIED_V1.1.csv", show_col_types = FALSE))
+
+unified_bmf$geo
+```
+
+## Merging with Census Crosswalk files
+```{r}
+URL <- "https://raw.githubusercontent.com/UI-Research/nccs-geo/main/get_census_data.R"
+source( URL )
+
+#df  <- get_census_data( geo="msa" )      # 918 metro areas, all years 
+df  <- get_census_data( geo="county", years=c(1990,2000,2010, 2019))   # 3,142 counties
+#df  <- get_census_data( geo="tract" )    # 72,597 tracts, all years 
+
+# default format is 'long' (stacked years)
+#df  <- get_census_data( geo="msa", years=2010:2019 )
+
+# return data in a wide format:
+dfw <- get_census_data( geo="county", years=c(1990,2000,2010), format="wide" )
+
+# available years
+c(  1990, 2000, 2007, 2008, 2009, 2010, 2011, 2012,
+    2013, 2014, 2015, 2016, 2017, 2018, 2019  )
+```
+
+
+```{r}
+library(data.table)
+library(readr)
+URL <- "https://raw.githubusercontent.com/UI-Research/nccs-geo/main/get_census_data.R"
+source( URL )
+
+dt <- readRDS("pf_merged_bmf.rds")
+dt[, block.census.geoid := sprintf("%015s", CENSUS_BLOCK_FIPS)] 
+dt[, 'county.census.geoid' := substr(block.census.geoid, 1, 5)]
+
+blockX <- as.data.table(read_csv("BLOCKX.csv", show_col_types = FALSE))
+
+df  <- get_census_data( geo="county" )   # 3,142 counties, all years 
+
+print(length(unique(dt$block.census.geoid)))
+length(intersect(unique(dt$block.census.geoid), blockX$block.census.geoid))
+
+print(length(unique(dt$county.census.geoid)))
+length(intersect(unique(dt$county.census.geoid), blockX$county.census.geoid))
+
+missing_ids <- setdiff(unique(dt$county.census.geoid), unique(blockX$county.census.geoid))
+
+missing_ids <- setdiff(missing_ids, c("02066", "00000")) # 02066 is Copper River Census Area in Alaska which did not exist until 2019, thus does not appear in the census crosswalk files (which are standardized to 2010) -- I'm thinking I can manually figure out where to put this record; the rest of the counties are census regions in US territories
+
+dt <- dt[!county.census.geoid %in% missing_ids]
+
+print(length(unique(dt$county.census.geoid)))
+length(intersect(unique(dt$county.census.geoid), blockX$county.census.geoid))
+
+# Fixing 38-3737079 and 83-3967403 county geoid... using Census Geocoder found that in 2010 this latitude/longitude corresponded to Valdez-Cordova Census Area, with geoid 02261
+dt[EIN2=="EIN-38-3737079", county.census.geoid := "02261"]
+dt[EIN2=="EIN-83-3967403", county.census.geoid := "02261"]
+
+print(length(unique(dt$county.census.geoid)))
+length(intersect(unique(dt$county.census.geoid), blockX$county.census.geoid))
+
+#unique(df$year)
+
+dt[, DATA_COUNT := .N, by = c("EIN2")]
+table(dt$DATA_COUNT)
+quantile(dt$DATA_COUNT, probs = seq(0,1,0.1))
+
+tst <- dt[county.census.geoid %in% c("00000")]
+tst <- tst[, .SD[1], by = EIN2]
+
+table(tst$DATA_COUNT)
+quantile(tst$DATA_COUNT, probs = seq(0,1,0.1))
+saveRDS(dt, "pf_processed.rds")
+```
+
+```{r}
+library(data.table)
+library(readr)
+URL <- "https://raw.githubusercontent.com/UI-Research/nccs-geo/main/get_census_data.R"
+source( URL )
+
+dt <- readRDS("pf_processed.rds")
+
+blockX <- as.data.table(read_csv("BLOCKX.csv", show_col_types = FALSE))
+df  <- get_census_data( geo="county", years = c(2000, 2010))   # 3,142 counties, all years 
+setDT(df)
+
+merged_dt <- merge(dt, df,
+                   by.x = c("county.census.geoid", "TAX_YEAR"),
+                   by.y = c("geoid_2010", "year"),
+                   all = FALSE) 
+# DOES NOT WORK BECAUSE IN DF YEAR IS CHAR BECAUES RANGE SOMETIMES
+```
+
+## Other Processing
+```{r}
+library(data.table)
+library(readr)
+
+pf <- readRDS("pf_processed.rds")
+pz <- readRDS("pz_processed.rds")
+pz.ce <- readRDS("pz_ce_processed.rds")
+
+# Keep only assets, rev, and expenses variables for private foundations to match PZ
+pf <- pf[, !c("PF_01_REV_GRO_PROFIT_BOOKS", "PF_02_LIAB_TOT_EOY_BV", "PF_01_EXP_CONTR_PAID_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_DISBMT"), with = FALSE]
+
+# rename relevant columns
+setnames(pf,
+         old = c("PF_02_ASSET_TOT_EOY_BV", "PF_01_REV_TOT_BOOKS", "PF_01_EXP_TOT_EXP_DISBMT_BOOKS", "F990_TOTAL_ASSETS_RECENT"),
+         new = c("TOT_ASSET", "TOT_REV", "TOT_EXP", "SIZE"))
+
+pf[, SOURCE := "PF"]
+pz[, SOURCE := "PZ"]
+pz.ce[, SOURCE := "PZ.CE"]
+
+dt <- rbindlist(list(pf, pz, pz.ce), use.names = TRUE)
+dt <- unique(dt)
+
+rm(pf, pz, pz.ce)
+
+# exploring duplicates in the mega dt
+source("../SCRIPTS/clean_helper.R")
+
+key_var <- c("EIN2", "TAX_YEAR")
+dup_groups <- dt[, .N, by = key_var][N > 1] #
+dups <- dt[dup_groups, on = key_var]
+
+dollar_cols <- c("TOT_ASSET", "TOT_REV", "TOT_EXP")
+diagnostics <- dups[, compare_pair_dt(.SD, dollar_cols), by = .(EIN2, TAX_YEAR)] #information about the duplicates
+probs <- seq(0,1,0.1)
+quantile(diagnostics$max_abs_diff, probs = probs)
+
+# There are 370 (EIN2, TAX_YEAR) pairs where the records are exact duplicates EXCEPT in the source column... how to deal with?
+
+dt[, DATA_COUNT := .N, by = c("EIN2")] #recalculate because now may have from different sources... but will be overcount because of duplicates
+quantile(dt$DATA_COUNT, probs = probs)
+
+saveRDS(dt, "mega.rds")
+```
+
+
+```{r}
+# Distribution of records per org pair
+dt[, DATA_COUNT := .N, by = c("EIN2")]
+table(dt$DATA_COUNT)
+quantile(dt$DATA_COUNT, probs = seq(0,1,0.1))
+# 90% of the orgs have more than 6 records, so I think its okay to drop those with 6 or less
+pf_orgs <- unique(dt$EIN2)
+
+df <- readRDS("../PREPROCESSING_mays/df.rds")
+pz_orgs <- unique(df$EIN2)
+
+orgs_both <- intersect(pf_orgs, pz_orgs)
+
+setDT(df)
+
+# look at shared orgs
+pf_shared <- dt[EIN2 %in% orgs_both, .(EIN2, TAX_YEAR)]
+pz_shared <- df[EIN2 %in% orgs_both, .(EIN2, TAX_YEAR)]
+
+# exact matches (org,year) - these are, once again, duplicates that need to be resolved
+overlap <- pf_shared[pz_shared, on = .(EIN2, TAX_YEAR), nomatch=0L]
+length(unique(overlap$EIN2)) #2203
+
+# Get data_counts across all orgs so far
+count.pf <- dt[, .(n.pf = .N), by = EIN2]
+count.pz <- df[, .(n.pz = .N), by = EIN2]
+
+counts.all <- merge(count.pf, count.pz, by = "EIN2", all = TRUE)
+counts.all[is.na(n.pf), n.pf := 0]
+counts.all[is.na(n.pz), n.pz := 0]
+
+counts.all[, DATA_COUNT := n.pf + n.pz]
+
+quantile(dt$DATA_COUNT, probs = seq(0,1,0.1))
+quantile(df$DATA_COUNT, probs = seq(0,1,0.1))
+quantile(counts.all$DATA_COUNT, probs = seq(0,1,0.1))
+# It looks like by getting rid of organizations with 6 or less records, we will be losing 40% of organizations. Possibly by adding in the remaining PZ data this will change. 
+```
+
+
+# SHELDUS Data
+
+```{r}
+library(data.table)
+library(readr)
+
+# stnd2015, 1991-2020
+dt <- as.data.table(read_csv("sheldus/direct_loss_aggregated_output_25432.csv", show_col_types = FALSE))
+
+# Checking for duplicates
+key_var <- c("County_FIPS", "Year", "Hazard")
+dup_groups <- disaster[, .N, by = key_var][N > 1]
+dups <- disaster[dup_groups, on = key_var]
+
+# We can safely remove the records where CountyName begins with an asterick because those are "historical" counties that no longer exist
+dups <- dups[substr(CountyName, 1, 1) == "*"]
+disaster <- fsetdiff(disaster, dups[, !c("N"), with = FALSE])
+
+setnames(disaster,
+         old = c("County_FIPS", "Year"),
+         new = c("county.census.geoid", "TAX_YEAR"))
+
+#saveRDS(disaster, "disasters.rds")
+```
+
+```{r}
+library(data.table)
+library(readr)
+
+# stnd2010, 1990-2021
+dt <- as.data.table(read_csv("sheldus/direct_loss_aggregated_output_27826.csv", show_col_types = FALSE))
+
+# Checking for duplicates
+key_var <- c("County_FIPS", "Year")
+dup_groups <- dt[, .N, by = key_var][N > 1]
+dups <- dt[dup_groups, on = key_var]
+
+# We can safely remove the records where CountyName begins with an asterick because those are "historical" counties that no longer exist
+dups <- dups[substr(CountyName, 1, 1) == "*"]
+dt <- fsetdiff(dt, dups[, !c("N"), with = FALSE])
+
+setnames(dt,
+         old = c("County_FIPS", "Year"),
+         new = c("county.geoid", "TAX_YEAR"))
+
+saveRDS(dt, "disasters.rds")
+```
+
 
 
 # Scratchwork
@@ -367,4 +633,144 @@ info.2013 <- duplicateEIN2_info(dt.2013, groups.2013, track.skips = TRUE)
 
 mult.2013 <- (dupes.2013 |> filter(n > 3))$EIN2
 sub.2013 <- dt.2013[EIN2 %in% mult.2013]
+```
+
+```{r}
+# STEP ONE: When an organization is always missing the fiscal year, but has unique tax years for each record, use the tax year to fill in the fiscal year
+# Which orgs have all FISCAL_YEAR variables missing?
+org_missing_status <- dt[, .(
+  all_missing_fys = all(is.na(F9_00_FISCAL_YEAR_START)),
+  n_total = .N,
+  n_missing = sum(is.na(F9_00_FISCAL_YEAR_START))
+), by = EIN2]
+
+always_missing <- org_missing_status[all_missing_fys==TRUE, EIN2]
+
+tax_year_summary_by_org <- tax_year_summary[EIN2 %in% always_missing, .(
+  has_dup_tax_year = any(is_dup_tax_year),   # TRUE if org ever had a dup tax year
+  n_total_tax_years = .N,                    # total tax years observed for this org
+  n_dup_tax_years = sum(is_dup_tax_year)     # number of tax years with duplicates
+), by = EIN2]
+
+# EINs where fiscal year is always missing AND tax years are unique; fills in 63334 missing values
+dt[, IMPUTED_FISCAL_WITH_TAX := FALSE] # flag to keep track of where fiscal years are imputed using the tax year
+
+safe <- tax_year_summary_by_org[n_dup_tax_years == 0, EIN2]
+dt[EIN2 %in% safe & is.na(F9_00_FISCAL_YEAR_START), `:=`(
+      F9_00_FISCAL_YEAR_START = TAX_YEAR,
+      IMPUTED_FISCAL_WITH_TAX = TRUE
+)]
+
+sum(is.na(dt$F9_00_FISCAL_YEAR_START)) # 774,178 missing fy
+
+rm(safe, org_missing_status, always_missing)
+sum(dt$IMPUTED_FISCAL_WITH_TAX)
+```
+
+
+```{r}
+# Step : Impute missing fiscal years with tax year whenever the record missing the fiscal year has a unique tax year (no other records for that organization share the same tax year), but only where there is a strong pattern: if 100% of the non-missing fiscal years for that organization match the corresponding tax year, we can set FISCAL_YEAR = TAX_YEAR; however if 100% of records with non-missing fiscal years have a fiscal year equal to TAX_YEAR-1, then we set FISCAL = TAX -1; otherwise leave alone
+
+# figure out which ones to modify
+org_pattern_summary <- dt[, .(
+  n_total = .N,
+  n_missing_fys = sum(is.na(F9_00_FISCAL_YEAR_START)),
+  n_equal = sum(F9_00_FISCAL_YEAR_START == TAX_YEAR, na.rm = TRUE),
+  n_not_equal = sum(!is.na(F9_00_FISCAL_YEAR_START) &
+                      F9_00_FISCAL_YEAR_START != TAX_YEAR)
+), by = EIN2]
+
+# Add proportions based on non-missing cases
+org_pattern_summary[, n_non_missing := n_total - n_missing_fys]
+org_pattern_summary[, prop_equal := fifelse(n_non_missing > 0,
+                                            n_equal / n_non_missing, NA_real_)]
+org_pattern_summary[, prop_not_equal := fifelse(n_non_missing > 0,
+                                                n_not_equal / n_non_missing, NA_real_)]
+
+# Join summary info onto main data.table
+dt <- merge(
+  dt,
+  org_pattern_summary[, .(EIN2, prop_equal, prop_not_equal)],
+  by = "EIN2",
+  all.x = TRUE
+)
+
+# Merge EIN × TAX_YEAR duplicate info
+dt <- merge(
+  dt,
+  tax_year_summary[, .(EIN2, TAX_YEAR, is_dup_tax_year)],
+  by = c("EIN2", "TAX_YEAR"),
+  all.x = TRUE
+)
+
+# Case 1: org always fiscal = tax_year, but only if tax_year is unique
+dt[is.na(F9_00_FISCAL_YEAR_START) & prop_equal == 1 & !is_dup_tax_year,
+  `:=`(F9_00_FISCAL_YEAR_START = TAX_YEAR, 
+       IMPUTED_FISCAL_WITH_TAX = TRUE
+  )]
+
+# Case 2: org always fiscal = tax_year - 1, but only if tax_year is unique
+dt[is.na(F9_00_FISCAL_YEAR_START) & prop_not_equal == 1 & !is_dup_tax_year,
+  `:=`(F9_00_FISCAL_YEAR_START = TAX_YEAR - 1,
+       IMPUTED_FISCAL_WITH_TAX = TRUE
+  )]
+
+# after <- dt[EIN2 %in% eins_to_check, c("EIN2", "F9_00_FISCAL_YEAR_START", "TAX_YEAR")]
+# setorder(after, EIN2, TAX_YEAR)
+
+sum(is.na(dt$F9_00_FISCAL_YEAR_START)) # 542,892 missing fy
+```
+
+```{r}
+# Step 1: Identify groups of potential duplicates (same EIN2, TAX_YEAR, and all other cols except fiscal year)
+cols_to_check <- setdiff(
+  names(dt),
+  c("EIN2", "TAX_YEAR", "F9_00_FISCAL_YEAR_START")
+)
+
+dt[, dup_group := .GRP, by = c("EIN2", "TAX_YEAR", cols_to_check)]
+
+# Step 2: Summarize each group
+dup_summary <- dt[
+  ,
+  .(
+    n_total = .N,
+    n_na = sum(is.na(F9_00_FISCAL_YEAR_START)),
+    n_non_na = sum(!is.na(F9_00_FISCAL_YEAR_START))
+  ),
+  by = dup_group
+]
+
+# Step 3: Count how many groups match the pattern (2 rows: 1 NA, 1 non-NA)
+n_exact_pairs <- dup_summary[n_total == 2 & n_na == 1 & n_non_na == 1, .N]
+
+# Optional: also count how many *rows* this represents (should be 2 × n_exact_pairs)
+n_exact_rows <- dup_summary[n_total == 2 & n_na == 1 & n_non_na == 1, sum(n_total)]
+
+nrow(dt) - n_exact_pairs # 2,100,524
+
+# Step 1: Identify duplicate rows except for fiscal year
+
+# Step 2: Flag duplicates
+dt[, dup_group := .GRP, by = c("EIN2", "TAX_YEAR", cols_to_check)]
+
+# Step 3: Within each dup_group, if exactly one NA fiscal year and one non-NA → drop the NA
+rows_to_drop <- dt[
+  , .(
+    n_total = .N,
+    n_na = sum(is.na(F9_00_FISCAL_YEAR_START)),
+    n_non_na = sum(!is.na(F9_00_FISCAL_YEAR_START))
+  ),
+  by = dup_group
+][n_total == 2 & n_na == 1 & n_non_na == 1, dup_group]
+
+# Step 4: Remove the NA record from those groups
+dt <- dt[!(dup_group %in% rows_to_drop & is.na(F9_00_FISCAL_YEAR_START))]
+
+# Step 5: Clean up helper column
+# dt[, dup_group := NULL]
+
+#dt[dup_group %in% rows_to_drop, c("EIN2", "TAX_YEAR", "F9_00_FISCAL_YEAR_START", "PF_01_REV_GRO_PROFIT_BOOKS", "PF_02_ASSET_TOT_EOY_BV", "dup_group")]
+
+sum(is.na(dt$F9_00_FISCAL_YEAR_START)) # 7700 missing fy
 ```

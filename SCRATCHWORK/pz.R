@@ -1,0 +1,238 @@
+# Script to clean CORE files for causal analysis (disaster -> nonprofit outcomes)
+library(data.table)
+library(readr)
+
+###################################
+######## STEP ONE #################
+###################################
+vars.keep <- c("EIN2", "TAX_YEAR", "F9_10_ASSET_TOT_EOY", "F9_01_REV_TOT_CY", "F9_08_REV_TOT_TOT", "F9_09_EXP_TOT_TOT", "F9_01_EXP_TOT_CY")
+
+dt.original <- data.table(matrix(ncol=length(vars.keep),nrow=0))
+colnames(dt.original) <- vars.keep
+
+dt.pz <- data.table(matrix(ncol=length(vars.keep),nrow=0))
+colnames(dt.pz) <- vars.keep
+
+# Stacking all the years of data on top of each other
+year_values <- seq(from = 1991, to = 2021, by = 1)
+for (year in year_values){
+      # Get data, restrict to variables we care about, remove records that are exact duplicates, and make EIN2 the first column
+      file_name <- sprintf("CORE/pz/CORE-%s-501C3-CHARITIES-PZ-HRMN.csv", year) #CE-NONPROFIT, C3-CHARITIES
+      
+      # load data into environment 
+      temp <- as.data.table(read_csv(file_name, show_col_types = FALSE))
+      temp.vars.keep <- intersect(vars.keep, colnames(temp))
+      temp <- unique(temp[, ..temp.vars.keep])
+      
+      # Combine
+      dt.original <- rbindlist(list(dt.original, temp), fill = TRUE)
+      dt.pz <- rbindlist(list(dt.pz, temp), fill = TRUE)
+}
+
+# Status of missing variables
+source("SCRIPTS/clean_helper.R")
+dt.na_counts <- na_counts_df(dt.original)
+
+# There are two variables for revenue and expenses but each point to the same information in theory
+# Create new REV variable where, if one revenue variable is missing but not the other, we take the non-missing one; if both are missing then just missing; if both filled but different... will have to think that through later
+#tst <- as.data.table(read_csv("SCRATCHWORK/test_revenue_records.csv", show_col_types = FALSE))
+dt.pz[, TOT_REV :=
+            fcase(
+                  
+                  # 1. exactly one missing → take the non-missing value
+                  is.na(F9_01_REV_TOT_CY) & !is.na(F9_08_REV_TOT_TOT), F9_08_REV_TOT_TOT,
+                  !is.na(F9_01_REV_TOT_CY) & is.na(F9_08_REV_TOT_TOT), F9_01_REV_TOT_CY,
+                  
+                  # 2. both present & equal → take the value
+                  F9_01_REV_TOT_CY == F9_08_REV_TOT_TOT, F9_01_REV_TOT_CY,
+                  
+                  # 3. both present & *not* equal or both missing
+                  default =  NA_real_
+            )
+]
+# Same for TOT_EXP
+dt.pz[, TOT_EXP :=
+            fcase(
+                  # 1. exactly one missing → take the non-missing value
+                  is.na(F9_01_EXP_TOT_CY) & !is.na(F9_09_EXP_TOT_TOT), F9_09_EXP_TOT_TOT,
+                  !is.na(F9_01_EXP_TOT_CY) & is.na(F9_09_EXP_TOT_TOT), F9_01_EXP_TOT_CY,
+                  
+                  # 2. both present & equal → take the value
+                  F9_01_EXP_TOT_CY == F9_09_EXP_TOT_TOT, F9_01_EXP_TOT_CY,
+                  
+                  # 3. both present & *not* equal or both missing
+                  default = NA_real_
+            )
+]
+pz.na_counts <- na_counts_df(dt.pz) # In PZ_CHARITY TOT_REV and TOT_EXP are never missing! So I think its fine to drop the other rev/exp columns; but in PZ_NONPROFIT TOT_REV sometimes missing
+
+# Checking TOT_REV for PZ_NONPROFIT
+dt.pz[, FLAG := fcase(
+                  is.na(F9_01_REV_TOT_CY) & is.na(F9_08_REV_TOT_TOT), TRUE,
+                  default = FALSE
+)] # with this, I have confirmed that when TOT_REV is missing that's because it was missing in both the revenue variables, so safe to drop
+
+dt.pz <- dt.pz[, !c("F9_01_REV_TOT_CY", "F9_08_REV_TOT_TOT", "F9_01_EXP_TOT_CY", "F9_09_EXP_TOT_TOT"), with = FALSE]
+
+# Looking for duplicate records
+
+key_var <- c("EIN2", "TAX_YEAR")
+# duplicates that need to be resolved
+dup_groups <- dt.pz[, .N, by = key_var][N > 1] #ASSET BOY / EOY charity: 170,907 / 33,102, nonprofit: 97,927 / 62,068
+
+# subset duplicate records
+dups <- dt.pz[dup_groups, on = key_var]
+
+# identify the dollar-valued columns
+dollar_cols <- c("F9_10_ASSET_TOT_EOY", "TOT_REV", "TOT_EXP")
+diagnostics <- dups[, compare_pair_dt(.SD, dollar_cols), by = .(EIN2, TAX_YEAR)] #information about the duplicates
+
+probs <- seq(0,1,0.1)
+quantile(diagnostics$max_abs_diff, probs = probs)
+
+# Whenever the difference was due to a single missing value (i.e. every other column matched except for one and the mismatch was due to missing variable), just pick the complete record
+just_1_NA_groups <- diagnostics[diagnostics$max_abs_diff == 0 & diagnostics$had_missing_diff & !diagnostics$multi_col_diff, .(EIN2, TAX_YEAR)]
+
+# Step 1: subset dt.pz to only the relevant EIN2–TAX_YEAR pairs
+dt.sub <- dt.pz[just_1_NA_groups, on = .(EIN2, TAX_YEAR)]
+
+# Step 2: within each EIN2–TAX_YEAR group, compute number of NAs
+dt.sub[, na_count := rowSums(is.na(.SD)), by = .(EIN2, TAX_YEAR)]
+
+# Step 3: keep only the row with the fewest NAs (the more complete record)
+dt.sub <- dt.sub[order(na_count)][, .SD[1], by = .(EIN2, TAX_YEAR)]
+
+# Now need to merge this back into dt.pz--first we'll just drop the EIN2,TAX_YEAR pairs in question
+temp <- dt.pz[!just_1_NA_groups, on = .(EIN2, TAX_YEAR)]
+dt.pz <- rbind(temp, dt.sub, fill = TRUE)
+
+# of the remaining duplicates, how many have differences greater than $1000?
+
+dup_groups <- dt.pz[, .N, by = key_var][N > 1] #(EOY) charity: , nonprofit: 7366
+dups <- dt.pz[dup_groups, on = key_var]
+diagnostics <- dups[, compare_pair_dt(.SD, dollar_cols), by = .(EIN2, TAX_YEAR)] #information about the duplicates
+
+gt1000_summary <- data.table(
+      VAR_NAME = dollar_cols,
+      N_GT1000 = sapply(diagnostics[, ..dollar_cols], function(x) sum(abs(x) > 1000, na.rm = TRUE))
+)
+# groups where differences are all small and there are exactly two rows; exclude cases where there is a difference in one of the financial variables due to a missing variable
+insignificant_groups <- diagnostics[max_abs_diff <= 1000 & n_records == 2 & !had_missing_diff, .(EIN2, TAX_YEAR)] #charity: 13596, nonprofit: 960
+
+# keep first row within each insignificant group
+# add a temporary flag column
+dt.pz[, keep := TRUE]  # default: keep everything
+
+# for insignificant groups, keep only the first row per group
+dt.pz[insignificant_groups,
+   on = .(EIN2, TAX_YEAR),
+   keep := seq_len(.N) == 1,
+   by = .EACHI]
+
+dt.pz <- dt.pz[keep == TRUE]
+dt.pz[, keep := NULL]  # optional: drop temporary column
+
+# update the duplicates that need to be resolved
+dup_groups <- dt.pz[, .N, by = key_var][N > 1] #charity: 19506 / nonprofit: 6406
+
+# subset duplicate records
+dups <- dt.pz[dup_groups, on = key_var] 
+
+#diagnostics <- dups[, compare_pair_dt(.SD, dollar_cols), by = .(EIN2, TAX_YEAR)]
+
+saveRDS(dt.pz, "SCRATCHWORK/pz_merged.rds") # "SCRATCHWORK/pz_ce_merged.rds"
+
+###################################
+######## STEP TWO #################
+###################################
+
+library(data.table)
+library(readr)
+source("SCRIPTS/clean_BMF.R")
+
+dt <- readRDS("SCRATCHWORK/pz_merged.rds")
+
+unified_bmf <- as.data.frame(read_csv("CORE/BMF_UNIFIED_V1.1.csv", show_col_types = FALSE))
+unified_bmf <- unified_bmf[!(unified_bmf$EIN2 %in% "EIN-00-0000000"),]
+
+#bmf <- as.data.table(read_csv("../CLEAN/cleanBMF.csv", show_col_types = FALSE))
+vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_ASSETS_RECENT","CENSUS_BLOCK_FIPS", "LATITUDE", "LONGITUDE", "CENSUS_COUNTY_NAME", "CENSUS_STATE_ABBR")
+thresh <- 7
+bmf <- clean_BMF(vars_to_keep, thresh, saveFlag = FALSE)
+na_counts <- bmf$na.count
+bmf <- bmf$clean.data
+
+# 1. Find organizations only in dt not cleaned bmf
+# Use the `key_col` as the join key and perform an anti-join
+only_in_dt1_clean_bmf <- dt[!bmf, on = .(EIN2)]
+
+# 2. Count the occurrences of these keys in dt
+# Group by `key_col` and count the number of rows (.N)
+count_only_in_dt1_clean <- only_in_dt1_clean_bmf[, .N, by = EIN2]
+
+print(nrow(count_only_in_dt1_clean)) # 2982
+
+only_in_dt1_bmf <- dt[!unified_bmf, on = .(EIN2)]
+count_only_in_dt1_bmf <- only_in_dt1_bmf[, .N, by = EIN2]
+print(nrow(count_only_in_dt1_bmf)) #2982
+
+nrow(count_only_in_dt1_clean[N >= 3]) # 204
+
+length(intersect(count_only_in_dt1_clean[N >= 7, EIN2], unique(unified_bmf$EIN2))) # 0
+
+merged.dt <- merge(dt, bmf, by = "EIN2")
+
+saveRDS(merged.dt, "SCRATCHWORK/pz_merged_bmf.rds")
+
+###################################
+######## STEP THREE ###############
+###################################
+
+library(data.table)
+library(readr)
+
+dt <- readRDS("SCRATCHWORK/pz_merged_bmf.rds")
+dt[, block.census.geoid := sprintf("%015s", CENSUS_BLOCK_FIPS)] 
+dt[, 'county.census.geoid' := substr(block.census.geoid, 1, 5)]
+
+blockX <- as.data.table(read_csv("SCRATCHWORK/BLOCKX.csv", show_col_types = FALSE))
+
+print(length(unique(dt$block.census.geoid)))
+length(intersect(unique(dt$block.census.geoid), blockX$block.census.geoid))
+
+print(length(unique(dt$county.census.geoid)))
+length(intersect(unique(dt$county.census.geoid), blockX$county.census.geoid))
+
+missing_ids <- setdiff(unique(dt$county.census.geoid), unique(blockX$county.census.geoid))
+
+missing_ids <- setdiff(missing_ids, c("02066", "00000", "02063")) # 02066 is Copper River Census Area in Alaska which did not exist until 2019, thus does not appear in the census crosswalk files (which are standardized to 2010) -- I'm thinking I can manually figure out where to put this record; the rest of the counties are census regions in US territories
+
+dt <- dt[!county.census.geoid %in% missing_ids]
+
+print(length(unique(dt$county.census.geoid)))
+length(intersect(unique(dt$county.census.geoid), blockX$county.census.geoid))
+
+# Fixing any records with 02066 and 02063.. using Census Geocoder found that in 2010 these corresponded to Valdez-Cordova Census Area, with geoid 02261
+dt[county.census.geoid %in% c("02066", "02063"), 
+   county.census.geoid := "02261"]
+
+print(length(unique(dt$county.census.geoid)))
+length(intersect(unique(dt$county.census.geoid), blockX$county.census.geoid))
+
+dt[, DATA_COUNT := .N, by = c("EIN2")]
+table(dt$DATA_COUNT)
+quantile(dt$DATA_COUNT, probs = seq(0,1,0.1))
+
+tst <- dt[county.census.geoid %in% c("00000")]
+tst <- tst[, .SD[1], by = EIN2]
+
+table(tst$DATA_COUNT)
+quantile(tst$DATA_COUNT, probs = seq(0,1,0.1))
+
+setnames(dt,
+         old = c("F9_10_ASSET_TOT_EOY", "F990_TOTAL_ASSETS_RECENT"),
+         new = c("TOT_ASSET", "SIZE"))
+
+dt <- dt[, !c("na_count"), with = FALSE]
+
+saveRDS(dt, "SCRATCHWORK/pz_processed.rds")
