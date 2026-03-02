@@ -36,3 +36,8 @@ PREPROCESSING/df.rds
 PREPROCESSING/processed_mega_df.rds
 PREPROCESSING/years_to_predict.rds
 PREPROCESSING/orgs_reported_same.rds
+SCRATCHWORK/balances/
+SCRATCHWORK/matches/
+SCRATCHWORK/counties_data/
+SCRATCHWORK/sheldus/
+SCRATCHWORK/climate_data/
