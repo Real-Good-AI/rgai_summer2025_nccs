@@ -1,6 +1,52 @@
 library(tibble)
 library(dplyr)
 
+compare_pair_dt <- function(dt_group, dollar_cols) {
+      # number of records in this group
+      n_records <- nrow(dt_group)
+      
+      # drop keys (convert to numeric matrix)
+      mat <- as.matrix(dt_group)
+      
+      # names of all columns in the group
+      coln <- colnames(dt_group)
+      
+      # indices of dollar columns
+      dollar_idx <- match(dollar_cols, coln)
+      
+      # compute differences only if there are exactly 2 rows
+      if (n_records == 2) {
+            r1 <- as.numeric(mat[1, ])
+            r2 <- as.numeric(mat[2, ])
+            
+            diffs <- r1 - r2
+            abs_diffs <- abs(diffs)
+            
+            # check missing-caused differences only for dollar columns
+            had_missing_diff <- any(xor(is.na(r1[dollar_idx]), is.na(r2[dollar_idx])))
+            
+      } else {
+            # for groups with != 2 rows, set diffs to NA
+            diffs <- abs_diffs <- numeric(ncol(dt_group))
+            diffs[] <- NA
+            abs_diffs[] <- NA
+            had_missing_diff <- NA
+      }
+      
+      # differences for dollar columns (NA if group != 2 rows)
+      diffs_named <- as.list(setNames(diffs[match(dollar_cols, coln)], dollar_cols))
+      
+      # combine into one data.table row
+      data.table(
+            n_records      = n_records,                 # <-- new column
+            n_diff_cols    = sum(abs_diffs != 0 & !is.na(abs_diffs)),
+            n_diff_gt1     = sum(abs_diffs > 1, na.rm = TRUE),
+            max_abs_diff   = max(abs_diffs, na.rm = TRUE),
+            had_missing_diff = had_missing_diff,
+            multi_col_diff = sum(abs_diffs != 0, na.rm = TRUE) > 1
+      )[, c(.SD, diffs_named)]
+}
+
 na_counts_df <- function(df){
     n <- nrow(df)
     na_count <- sapply(df, function(y) sum(length(which(is.na(y))))) # get na_counts per column
