@@ -31,7 +31,9 @@ covs_to_check <- c("white_perc", "bachelors_perc", "poverty_perc", "unemployment
 df <- df |> mutate(across(all_of(covs_to_check), as.numeric)) # make sure these are numeric
 
 # These are the variables we will assess balance for
-covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "pop_estimate", "med_precip", "med_avg_temp", "TOT_REV", "TOT_ASSET", "NUM_ORGS")
+covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "pop_estimate", "med_precip", "med_avg_temp", "TOT_REV", "TOT_ASSET", "NUM_ORGS", "NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA")
+
+df <- df |> select(all_of(c(c("CountyID", "TAX_YEAR", "treat.FEMA", "lat", "lng"), covs_to_check)))
 
 #TODO: add spatially varying coefficients
 
@@ -41,6 +43,8 @@ panel_df <- PanelData(panel.data = as.data.frame(df),
                       time.id = "TAX_YEAR",
                       treatment = "treat.FEMA",
                       outcome = "TOT_REV")
+rm(df)
+saveRDS(panel_df, "no_int_panelV2.rds")
 ```
 
 ```{r}
@@ -58,148 +62,124 @@ treatVarPlot
 ```
 
 ## Initial Imbalance
-### Outcome 1-year post-disaster
+### Lag = 1
 ```{r}
-init.L1F1 <- PanelMatch(panel.data = panel_df,
-                 lag = 1,
-                 refinement.method = "none",
-                 qoi = "att",
-                 match.missing = FALSE,
-                 lead = 1,
-                 matching = FALSE,
-                 placebo.test = TRUE)
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(tidyr)
+library(stringr)
+library(khroma)
+source("matches_helper.R")
 
-summary(init.L1F1)
+# Set up the folder path and saved object names
+L = 1 # lag, options: 1, 3, 5
+folder_path_match <- "matches/"
+folder_path_balance <- "balances/"
+save_name <- paste0("Lag", L)
 
-bal.init.L1F1 <- get_covariate_balance(init.L1F1, panel.data = panel_df, covariates = covs_to_check)
+# Retrieve the PanelMatch objects
+matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
 
-temp <- summary(bal.init.L1F1, include.unrefined = FALSE)
-bal_df <- as.data.frame(temp$init.L1F1)
-write.csv(bal_df, file = "balance_tables.csv")
+# Retrieve the PanelBalance objects
+balances_list <- readRDS(paste0(folder_path_balance, save_name, ".rds"))
 
-bal_df
-plot(bal.init.L1F1, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.3, 0.3)) 
-plot(bal.init.L1F1, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2))
-```
+# Make the balances for each lag easy to work with as a dataframe
+bal_df <- lapply(balances_list, summary)
+bal_df <- lapply(bal_df, as.data.frame)
+bal_df <- lapply(bal_df, tibble::rownames_to_column, var = "time")
 
-```{r}
-init.L3F1 <- PanelMatch(panel.data = panel_df,
-                 lag = 3,
-                 refinement.method = "none",
-                 qoi = "att",
-                 match.missing = FALSE,
-                 lead = 1,
-                 matching = FALSE,
-                 placebo.test = TRUE)
-
-summary(init.L3F1)
-
-bal.init.L3F1 <- get_covariate_balance(init.L3F1, panel.data = panel_df, covariates = covs_to_check)
-
-temp <- summary(bal.init.L3F1, include.unrefined = FALSE)
-bal_df <- as.data.frame(temp$init.L3F1)
-write.csv(bal_df, file = "balance_tables.csv")
-
-bal_df
-plot(bal.init.L3F1, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2, 0.2)) # ylim = c(-0.5, 0.5)
-plot(bal.init.L3F1, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2))
-```
-
-```{r}
-init.L5F1 <- PanelMatch(panel.data = panel_df,
-                 lag = 5,
-                 refinement.method = "none",
-                 qoi = "att",
-                 match.missing = FALSE,
-                 lead = 1,
-                 matching = FALSE,
-                 placebo.test = TRUE)
-
-summary(init.L5F1)
-
-bal.init.L5F1 <- get_covariate_balance(init.L5F1, panel.data = panel_df, covariates = covs_to_check)
-
-temp <- summary(bal.init.L5F1, include.unrefined = FALSE)
-bal_df <- as.data.frame(temp$init.L5F1)
-write.csv(bal_df, file = "balance_tables.csv")
-
-bal_df
-plot(bal.init.L5F1, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2, 0.2)) # ylim = c(-0.2, 0.4)
-plot(bal.init.L5F1, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2))
+# Print information about matching and balances
+summary(matches_list$none)
+summary(matches_list$ps.match)
+# summary(matches_list$cbps.match)
+# summary(matches_list$ps.weight)
+# summary(matches_list$cbps.weight)
 ```
 
 
-
-### Outcome 3-years post-disaster
+Default Scatter Plots
 ```{r}
-init.L1F3 <- PanelMatch(panel.data = panel_df,
-                 lag = 1,
-                 refinement.method = "none",
-                 qoi = "att",
-                 match.missing = FALSE,
-                 lead = 3,
-                 matching = FALSE,
-                 placebo.test = TRUE)
-
-summary(init.L1F3)
-
-bal.init.L1F3 <- get_covariate_balance(init.L1F3, panel.data = panel_df, covariates = covs_to_check)
-
-temp <- summary(bal.init.L1F3, include.unrefined = FALSE)
-bal_df <- as.data.frame(temp$init.L1F3)
-write.csv(bal_df, file = "balance_tables.csv")
-
-bal_df
-plot(bal.init.L1F3, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2, 0.2))
-plot(bal.init.L1F3, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2)) 
+plot(balances_list$none, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE)
+plot(balances_list$ps.match, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE)
+# plot(balances_list$cbps.match, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE)
+# plot(balances_list$ps.weight, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE)
+# plot(balances_list$cbps.weight, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE)
 ```
 
 
+Default Covariate Balance Plots
 ```{r}
-init.L3F3 <- PanelMatch(panel.data = panel_df,
-                 lag = 3,
-                 refinement.method = "none",
-                 qoi = "att",
-                 match.missing = FALSE,
-                 lead = 3,
-                 matching = FALSE,
-                 placebo.test = TRUE)
-
-summary(init.L3F3)
-
-bal.init.L3F3 <- get_covariate_balance(init.L3F3, panel.data = panel_df, covariates = covs_to_check)
-
-temp <- summary(bal.init.L3F3, include.unrefined = FALSE)
-bal_df <- as.data.frame(temp$init.L3F3)
-write.csv(bal_df, file = "balance_tables.csv")
-
-bal_df
-plot(bal.init.L3F3, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2, 0.2))
-plot(bal.init.L3F3, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2))
+plot(balances_list$none, type = "panel", include.unrefined.panel = FALSE, legend = TRUE, main = "No Matching") 
+plot(balances_list$ps.match, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "PS Matching", main.unrefined = "PS Matching (unrefined)") 
+# plot(balances_list$cbps.match, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "CBPS Matching", main.unrefined = "CBPS Matching (unrefined)") 
+# plot(balances_list$ps.weight, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "PS Weighting", main.unrefined = "PS Weighting (unrefined)") 
+# plot(balances_list$cbps.weight, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "CBPS Weighting", main.unrefined = "CBPS Weighting (unrefined)") 
 ```
 
+
+My Covariate Balance Plots
 ```{r}
-init.L5F3 <- PanelMatch(panel.data = panel_df,
-                 lag = 5,
-                 refinement.method = "none",
-                 qoi = "att",
-                 match.missing = FALSE,
-                 lead = 3,
-                 matching = FALSE,
-                 placebo.test = TRUE)
+covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "pop_estimate", "med_precip", "med_avg_temp", "TOT_REV", "TOT_ASSET", "NUM_ORGS", "NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA")
 
-summary(init.L5F3)
+bal_none <- tidy_bal_df(bal_data = bal_df$none, covariates = paste0("m.out.",covs_to_check))
+bal_ps.match <- tidy_bal_df(bal_data = bal_df$ps.match, covariates = paste0("m.out.",covs_to_check))
+# bal_cbps.match <- tidy_bal_df(bal_data = bal_df$cbps.match, covariates = paste0("m.out.",covs_to_check))
+# bal_ps.weight <- tidy_bal_df(bal_data = bal_df$ps.weight, covariates = paste0("m.out.",covs_to_check))
+# bal_cbps.weight <- tidy_bal_df(bal_data = bal_df$cbps.weight, covariates = paste0("m.out.",covs_to_check))
 
-bal.init.L5F3 <- get_covariate_balance(init.L5F3, panel.data = panel_df, covariates = covs_to_check)
+p_none <- no_int_no_SVC_plots(bal_none,
+                              match_method = "No Matching",
+                              ylim_base = c(-0.15,0.05), 
+                              ylim_ntee = c(-0.15,0.05),
+                              include.unrefined.panel = FALSE)
+p_ps.match <- no_int_no_SVC_plots(bal_ps.match, 
+                                  match_method = "PS Matching",
+                                  ylim_base = c(-0.15,0.05), 
+                                  ylim_ntee = c(-0.15,0.05), 
+                                  ylim_unrefined = c(-0.15,0.05),
+                                  include.unrefined.panel = TRUE)
+# p_cbps.match <- no_int_no_SVC_plots(bal_cbps.match, 
+#                                   match_method = "CBPS Matching",
+#                                   ylim_base = c(-0.15,0.05), 
+#                                   ylim_ntee = c(-0.15,0.05), 
+#                                   include.unrefined.panel = FALSE)
+# p_ps.weight <- no_int_no_SVC_plots(bal_ps.weight, 
+#                                   match_method = "PS Weighting",
+#                                   ylim_base = c(-0.15,0.05), 
+#                                   ylim_ntee = c(-0.15,0.05), 
+#                                   include.unrefined.panel = FALSE)
+# p_cbps.weight <- no_int_no_SVC_plots(bal_cbps.weight, 
+#                                   match_method = "CBPS Weighting",
+#                                   ylim_base = c(-0.15,0.05), 
+#                                   ylim_ntee = c(-0.15,0.05), 
+#                                   include.unrefined.panel = FALSE)
 
-temp <- summary(bal.init.L5F3, include.unrefined = FALSE)
-bal_df <- as.data.frame(temp$init.L5F3)
-write.csv(bal_df, file = "balance_tables.csv")
+p_none$base
+p_none$ntee
 
-bal_df
-plot(bal.init.L5F3, type = "panel", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.2, 0.2))
-plot(bal.init.L5F3, type = "scatter", include.unrefined.panel = FALSE, legend = FALSE, ylim = c(-0.05, 0.2)) 
+p_ps.match$base
+p_ps.match$base_unrefined
+p_ps.match$ntee
+p_ps.match$ntee_unrefined
+
+# p_cbps.match$base
+# p_cbps.match$ntee
+# 
+# p_ps.weight$base
+# p_ps.weight$ntee
+# 
+# p_cbps.weight$base
+# p_cbps.weight$ntee
 ```
+
+
+### Lag = 3
+...
+
 
 ### Outcome 5-years post-disaster
 ```{r}
@@ -1070,6 +1050,103 @@ formula_L5 <- paste(
   paste(xs_vars, collapse = " + "))
 ```
 
+# PanelMatch - Interference
+
+```{r}
+library(data.table)
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(haven)
+library(geosphere)
+source("matches_helper.R")
+
+df <- readRDS("county_long.rds") |> 
+      group_by(geoid_2010) |>
+      mutate(CountyID = as.integer(cur_group_id())) |>
+      ungroup()
+
+# These are some socioeconomic covariates we need to convert from char to numeric
+covs_to_check <- c("white_perc", "bachelors_perc", "poverty_perc", "unemployment", "med_family_income_adj", "med_household_income_adj")
+df <- df |> mutate(across(all_of(covs_to_check), as.numeric))
+
+# These are the variables we will assess balance for
+covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "pop_estimate", "med_precip", "med_avg_temp", "TOT_REV", "TOT_ASSET", "NUM_ORGS", "NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA")
+
+df <- df |> select(all_of(c(c("CountyID", "geoid_2010", "TAX_YEAR", "treat.FEMA", "lat", "lng"), covs_to_check)))
+
+# Create new treatment variable that takes a distance-based cutoff adjustment
+adj_lists <- create_adj_list(panel_data = df, dist_cutoff = 50)
+res <- add_exposed(panel_data = df, adj_list = adj_lists$union)
+
+#TODO: add spatially varying coefficients
+
+# https://stackoverflow.com/questions/74815244/panelmatch-r-errors-please-convert-time-id-to-consecutive-integers-and-pleas
+panel_df <- PanelData(panel.data = as.data.frame(res$df),
+                      unit.id = "CountyID",
+                      time.id = "TAX_YEAR",
+                      treatment = "treat.FEMA.adj",
+                      outcome = "TOT_REV")
+
+saveRDS(panel_df, "int_panelV1.rds")
+
+DisplayTreatment(panel.data = panel_df, legend.position = "none", xlab = "TAX_YEAR", ylab = "County Code", hide.x.tick.label = TRUE, hide.y.tick.label = TRUE, dense.plot = TRUE)
+```
+
+```{r}
+none.L3 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "none",
+                 qoi = "att",
+                 match.missing = TRUE,
+                 lead = 1:5,
+                 matching = FALSE)
+
+bal.none.L3 <- get_covariate_balance(none.L3, panel.data = panel_df, covariates = covs_to_check)
+
+temp <- summary(bal.none.L3, include.unrefined = FALSE)
+bal_df <- as.data.frame(temp$none.L3)
+#write.csv(bal_df, file = "balance_tables.csv")
+
+summary(none.L3)
+plot(none.L3)
+bal_df
+plot(bal.none.L3, type = "panel", include.unrefined.panel = FALSE, legend = TRUE) # ylim = c(-0.5, 0.5)
+plot(bal.none.L3, type = "scatter", include.unrefined.panel = FALSE)
+```
+
+```{r}
+formulas <- list("L1" = "~ TAX_YEAR + lat*lng + I(lag(TOT_ASSET, 1:1)) + I(lag(NTEEV2_ART, 1:1)) + I(lag(NTEEV2_EDU, 1:1)) + I(lag(NTEEV2_ENV, 1:1)) + I(lag(NTEEV2_HEL, 1:1)) + I(lag(NTEEV2_HMS, 1:1)) + I(lag(NTEEV2_HOS, 1:1)) + I(lag(NTEEV2_IFA, 1:1)) + I(lag(NTEEV2_MMB, 1:1)) + I(lag(NTEEV2_PSB, 1:1)) + I(lag(NTEEV2_REL, 1:1)) + I(lag(NTEEV2_UNI, 1:1)) + I(lag(NTEEV2_UNU, 1:1)) + I(lag(NTEEV2_NA, 1:1)) + I(lag(bachelors_perc, 0:1)) + I(lag(med_household_income_adj, 0:1)) + I(lag(white_perc, 0:1)) + I(lag(pop_estimate, 0:1)) + I(lag(TOT_REV, 1:1))", 
+                 "L3" = "~ TAX_YEAR + lat*lng + I(lag(TOT_ASSET, 1:3)) + I(lag(NTEEV2_ART, 1:3)) + I(lag(NTEEV2_EDU, 1:3)) + I(lag(NTEEV2_ENV, 1:3)) + I(lag(NTEEV2_HEL, 1:3)) + I(lag(NTEEV2_HMS, 1:3)) + I(lag(NTEEV2_HOS, 1:3)) + I(lag(NTEEV2_IFA, 1:3)) + I(lag(NTEEV2_MMB, 1:3)) + I(lag(NTEEV2_PSB, 1:3)) + I(lag(NTEEV2_REL, 1:3)) + I(lag(NTEEV2_UNI, 1:3)) + I(lag(NTEEV2_UNU, 1:3)) + I(lag(NTEEV2_NA, 1:3)) + I(lag(bachelors_perc, 0:3)) + I(lag(med_household_income_adj, 0:3)) + I(lag(white_perc, 0:3)) + I(lag(pop_estimate, 0:3)) + I(lag(TOT_REV, 1:3))", 
+                 "L5" = "~ TAX_YEAR + lat*lng + I(lag(TOT_ASSET, 1:5)) + I(lag(NTEEV2_ART, 1:5)) + I(lag(NTEEV2_EDU, 1:5)) + I(lag(NTEEV2_ENV, 1:5)) + I(lag(NTEEV2_HEL, 1:5)) + I(lag(NTEEV2_HMS, 1:5)) + I(lag(NTEEV2_HOS, 1:5)) + I(lag(NTEEV2_IFA, 1:5)) + I(lag(NTEEV2_MMB, 1:5)) + I(lag(NTEEV2_PSB, 1:5)) + I(lag(NTEEV2_REL, 1:5)) + I(lag(NTEEV2_UNI, 1:5)) + I(lag(NTEEV2_UNU, 1:5)) + I(lag(NTEEV2_NA, 1:5)) + I(lag(bachelors_perc, 0:5)) + I(lag(med_household_income_adj, 0:5)) + I(lag(white_perc, 0:5)) + I(lag(pop_estimate, 0:5)) + I(lag(TOT_REV, 1:5))"
+)
+
+ps.L3 <- PanelMatch(panel.data = panel_df,
+                 lag = 3,
+                 refinement.method = "ps.match",
+                 qoi = "att",
+                 match.missing = TRUE,
+                 lead = 1:5,
+                 covs.formula = as.formula(formulas$L3),
+                 matching = TRUE)
+
+bal.ps.L3 <- get_covariate_balance(ps.L3, panel.data = panel_df, covariates = covs_to_check)
+
+temp <- summary(bal.ps.L3, include.unrefined = FALSE)
+bal_df <- as.data.frame(temp$ps.L3)
+#write.csv(bal_df, file = "balance_tables.csv")
+
+summary(ps.L3)
+plot(ps.L3)
+bal_df
+plot(bal.ps.L3, type = "panel", include.unrefined.panel = FALSE, legend = TRUE) # ylim = c(-0.5, 0.5)
+plot(bal.ps.L3, type = "scatter", include.unrefined.panel = TRUE)
+```
+
+
 # MATCHIT: Total Effect of a County Experiencing 1 or More Disasters on the County's Nonprofit Revenue
 Let the unit of analysis $i$ represent a US county.
 Let $A_i^X$ represent the treatment of county $i$ in year $X$. If county $i$ had nonzero disaster damage in the year $X$, then $A_i^X=1$. Otherwise, $A_i^X=0$.
@@ -1455,6 +1532,280 @@ summary(m.initial)
 
 # Scratchwork
 ```{r}
+create_adj_list <- function(panel_data, dist_cutoff){
+      coords <- as.data.frame(panel_data |> select(geoid_2010, lng, lat) |> unique())
+      county_IDs <- coords$geoid_2010
+      
+      # Border-based adj list
+      census_df <- read.delim("counties_data/county_adjacency2010.txt",
+                       header = FALSE,
+                       sep = "\t",
+                       col.names = c("county_name", "county_geoid",
+                                     "neighbor_name", "neighbor_geoid"),
+                       colClasses = c("character", "character", "character", "character"),
+                       stringsAsFactors = FALSE)
+      
+      census_df <- census_df |>
+            mutate(across(everything(), \(x) na_if(x, y = "")))
+      
+      census_df <- census_df |>
+            fill(county_name, county_geoid, .direction = "down")
+      
+      census_df <- census_df[census_df$county_geoid != census_df$neighbor_geoid, ]
+      
+      census_df <- census_df |> filter((county_geoid %in% county_IDs) & (neighbor_geoid %in% county_IDs))
+      
+      census_adj_list <- split(census_df$neighbor_geoid, census_df$county_geoid)
+      
+      missing <- setdiff(county_IDs, names(census_adj_list))
+      for (m in missing) {
+            census_adj_list[[m]] <- character(0)
+      }
+      
+      # Distance based adj list
+      D <- distm(coords |> select(-geoid_2010), fun = distHaversine) / 1609.344 #(meters to miles conversion)
+      dimnames(D) <- list(county_IDs, county_IDs)
+      
+      dist_cutoff <- 25
+      idx <- which(D <= dist_cutoff & D > 0, arr.ind = TRUE) # edge list (directed: (i,j) and (j,i) both appear)
+      
+      edges <- data.frame(county1 = county_IDs[idx[, 1]], 
+                          county2 = county_IDs[idx[, 2]], 
+                          stringsAsFactors = FALSE)
+      
+      dist_adj_list <- split(edges$county2, edges$county1)
+      
+      # If there are missing counties, that means that they had no neighboring counties within the cutoff distance -- so can list an empty vector for them
+      missing <- setdiff(unique(df$geoid_2010), names(dist_adj_list))
+      for (m in missing) {
+            dist_adj_list[[m]] <- character(0)
+      }
+      
+      # for every county, new adj_list is union of the two
+      adj_union <- setNames(lapply(names(dist_adj_list), function(n) union(dist_adj_list[[n]], census_adj_list[[n]])),
+                            names(dist_adj_list))
+      
+      return(list("union" = adj_union, "border" = census_adj_list, "dist" = dist_adj_list))
+}
+
+add_exposed <- function(panel_data, adj_list){
+      panel_data$treat.FEMA.adj <- panel_data$treat.FEMA # initialize adjusted treatment with original
+      years <- unique(panel_data$TAX_YEAR)
+      
+      for (yr in years) {
+            idx <- which(panel_data$TAX_YEAR == yr) # Subset indices for this year
+            treated <- panel_data$geoid_2010[idx][panel_data$treat.FEMA[idx] == 1]
+            
+            if (length(treated) == 0) next # If no treated counties, skip
+            
+            neighbors <- unique(unlist(adj_list[treated])) # Get neighbors of treated counties
+            
+            untreated_idx <- idx[panel_data$treat.FEMA[idx] == 0] # Identify untreated counties in this year
+            
+            exposed <- panel_data$geoid_2010[untreated_idx] %in% neighbors # Among untreated, find those exposed
+            
+            panel_data$treat.FEMA.adj[untreated_idx][exposed] <- NA # Set exposed controls to NA
+      }
+      
+      # per year I want to see the counts of treated, control and missing for treat.FEMA.adj
+      per_year_summary <- panel_data |> group_by(TAX_YEAR) |>
+            summarise(
+                  n_1 = sum(treat.FEMA.adj == 1, na.rm = TRUE),
+                  n_0 = sum(treat.FEMA.adj == 0, na.rm = TRUE),
+                  n_NA = sum(is.na(treat.FEMA.adj)),
+                  n = n())
+      
+      return(list("df" = panel_data, "summary" = per_year_summary))
+}
+
+library(tidyr)
+library(data.table)
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(haven)
+library(geosphere)
+
+df <- readRDS("county_long.rds") |> 
+      group_by(geoid_2010) |>
+      mutate(CountyID = as.integer(cur_group_id())) |>
+      ungroup()
+
+adj_lists <- create_adj_list(panel_data = df, dist_cutoff = 50)
+resUNION <- add_exposed(panel_data = df, adj_list = adj_lists$union)
+resBORDER <- add_exposed(panel_data = df, adj_list = adj_lists$border)
+resDIST <- add_exposed(panel_data = df, adj_list = adj_lists$dist)
+
+resUNION$summary
+resBORDER$summary
+resDIST$summary
+```
+
+```{r}
+ntee <- colnames(df)[10:22]
+paste0("I(lag(", ntee, ", 1:1))", collapse = " + ")
+```
+
+```{r}
+add_exposedOLD <- function(dist_data, dist_cutoff, panel_data){
+      # Filter by distance cutoff
+      edges <- dist_data[dist_data$mi_to_county <= dist_cutoff, c("county1", "county2")]
+      
+      # Build adjacency list
+      adj_list <- split(edges$county2, edges$county1) 
+      
+      # If there are missing counties, that means that they had no neighboring counties within the cutoff distance -- so can list an empty vector for them
+      missing <- setdiff(unique(panel_data$geoid_2010), names(adj_list))
+      for (m in missing) {
+            adj_list[[m]] <- character(0)
+      }
+      
+      panel_data$treat.FEMA.adj <- panel_data$treat.FEMA # initialize adjusted treatment with original
+      years <- unique(panel_data$TAX_YEAR)
+      
+      for (yr in years) {
+            idx <- which(panel_data$TAX_YEAR == yr) # Subset indices for this year
+            treated <- panel_data$geoid_2010[idx][panel_data$treat.FEMA[idx] == 1]
+            
+            if (length(treated) == 0) next # If no treated counties, skip
+            
+            neighbors <- unique(unlist(adj_list[treated])) # Get neighbors of treated counties
+            
+            untreated_idx <- idx[panel_data$treat.FEMA[idx] == 0] # Identify untreated counties in this year
+            
+            exposed <- panel_data$geoid_2010[untreated_idx] %in% neighbors # Among untreated, find those exposed
+            
+            panel_data$treat.FEMA.adj[untreated_idx][exposed] <- NA # Set exposed controls to NA
+      }
+      
+      # per year I want to see the counts of treated, control and missing for treat.FEMA.adj
+      per_year_summary <- panel_data |> group_by(TAX_YEAR) |>
+            summarise(
+                  n_1 = sum(treat.FEMA.adj == 1, na.rm = TRUE),
+                  n_0 = sum(treat.FEMA.adj == 0, na.rm = TRUE),
+                  n_NA = sum(is.na(treat.FEMA.adj)),
+                  n = n())
+      
+      return(list("df" = panel_data, "summary" = per_year_summary))
+}
+```
+
+```{r}
+library(data.table)
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(haven)
+library(fields)
+
+df <- readRDS("county_long.rds") |> 
+      group_by(geoid_2010) |>
+      mutate(CountyID = as.integer(cur_group_id())) |>
+      ungroup()
+
+nber_data <- read_dta("counties_data/sf12010countydistancemiles.dta")
+
+res25 <- add_exposedOLD(dist_data = nber_data, dist_cutoff = 25, panel_data = df)
+res50 <- add_exposedOLD(dist_data = nber_data, dist_cutoff = 50, panel_data = df)
+res100 <- add_exposedOLD(dist_data = nber_data, dist_cutoff = 100, panel_data = df)
+
+res25$summary
+res50$summary
+res100$summary
+```
+
+```{r}
+library(data.table)
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(haven)
+
+df <- readRDS("county_long.rds") |> 
+      group_by(geoid_2010) |>
+      mutate(CountyID = as.integer(cur_group_id())) |>
+      ungroup()
+
+res25e <- add_exposed(dist_cutoff = 25, panel_data = df)
+res50e <- add_exposed(dist_cutoff = 50, panel_data = df)
+res100e <- add_exposed(dist_cutoff = 100, panel_data = df)
+
+res25e$summary
+res50e$summary
+res100e$summary
+```
+
+
+```{r}
+# panel_data = df
+# dist_cutoff <- 25
+library(geosphere)
+add_exposed <- function(dist_cutoff, panel_data){
+      coords <- as.data.frame(panel_data |> select(geoid_2010, lng, lat) |> unique())
+      county_IDs <- coords$geoid_2010
+      
+      D <- distm(coords |> select(-geoid_2010), fun = distHaversine) / 1609.344 #(meters to miles conversion)
+      #D <- rdist.earth(coords |> select(-geoid_2010), miles = TRUE)
+      dimnames(D) <- list(county_IDs, county_IDs)
+      #diag(D) <- 0
+      
+      idx <- which(D <= dist_cutoff & D > 0, arr.ind = TRUE) # edge list (directed: (i,j) and (j,i) both appear)
+      
+      edges <- data.frame(county1 = county_IDs[idx[, 1]], 
+                          county2 = county_IDs[idx[, 2]], 
+                          stringsAsFactors = FALSE)
+      
+      adj_list <- split(edges$county2, edges$county1)
+      
+      # If there are missing counties, that means that they had no neighboring counties within the cutoff distance -- so can list an empty vector for them
+      missing <- setdiff(unique(panel_data$geoid_2010), names(adj_list))
+      for (m in missing) {
+            adj_list[[m]] <- character(0)
+      }
+      
+      panel_data$treat.FEMA.adj <- panel_data$treat.FEMA # initialize adjusted treatment with original
+      years <- unique(panel_data$TAX_YEAR)
+      
+      for (yr in years) {
+            idx <- which(panel_data$TAX_YEAR == yr) # Subset indices for this year
+            treated <- panel_data$geoid_2010[idx][panel_data$treat.FEMA[idx] == 1]
+            
+            if (length(treated) == 0) next # If no treated counties, skip
+            
+            neighbors <- unique(unlist(adj_list[treated])) # Get neighbors of treated counties
+            
+            untreated_idx <- idx[panel_data$treat.FEMA[idx] == 0] # Identify untreated counties in this year
+            
+            exposed <- panel_data$geoid_2010[untreated_idx] %in% neighbors # Among untreated, find those exposed
+            
+            panel_data$treat.FEMA.adj[untreated_idx][exposed] <- NA # Set exposed controls to NA
+      }
+      
+      # per year I want to see the counts of treated, control and missing for treat.FEMA.adj
+      per_year_summary <- panel_data |> group_by(TAX_YEAR) |>
+            summarise(
+                  n_1 = sum(treat.FEMA.adj == 1, na.rm = TRUE),
+                  n_0 = sum(treat.FEMA.adj == 0, na.rm = TRUE),
+                  n_NA = sum(is.na(treat.FEMA.adj)),
+                  n = n())
+      
+      return(list("df" = panel_data, "summary" = per_year_summary))
+}
+```
+
+
+
+
+```{r}
 library(data.table)
 library(readr)
 library(dplyr)
@@ -1553,5 +1904,8 @@ formula_L5 <- paste(
   "~ I(lag(bachelors_perc, 0:5)) + I(lag(med_household_income_adj, 0:5)) + I(lag(white_perc, 0:5)) + I(lag(pop_estimate, 0:5)) + med_precip + med_avg_temp +",
   paste(xs_vars, collapse = " + "))
 
+formula_string <- paste(
+  "y ~ bachelors_perc + med_household_income_adj + white_perc + pop_estimate + med_precip + med_avg_temp +",
+  paste(colnames(df)[10:24], collapse = " + "))
 ```
 
