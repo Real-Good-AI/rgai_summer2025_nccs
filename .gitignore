@@ -41,3 +41,5 @@ SCRATCHWORK/matches/
 SCRATCHWORK/counties_data/
 SCRATCHWORK/sheldus/
 SCRATCHWORK/climate_data/
+SCRATCHWORK/CORE/
+.RDataTmp*
