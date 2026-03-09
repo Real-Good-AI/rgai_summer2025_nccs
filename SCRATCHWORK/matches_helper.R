@@ -4,9 +4,45 @@ library(dplyr)
 library(tidyverse)
 library(ggplot2)
 library(geosphere)
+library(fields)
+library(khroma)
+
+create_formulas <- function(panel_df, svc_flag = FALSE){
+      se_vars <- colnames(panel_df)[which(colnames(panel_df) == "bachelors_perc"):which(colnames(panel_df) == "pop_estimate")] 
+      org_vars <- colnames(panel_df)[which(colnames(panel_df) == "TOT_REV"):which(colnames(panel_df) == "NTEEV2_NA")] 
+      if (svc_flag){
+            svc_vars <- colnames(panel_df)[which(colnames(panel_df) == "x_s1"):ncol(panel_df)] # all spatially varying coefficients
+            formulas <- list("L1" = paste("~ TAX_YEAR +",
+                                          paste0("I(lag(", se_vars, ", 0:1))", collapse = " + "), "+",
+                                          paste0("I(lag(", org_vars, ", 1:1))", collapse = " + "), "+",
+                                          paste(svc_vars, collapse = " + ")), 
+                             "L3" = paste("~ TAX_YEAR +",
+                                          paste0("I(lag(", se_vars, ", 0:3))", collapse = " + "), "+",
+                                          paste0("I(lag(", org_vars, ", 1:3))", collapse = " + "), "+",
+                                          paste(svc_vars, collapse = " + ")), 
+                             "L5" = paste("~ TAX_YEAR +",
+                                          paste0("I(lag(", se_vars, ", 0:5))", collapse = " + "), "+",
+                                          paste0("I(lag(", org_vars, ", 1:5))", collapse = " + "), "+",
+                                          paste(svc_vars, collapse = " + "))
+                             )
+      } else {
+            formulas <- list("L1" = paste("~ TAX_YEAR + lat*lng +",
+                                          paste0("I(lag(", se_vars, ", 0:1))", collapse = " + "), "+",
+                                          paste0("I(lag(", org_vars, ", 1:1))", collapse = " + ")), 
+                             "L3" = paste("~ TAX_YEAR + lat*lng +",
+                                          paste0("I(lag(", se_vars, ", 0:3))", collapse = " + "), "+",
+                                          paste0("I(lag(", org_vars, ", 1:3))", collapse = " + ")), 
+                             "L5" = paste("~ TAX_YEAR + lat*lng +",
+                                          paste0("I(lag(", se_vars, ", 0:5))", collapse = " + "), "+",
+                                          paste0("I(lag(", org_vars, ", 1:5))", collapse = " + "))
+            )
+      }
+      return(list("formulas" = formulas, "covs" = c(se_vars, org_vars)))
+      
+}
 
 create_adj_list <- function(panel_data, dist_cutoff){
-      coords <- as.data.frame(panel_data |> select(geoid_2010, lng, lat) |> unique())
+      coords <- as.data.frame(panel_data |> dplyr::select(geoid_2010, lng, lat) |> unique())
       county_IDs <- coords$geoid_2010
       
       # Border-based adj list
@@ -36,7 +72,7 @@ create_adj_list <- function(panel_data, dist_cutoff){
       } # fill in any missing counties
       
       # Distance based adj list
-      D <- distm(coords |> select(-geoid_2010), fun = distHaversine) / 1609.344 # meters to miles conversion
+      D <- distm(coords |> dplyr::select(-geoid_2010), fun = distHaversine) / 1609.344 # meters to miles conversion
       dimnames(D) <- list(county_IDs, county_IDs)
       
       dist_cutoff <- 25
@@ -91,6 +127,27 @@ add_exposed <- function(panel_data, adj_list){
                   n = n())
       
       return(list("df" = panel_data, "summary" = per_year_summary))
+}
+
+add_SVC <- function(df, mat_smooth = 0.5, num_E_vec = 45){
+      library(MASS)
+      df_sub <- df |> dplyr::select(CountyID, lat, lng) |> unique()
+      x <- cbind(df_sub$lat, df_sub$lng) # inputs: latitude and longitude
+      
+      # SVC
+      d <- rdist(x)
+      K <- Matern(d, smoothness=mat_smooth)
+      E <- eigen(K)
+      x_s <- cbind(x[,1] * E$vectors[,1:num_E_vec], x[,2] * E$vectors[,1:num_E_vec]) 
+      
+      # add SVC back into panel data
+      xs_vars <- paste0("x_s", seq_len(ncol(x_s)))
+      colnames(x_s) <- xs_vars
+      df_sub <- cbind(df_sub, x_s)
+      
+      df <- merge(df, df_sub |> dplyr::select(-lat, -lng), by = "CountyID", all = TRUE)
+      
+      return(df)
 }
 
 tidy_bal_df <- function(bal_data, covariates, long_or_wide = "long"){
