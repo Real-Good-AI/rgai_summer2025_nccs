@@ -543,29 +543,67 @@ library(tidyverse)
 # stnd2015, 1991-2020
 # disaster <- as.data.table(read_csv("sheldus/direct_loss_aggregated_output_25432.csv", show_col_types = FALSE))
 
-disaster <- as.data.table(read_csv("sheldus/direct_loss_aggregated_output_28975.csv", show_col_types = FALSE))
+# stnd2021, 1991-2021
+disasters <- as.data.table(read_csv("sheldus/direct_loss_aggregated_output_28975.csv", show_col_types = FALSE)) |>
+      select(StateName, CountyName, County_FIPS, Year, Hazard, CropDmg, `CropDmg(ADJ 2021)`, PropertyDmg, `PropertyDmg(ADJ 2021)`)
+
+# disasters$county.geoid[disasters$county.geoid == "02158"] <- "02270"
+# disasters$county.geoid[disasters$county.geoid == "46102"] <- "46113"
 
 # Checking for duplicates
 key_var <- c("County_FIPS", "Year", "Hazard")
-dup_groups <- disaster[, .N, by = key_var][N > 1]
-dups <- disaster[dup_groups, on = key_var]
+dup_groups <- disasters[, .N, by = key_var][N > 1]
+dups <- disasters[dup_groups, on = key_var]
 
 # We can safely remove the records where CountyName begins with an asterick because those are "historical" counties that no longer exist
 dups <- dups[substr(CountyName, 1, 1) == "*"]
-disaster <- fsetdiff(disaster, dups[, !c("N"), with = FALSE])
+disasters <- fsetdiff(disasters, dups[, !c("N"), with = FALSE])
 
-setnames(disaster,
+setnames(disasters,
          old = c("County_FIPS", "Year"),
          new = c("county.geoid", "TAX_YEAR"))
 
-disaster <- disaster |> select(StateName, CountyName, county.geoid, TAX_YEAR, CropDmg, `CropDmg(ADJ 2021)`, PropertyDmg, `PropertyDmg(ADJ 2021)`) |>
+disasters <- disasters |>
       group_by(county.geoid, TAX_YEAR) |>
       summarize(
         across(where(is.numeric), sum, .names = "{.col}_TOT"),
         n_disasters = n()
       )
 
-#saveRDS(disaster, "disasters.rds")
+saveRDS(disasters, "disasters.rds")
+
+# df.ids <- unique(df$county.census.geoid)
+# dis.ids <- unique(disasters$county.geoid)
+# setdiff(df.ids, dis.ids)
+# setdiff(dis.ids, df.ids)
+# tmp <- setdiff(dis.ids, df.ids)[1:18] 
+
+# 51: Virginia, 48: Texas, 46: SD, 30: Montana, 12: Florida, 02: Alaska
+# 51780: South Boston City (After 1990, part of Halifax County: 51083)
+# 51560: Clifton Forge City
+# 51515: Bedford City
+# 51151: (*Princess Anne)
+# 51123: (*Nansemond)
+# 48301: Loving County
+# 46113: Shannon County **
+# 30113: Yellowstone National Park
+# 12025: Dade County
+# 02280: Wrangell-Petersburg Census Area
+# 02270: Wade Hampton Census Area **
+# 02260: (*Valdez-Chitna-Whittier)
+# 02232: Skagway-Hoonah-Angoon Census Area (created after 1990)
+# 02231: Skagway-Yakutat-Angoon Census Area (1990 Census Area)
+# 02201: Prince of Wales-Outer Ketchikan Census Area
+# 02160: (*Kuskokwim)
+# 02120: (*Kenai-Cook Inlet)
+# 02065: (*Cordova-McCarthy)
+
+disasters[County_FIPS %in% tmp,] |>
+      group_by(County_FIPS, Year) |>
+      summarize(
+        across(where(is.numeric), sum, .names = "{.col}_TOT"),
+        n_disasters = n()
+      )
 ```
 
 ```{r}
@@ -594,6 +632,14 @@ setnames(dt,
 
 
 # Scratchwork
+```{r} 
+n.counties <- length(unique(df$county.census.geoid))
+avg.n.dis.per.year <- disasters |> group_by(TAX_YEAR) |> summarise(avg.num.dis = sum(n_disasters)/n.counties) 
+
+merge(df, avg.n.dis.per.year, by = "TAX_YEAR")
+```
+
+
 ```{r, message=F}
 library(data.table)
 library(readr)
