@@ -121,60 +121,60 @@ df <- merge(df, result,
 
 rm(census_df, dt, lag_years, result)
 #################################################################################################
-# Now, add in the climate data
+# Now, add in the climate data - UPDATE March 2026: since don't need weather data for causal identification, leaving out for now
 # Since I have monthly precipitation and average temperature data, for each county,year pair compute the median and average of the values 
 # Note: climate data for Hawaii starts in 1991 so 4 counties have missing climate data for TAX_YEAR 1991 since we don't have 1990 data
 #################################################################################################
-precipitation <- readRDS("climate_data/precipitation.rds") |> 
-      group_by(geoid, year) |> 
-      summarize(med_precip = median(val, na.rm = TRUE), 
-                mean_precip = mean(val, na.rm = TRUE),
-                var_precip = var(val, na.rm = TRUE)) |>
-      mutate(JOIN_YEAR = year + 1) |>
-      rename(PRECIP_YEAR = year)
-
-df <- merge(df, precipitation, by.x = c("geoid_2010", "TAX_YEAR"), by.y = c("geoid", "JOIN_YEAR"), all.x = TRUE)
-
-avg_temp <- readRDS("climate_data/average_temperature.rds") |> 
-      group_by(geoid, year) |> 
-      summarize(med_avg_temp = median(val, na.rm = TRUE), 
-                mean_avg_temp = mean(val, na.rm = TRUE),
-                var_avg_temp = var(val, na.rm = TRUE)) |>
-      mutate(JOIN_YEAR = year + 1) |>
-      rename(TEMP_YEAR = year)
-
-df <- merge(df, avg_temp, by.x = c("geoid_2010", "TAX_YEAR"), by.y = c("geoid", "JOIN_YEAR"), all.x = TRUE)
-
-rm(precipitation, avg_temp)
+# precipitation <- readRDS("climate_data/precipitation.rds") |> 
+#       group_by(geoid, year) |> 
+#       summarize(med_precip = median(val, na.rm = TRUE), 
+#                 mean_precip = mean(val, na.rm = TRUE),
+#                 var_precip = var(val, na.rm = TRUE)) |>
+#       mutate(JOIN_YEAR = year + 1) |>
+#       rename(PRECIP_YEAR = year)
+# 
+# df <- merge(df, precipitation, by.x = c("geoid_2010", "TAX_YEAR"), by.y = c("geoid", "JOIN_YEAR"), all.x = TRUE)
+# 
+# avg_temp <- readRDS("climate_data/average_temperature.rds") |> 
+#       group_by(geoid, year) |> 
+#       summarize(med_avg_temp = median(val, na.rm = TRUE), 
+#                 mean_avg_temp = mean(val, na.rm = TRUE),
+#                 var_avg_temp = var(val, na.rm = TRUE)) |>
+#       mutate(JOIN_YEAR = year + 1) |>
+#       rename(TEMP_YEAR = year)
+# 
+# df <- merge(df, avg_temp, by.x = c("geoid_2010", "TAX_YEAR"), by.y = c("geoid", "JOIN_YEAR"), all.x = TRUE)
+# 
+# rm(precipitation, avg_temp)
 #################################################################################################
 # Population estimates for each year (for computing per capita damage)
 #################################################################################################
-col_positions <- fwf_widths(widths = c(4, 2, 5, 2, 1, 1, 1, 2, 8), 
-                            col_names = c("year", "state", "county.geoid", "blank", "race", "origin", "sex", "age", "population"))
-
-pop_df <- read_fwf("counties_data/us.1990_2023.20ages.adjusted.txt", col_positions)
-
-# Drop blank column
-pop_df$blank <- NULL
-
-# Convert numeric columns
-pop_df <- pop_df |>
-      mutate(year = as.integer(year),
-             race = as.integer(race),
-             origin = as.integer(origin),
-             sex = as.integer(sex),
-             population = as.integer(population))
-
-# get county population estimates per year
-pop_by_year <- pop_df |>
-      group_by(county.geoid, year) |>
-      summarise(pop_estimate = sum(population))
-
-# Merge and if pop_by_year estimate missing, replace with total_population from census crosswalk (258 records total)
-df <- merge(df, pop_by_year, by.x = c("geoid_2010", "TAX_YEAR"), by.y = c("county.geoid", "year"), all.x = TRUE)
-df <- df |> mutate(pop_estimate = ifelse(is.na(pop_estimate), as.numeric(total_population), pop_estimate))
-
-rm(col_positions, pop_by_year, pop_df)
+# col_positions <- fwf_widths(widths = c(4, 2, 5, 2, 1, 1, 1, 2, 8), 
+#                             col_names = c("year", "state", "county.geoid", "blank", "race", "origin", "sex", "age", "population"))
+# 
+# pop_df <- read_fwf("counties_data/us.1990_2023.20ages.adjusted.txt", col_positions)
+# 
+# # Drop blank column
+# pop_df$blank <- NULL
+# 
+# # Convert numeric columns
+# pop_df <- pop_df |>
+#       mutate(year = as.integer(year),
+#              race = as.integer(race),
+#              origin = as.integer(origin),
+#              sex = as.integer(sex),
+#              population = as.integer(population))
+# 
+# # get county population estimates per year
+# pop_by_year <- pop_df |>
+#       group_by(county.geoid, year) |>
+#       summarise(pop_estimate = sum(population))
+# 
+# # Merge and if pop_by_year estimate missing, replace with total_population from census crosswalk (258 records total)
+# df <- merge(df, pop_by_year, by.x = c("geoid_2010", "TAX_YEAR"), by.y = c("county.geoid", "year"), all.x = TRUE)
+# df <- df |> mutate(pop_estimate = ifelse(is.na(pop_estimate), as.numeric(total_population), pop_estimate))
+# 
+# rm(col_positions, pop_by_year, pop_df)
 #################################################################################################
 # Treatment Variable for each year
 #################################################################################################
@@ -184,21 +184,22 @@ disasters$county.geoid[disasters$county.geoid == "02158"] <- "02270"
 disasters$county.geoid[disasters$county.geoid == "46102"] <- "46113"
 
 disasters <- disasters |>  
-      mutate(LOG_TotPropDmgADJ = log(`PropertyDmg(ADJ 2019)` + 1),
-             LOG_TotCropDmgADJ = log(`CropDmg(ADJ 2019)` + 1),
-             LOG_TotDmgADJ = log(`PropertyDmg(ADJ 2019)` + `CropDmg(ADJ 2019)` + 1)) |>
+      mutate(LOG_TotPropDmgADJ = log(`PropertyDmg(ADJ 2021)_TOT` + 1),
+             LOG_TotCropDmgADJ = log(`CropDmg(ADJ 2021)_TOT` + 1),
+             LOG_TotDmgADJ = log(`PropertyDmg(ADJ 2021)_TOT` + `CropDmg(ADJ 2021)_TOT` + 1)) |>
       group_by(county.geoid, TAX_YEAR) |>
       slice_head(n = 1) |>
       ungroup()
 
 df <- merge(df, 
-            disasters |> select(county.geoid, TAX_YEAR, LOG_TotPropDmgADJ, LOG_TotCropDmgADJ, LOG_TotDmgADJ), 
+            disasters |> select(county.geoid, TAX_YEAR, LOG_TotPropDmgADJ, LOG_TotCropDmgADJ, LOG_TotDmgADJ, n_disasters), 
             by.x = c('geoid_2010', 'TAX_YEAR'), 
             by.y = c('county.geoid', 'TAX_YEAR'), all.x = TRUE)
 
 df <- df |> mutate(LOG_TotPropDmgADJ = replace_na(LOG_TotPropDmgADJ, 0),
                    LOG_TotCropDmgADJ = replace_na(LOG_TotCropDmgADJ, 0),
-                   LOG_TotDmgADJ = replace_na(LOG_TotDmgADJ, 0))
+                   LOG_TotDmgADJ = replace_na(LOG_TotDmgADJ, 0),
+                   n_disasters = replace_na(n_disasters, 0))
 
 df <- df |> mutate(treat.atleast1 = as.numeric(LOG_TotPropDmgADJ > 0),
                    treat.small_log_damage = as.numeric(LOG_TotPropDmgADJ > 11), # about 60K of property damage
@@ -211,13 +212,22 @@ df <- df |> mutate(treat.atleast1 = as.numeric(LOG_TotPropDmgADJ > 0),
                    ))
 
 # Based on FEMA county per capita impact indicator
-county_FEMA_indicator <- 3.78 #2019
-df <- df |> mutate(TotPerCapADJ = (exp(LOG_TotDmgADJ)-1)/pop_estimate,
-                   treat.FEMA = as.numeric(TotPerCapADJ >= county_FEMA_indicator))
+county_FEMA_indicator <- 3.89 # 2019: 3.78, 2021: 3.89
+
+n.counties <- length(unique(df$county.census.geoid))
+avg.n.dis.per.year <- disasters |> 
+      group_by(TAX_YEAR) |> 
+      summarise(avg.num.dis = sum(n_disasters)/n.counties) |>
+      mutate(FEMA_threshADJ = county_FEMA_indicator * avg.num.dis)
+
+df <- merge(df, avg.n.dis.per.year, by = "TAX_YEAR")
+
+df <- df |> mutate(TotPerCapADJ = (exp(LOG_TotDmgADJ)-1)/as.numeric(total_population),
+                   treat.FEMA = as.numeric(TotPerCapADJ >= county_FEMA_indicator),
+                   treat.FEMA_nDis = as.numeric(TotPerCapADJ >= FEMA_threshADJ)
+                   )
 
 saveRDS(df, "county_long.rds")
-
-
 
 
 
