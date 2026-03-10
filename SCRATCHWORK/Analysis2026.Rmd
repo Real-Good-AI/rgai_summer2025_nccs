@@ -33,17 +33,17 @@ df <- df |> mutate(across(all_of(covs_to_check), as.numeric)) # make sure these 
 # These are the variables we will assess balance for
 covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "pop_estimate", "TOT_REV", "TOT_ASSET", "NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA")
 
-df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "treat.FEMA", "lat", "lng"), covs_to_check)))
+df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "geoid_2010", "treat.FEMA_nDis", "lat", "lng"), covs_to_check)))
 
 # Adding spatially varying coefficients
-source("matches_helper.R")
-df <- add_SVC(df)
+# source("matches_helper.R")
+# df <- add_SVC(df)
 
 # https://stackoverflow.com/questions/74815244/panelmatch-r-errors-please-convert-time-id-to-consecutive-integers-and-pleas
 panel_df <- PanelData(panel.data = as.data.frame(df),
                       unit.id = "CountyID",
                       time.id = "TAX_YEAR",
-                      treatment = "treat.FEMA",
+                      treatment = "treat.FEMA_nDis",
                       outcome = "TOT_REV")
 rm(df)
 
@@ -887,7 +887,63 @@ no_int_no_SVC_plots(bal_df,
                     include.unrefined.panel = TRUE)
 ```
 
+### Choosing the number of SVC
+```{r}
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(fields)
+library(MASS)
 
+df <- readRDS("county_long.rds")
+df <- df |> 
+      group_by(geoid_2010) |>
+      mutate(CountyID = as.integer(cur_group_id())) |>
+      ungroup()
+
+# These are some socioeconomic covariates we may evaluate balance for but need to convert from string to num
+covs_to_check <- c("white_perc", "bachelors_perc", "poverty_perc", "unemployment", "med_family_income_adj", "med_household_income_adj", "total_population")
+df <- df |> mutate(across(all_of(covs_to_check), as.numeric)) # make sure these are numeric
+
+# These are the variables we will assess balance for
+covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population", "TOT_REV", "TOT_ASSET", "NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA")
+ntee_vars <- c("NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA")
+
+df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "geoid_2010", "treat.FEMA_nDis", "lat", "lng"), covs_to_check)))
+
+df_sub <- df |> dplyr::select(CountyID, lat, lng) |> unique()
+
+x <- cbind(df_sub$lat, df_sub$lng) # inputs: latitude and longitude
+
+# SVC
+d <- rdist(x)
+K <- Matern(d, smoothness=.5) # for smoothness paramter, should we do some sort of optimization?
+E <- eigen(K)
+
+options(repr.plot.width = 6, repr.plot.height = 4)
+for (num_svc in seq(10,100,10)){
+      x_s <- cbind(x[,1] * E$vectors[,1:num_svc], x[,2] * E$vectors[,1:num_svc]) # would have to play around with this number
+      
+      # add SVC back into panel data
+      xs_vars <- paste0("x_s", seq_len(ncol(x_s)))
+      colnames(x_s) <- xs_vars
+      df_sub.temp <- cbind(df_sub, x_s)
+      
+      df.temp <- merge(df, df_sub.temp |> dplyr::select(-lat, -lng), by = "CountyID", all = TRUE)
+      
+      upper_formula <- paste(
+        "treat.FEMA_nDis ~ TAX_YEAR + bachelors_perc + med_household_income_adj + white_perc + total_population +",
+        paste(ntee_vars, collapse = " + "), "+",
+        paste(xs_vars, collapse = " + "))
+      
+      # regression
+      ls <- glm(as.formula(upper_formula), data = df.temp, family = binomial(link = "logit"))
+      summary(ls)
+
+      yweight <- predict(ls, type="response")
+      plot(sort(yweight), main = paste("# SVC =", num_svc*2), cex = 0.10)
+} # winner was num_svc = 30
+```
 
 # PanelMatch - Interference
 ```{r}
@@ -919,7 +975,7 @@ df <- df |> dplyr::select(all_of(c(c("CountyID", "geoid_2010", "TAX_YEAR", "trea
 
 # Create new treatment variable that takes a distance-based cutoff adjustment
 adj_lists <- create_adj_list(panel_data = df, dist_cutoff = 50)
-res <- add_exposed(panel_data = df, adj_list = adj_lists$union)
+res <- add_exposed(panel_data = df, adj_list = adj_lists$union, treatment = "treat.FEMA_nDis")
 
 df <- res$df |> mutate(treat.FEMA.adj = replace_na(treat.FEMA.adj, 1))
 sum(is.na(df$treat.FEMA.adj))
@@ -2033,6 +2089,18 @@ summary(m.initial)
 ```
 
 # Scratchwork
+stepwise regression
+```{r}
+# lower_formula  <- paste(
+#   "treat.FEMA_nDis ~ TAX_YEAR + bachelors_perc + med_household_income_adj + white_perc + total_population +",
+#   paste(ntee_vars, collapse = " + "))
+
+# stepwise regression (inefficient for the large dataset I have right now)
+# res <- step(object = ls,
+#             scope = list("upper" = upper_formula, "lower" = lower_formula),
+#             direction = "backward")
+```
+
 create_adj_list and add_exposed
 ```{r}
 create_adj_list <- function(panel_data, dist_cutoff){
@@ -2281,8 +2349,11 @@ library(fields)
 library(MASS)
 
 set.seed(2727)
-# county_subset <- sample.int(n = max(df$CountyID), size = 100, replace = FALSE)
-# df_sub <- df |> filter(CountyID %in% county_subset)
+df <- readRDS("county_long.rds")
+df <- df |> 
+      group_by(geoid_2010) |>
+      mutate(CountyID = as.integer(cur_group_id())) |>
+      ungroup()
 
 df_sub <- df |> select(CountyID, lat, lng) |> unique()
 
