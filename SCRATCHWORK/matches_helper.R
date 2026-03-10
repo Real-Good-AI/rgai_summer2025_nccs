@@ -99,37 +99,37 @@ create_adj_list <- function(panel_data, dist_cutoff){
       return(list("union" = adj_union, "border" = census_adj_list, "dist" = dist_adj_list))
 }
 
-add_exposed <- function(panel_data, adj_list){
-      panel_data$treat.FEMA.adj <- panel_data$treat.FEMA # initialize adjusted treatment with original
+add_exposed <- function(panel_data, adj_list, new_col = "treat.FEMA.adj", treatment = "treat.FEMA"){
+      panel_data[[new_col]] <- panel_data[[treatment]] # initialize adjusted treatment with original
       years <- unique(panel_data$TAX_YEAR)
       
       for (yr in years) {
             idx <- which(panel_data$TAX_YEAR == yr) # Subset indices for this year
-            treated <- panel_data$geoid_2010[idx][panel_data$treat.FEMA[idx] == 1]
+            treated <- panel_data$geoid_2010[idx][panel_data[[treatment]][idx] == 1]
             
             if (length(treated) == 0) next # If no treated counties, skip
             
             neighbors <- unique(unlist(adj_list[treated])) # Get neighbors of treated counties
             
-            untreated_idx <- idx[panel_data$treat.FEMA[idx] == 0] # Identify untreated counties in this year
+            untreated_idx <- idx[panel_data[[treatment]][idx] == 0] # Identify untreated counties in this year
             
             exposed <- panel_data$geoid_2010[untreated_idx] %in% neighbors # Among untreated, find those exposed
             
-            panel_data$treat.FEMA.adj[untreated_idx][exposed] <- NA # Set exposed controls to NA
+            panel_data[[new_col]][untreated_idx][exposed] <- NA # Set exposed controls to NA
       }
       
       # per year I want to see the counts of treated, control and missing for treat.FEMA.adj
-      per_year_summary <- panel_data |> group_by(TAX_YEAR) |>
-            summarise(
-                  n_1 = sum(treat.FEMA.adj == 1, na.rm = TRUE),
-                  n_0 = sum(treat.FEMA.adj == 0, na.rm = TRUE),
-                  n_NA = sum(is.na(treat.FEMA.adj)),
+      per_year_summary <- panel_data |> dplyr::group_by(TAX_YEAR) |>
+            dplyr::summarise(
+                  n_1 = sum(.data[[new_col]] == 1, na.rm = TRUE),
+                  n_0 = sum(.data[[new_col]] == 0, na.rm = TRUE),
+                  n_NA = sum(is.na(.data[[new_col]])),
                   n = n())
       
       return(list("df" = panel_data, "summary" = per_year_summary))
 }
 
-add_SVC <- function(df, mat_smooth = 0.5, num_E_vec = 45){
+add_SVC <- function(df, mat_smooth = 0.5, num_E_vec = 30){
       library(MASS)
       df_sub <- df |> dplyr::select(CountyID, lat, lng) |> unique()
       x <- cbind(df_sub$lat, df_sub$lng) # inputs: latitude and longitude
