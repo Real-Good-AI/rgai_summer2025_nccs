@@ -537,9 +537,13 @@ quantile(counts.all$DATA_COUNT, probs = seq(0,1,0.1))
 ```{r}
 library(data.table)
 library(readr)
+library(dplyr)
+library(tidyverse)
 
 # stnd2015, 1991-2020
-dt <- as.data.table(read_csv("sheldus/direct_loss_aggregated_output_25432.csv", show_col_types = FALSE))
+# disaster <- as.data.table(read_csv("sheldus/direct_loss_aggregated_output_25432.csv", show_col_types = FALSE))
+
+disaster <- as.data.table(read_csv("sheldus/direct_loss_aggregated_output_28975.csv", show_col_types = FALSE))
 
 # Checking for duplicates
 key_var <- c("County_FIPS", "Year", "Hazard")
@@ -552,7 +556,14 @@ disaster <- fsetdiff(disaster, dups[, !c("N"), with = FALSE])
 
 setnames(disaster,
          old = c("County_FIPS", "Year"),
-         new = c("county.census.geoid", "TAX_YEAR"))
+         new = c("county.geoid", "TAX_YEAR"))
+
+disaster <- disaster |> select(StateName, CountyName, county.geoid, TAX_YEAR, CropDmg, `CropDmg(ADJ 2021)`, PropertyDmg, `PropertyDmg(ADJ 2021)`) |>
+      group_by(county.geoid, TAX_YEAR) |>
+      summarize(
+        across(where(is.numeric), sum, .names = "{.col}_TOT"),
+        n_disasters = n()
+      )
 
 #saveRDS(disaster, "disasters.rds")
 ```
@@ -577,7 +588,7 @@ setnames(dt,
          old = c("County_FIPS", "Year"),
          new = c("county.geoid", "TAX_YEAR"))
 
-saveRDS(dt, "disasters.rds")
+# saveRDS(dt, "disasters.rds")
 ```
 
 
