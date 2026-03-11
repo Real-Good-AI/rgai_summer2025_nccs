@@ -176,40 +176,27 @@ rm(census_df, dt, lag_years, result)
 # 
 # rm(col_positions, pop_by_year, pop_df)
 #################################################################################################
-# Treatment Variable for each year
+# Disaster Data 
 #################################################################################################
-# disaster data
 disasters <- readRDS("disasters.rds")
-disasters$county.geoid[disasters$county.geoid == "02158"] <- "02270"
-disasters$county.geoid[disasters$county.geoid == "46102"] <- "46113"
 
 disasters <- disasters |>  
       mutate(LOG_TotPropDmgADJ = log(`PropertyDmg(ADJ 2021)_TOT` + 1),
              LOG_TotCropDmgADJ = log(`CropDmg(ADJ 2021)_TOT` + 1),
-             LOG_TotDmgADJ = log(`PropertyDmg(ADJ 2021)_TOT` + `CropDmg(ADJ 2021)_TOT` + 1)) |>
-      group_by(county.geoid, TAX_YEAR) |>
-      slice_head(n = 1) |>
-      ungroup()
+             LOG_TotDmgADJ = log(`PropertyDmg(ADJ 2021)_TOT` + `CropDmg(ADJ 2021)_TOT` + 1)) 
 
 df <- merge(df, 
-            disasters |> select(county.geoid, TAX_YEAR, LOG_TotPropDmgADJ, LOG_TotCropDmgADJ, LOG_TotDmgADJ, n_disasters), 
+            disasters |> select(fips_changes, TAX_YEAR, LOG_TotPropDmgADJ, LOG_TotCropDmgADJ, LOG_TotDmgADJ, n_disasters), 
             by.x = c('geoid_2010', 'TAX_YEAR'), 
-            by.y = c('county.geoid', 'TAX_YEAR'), all.x = TRUE)
+            by.y = c('fips_changes', 'TAX_YEAR'), all.x = TRUE)
 
 df <- df |> mutate(LOG_TotPropDmgADJ = replace_na(LOG_TotPropDmgADJ, 0),
                    LOG_TotCropDmgADJ = replace_na(LOG_TotCropDmgADJ, 0),
                    LOG_TotDmgADJ = replace_na(LOG_TotDmgADJ, 0),
                    n_disasters = replace_na(n_disasters, 0))
-
-df <- df |> mutate(treat.atleast1 = as.numeric(LOG_TotPropDmgADJ > 0),
-                   treat.small_log_damage = as.numeric(LOG_TotPropDmgADJ > 11), # about 60K of property damage
-                   treat.large_log_damage = as.numeric(LOG_TotPropDmgADJ > 14), # about 1.2M of property damage
-                   treat.cat = case_when(
-                         LOG_TotPropDmgADJ <= 0 ~ "none",
-                         LOG_TotPropDmgADJ <= 11 ~ "small", # up to ~60K
-                         LOG_TotPropDmgADJ <= 13 ~ "med", # up to ~442K
-                         LOG_TotPropDmgADJ <= 22 ~ "large", # up to 3.5 trillion
-                   ))
+#################################################################################################
+# Disaster Data Treatment Variable for each year
+#################################################################################################
 
 # Based on FEMA county per capita impact indicator
 county_FEMA_indicator <- 3.89 # 2019: 3.78, 2021: 3.89
