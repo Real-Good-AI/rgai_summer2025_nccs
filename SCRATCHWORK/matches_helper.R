@@ -8,7 +8,7 @@ library(fields)
 library(khroma)
 
 create_formulas <- function(panel_df, svc_flag = FALSE){
-      se_vars <- colnames(panel_df)[which(colnames(panel_df) == "bachelors_perc"):which(colnames(panel_df) == "pop_estimate")] 
+      se_vars <- colnames(panel_df)[which(colnames(panel_df) == "bachelors_perc"):which(colnames(panel_df) == "total_population")] 
       org_vars <- colnames(panel_df)[which(colnames(panel_df) == "TOT_REV"):which(colnames(panel_df) == "NTEEV2_NA")] 
       if (svc_flag){
             svc_vars <- colnames(panel_df)[which(colnames(panel_df) == "x_s1"):ncol(panel_df)] # all spatially varying coefficients
@@ -171,22 +171,20 @@ tidy_bal_df <- function(bal_data, covariates, long_or_wide = "long"){
 }
 
 no_int_no_SVC_plots <- function(bal_df_tidy, match_method, ylim_base = c(-1,1), ylim_ntee = c(-1,1), ylim_unrefined = c(-1,1), include.unrefined.panel = FALSE){
-      se_vars <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "pop_estimate")
-      nonprofit_vars <- c("TOT_REV", "TOT_ASSET", "NUM_ORGS")
-      weather_vars <- c("med_precip", "med_avg_temp")
+      se_vars <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population")
+      nonprofit_vars <- c("TOT_REV", "TOT_ASSET")
       ntee_vars <- c("NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA")
       
       df <- bal_df_tidy |> 
             mutate(variable_type = case_when(
                   covariate %in% se_vars ~ "socioeconomic",
                   covariate %in% nonprofit_vars ~ "nonprofit",
-                  covariate %in% weather_vars ~ "weather",
                   covariate %in% ntee_vars ~ "ntee",
                   .default = "misc"
             ))
       
       p1 <- df |> 
-            filter(!unrefined & variable_type != "ntee" & variable_type != "weather") |> 
+            filter(!unrefined & variable_type != "ntee") |> 
             arrange(variable_type, covariate) |>
             mutate(covariate = factor(covariate, levels = unique(covariate))) |>
             ggplot(mapping = aes(x = time, y = value)) +
@@ -215,7 +213,7 @@ no_int_no_SVC_plots <- function(bal_df_tidy, match_method, ylim_base = c(-1,1), 
       
       if (include.unrefined.panel){
             p1_un <- df |> 
-                  filter(unrefined & variable_type != "ntee" & variable_type != "weather") |> 
+                  filter(unrefined & variable_type != "ntee") |> 
                   arrange(variable_type, covariate) |>
                   mutate(covariate = factor(covariate, levels = unique(covariate))) |>
                   ggplot(mapping = aes(x = time, y = value)) +
