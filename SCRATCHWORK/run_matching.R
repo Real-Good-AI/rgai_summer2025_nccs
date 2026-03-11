@@ -13,27 +13,26 @@ rm(add_exposed, add_SVC, create_adj_list, no_int_no_SVC_plots, tidy_bal_df)
 refine_methods <- c("ps.match")
 save_methods <- list("none" = "no_match", "ps.match" = "ps_match", "CBPS.match" = "CBPS_match", "ps.weight" = "ps_weight", "CBPS.weight" = "CBPS_weight")
 matching_flags <- list("none" = FALSE, "ps.match" = TRUE, "CBPS.match" = TRUE, "ps.weight" = TRUE, "CBPS.weight" = TRUE)
-# lags <- c(1,3,5) #1, 3, 5
 lags <- c(3,5)
 
 no_interference_model_list <- list(
-      # list("full_path" = "no_svc/no_int_panelV1/config1/",
-      #      "data" = "no_int_panelV1.rds",
-      #      "match_on_NA" = FALSE,
-      #      "svc_flag" = FALSE),
+      list("full_path" = "no_svc/no_int_panelV1/config1/",
+           "data" = "panel_data/no_int_panelV1.rds",
+           "match_on_NA" = FALSE,
+           "svc_flag" = FALSE),
       list("full_path" = "with_svc/no_int_panelV2/config1/",
-           "data" = "no_int_panelV2.rds",
+           "data" = "panel_data/no_int_panelV2.rds",
            "match_on_NA" = FALSE,
            "svc_flag" = TRUE)
 )
 
 interference_model_list <- list(
       # list("full_path" = "no_svc/int_panelV1/config1/",
-      #      "data" = "int_panelV1.rds",
+      #      "data" = "panel_data/int_panelV1.rds",
       #      "match_on_NA" = FALSE,
       #      "svc_flag" = FALSE),
       # list("full_path" = "with_svc/int_panelV2/config1/",
-      #      "data" = "int_panelV2.rds",
+      #      "data" = "panel_data/int_panelV2.rds",
       #      "match_on_NA" = FALSE,
       #      "svc_flag" = TRUE)
 )
