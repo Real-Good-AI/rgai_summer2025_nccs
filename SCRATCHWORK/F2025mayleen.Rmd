@@ -547,86 +547,66 @@ library(tidyverse)
 disasters <- as.data.table(read_csv("sheldus/direct_loss_aggregated_output_28975.csv", show_col_types = FALSE)) |>
       select(StateName, CountyName, County_FIPS, Year, Hazard, CropDmg, `CropDmg(ADJ 2021)`, PropertyDmg, `PropertyDmg(ADJ 2021)`)
 
-# disasters$county.geoid[disasters$county.geoid == "02158"] <- "02270"
-# disasters$county.geoid[disasters$county.geoid == "46102"] <- "46113"
-
-# Checking for duplicates
-key_var <- c("County_FIPS", "Year", "Hazard")
-dup_groups <- disasters[, .N, by = key_var][N > 1]
-dups <- disasters[dup_groups, on = key_var]
-
-# We can safely remove the records where CountyName begins with an asterick because those are "historical" counties that no longer exist
-dups <- dups[substr(CountyName, 1, 1) == "*"]
-disasters <- fsetdiff(disasters, dups[, !c("N"), with = FALSE])
+# Filter out disasters in areas that are not U.S. states (e.g. Puerto Rico)
+disasters <- disasters |> mutate(State_FIPS = as.numeric(substr(County_FIPS, 1, 2)))
+disasters <- disasters |> filter(State_FIPS <= 56) |> select(-State_FIPS)
 
 setnames(disasters,
          old = c("County_FIPS", "Year"),
          new = c("county.geoid", "TAX_YEAR"))
 
-disasters <- disasters |>
-      group_by(county.geoid, TAX_YEAR) |>
-      summarize(
-        across(where(is.numeric), sum, .names = "{.col}_TOT"),
-        n_disasters = n()
-      )
+# Manually fix possible FIPS code conflicts
+disasters <- disasters |> mutate(fips_changes = county.geoid)
 
-saveRDS(disasters, "disasters.rds")
+df.counties <- df$geoid_2010
+dis.ids <- unique(disasters$county.geoid)
+setdiff(df.counties, dis.ids)
+tmp <- setdiff(dis.ids, df.counties)
 
-# df.ids <- unique(df$county.census.geoid)
-# dis.ids <- unique(disasters$county.geoid)
-# setdiff(df.ids, dis.ids)
-# setdiff(dis.ids, df.ids)
-# tmp <- setdiff(dis.ids, df.ids)[1:18] 
+# disasters |> filter(county.geoid %in% tmp)
 
-# 51: Virginia, 48: Texas, 46: SD, 30: Montana, 12: Florida, 02: Alaska
-# 51780: South Boston City (After 1990, part of Halifax County: 51083)
-# 51560: Clifton Forge City
-# 51515: Bedford City
-# 51151: (*Princess Anne)
-# 51123: (*Nansemond)
-# 48301: Loving County
-# 46113: Shannon County **
-# 30113: Yellowstone National Park
-# 12025: Dade County
-# 02280: Wrangell-Petersburg Census Area
-# 02270: Wade Hampton Census Area **
-# 02260: (*Valdez-Chitna-Whittier)
-# 02232: Skagway-Hoonah-Angoon Census Area (created after 1990)
-# 02231: Skagway-Yakutat-Angoon Census Area (1990 Census Area)
-# 02201: Prince of Wales-Outer Ketchikan Census Area
-# 02160: (*Kuskokwim)
-# 02120: (*Kenai-Cook Inlet)
-# 02065: (*Cordova-McCarthy)
-
-disasters[County_FIPS %in% tmp,] |>
-      group_by(County_FIPS, Year) |>
-      summarize(
-        across(where(is.numeric), sum, .names = "{.col}_TOT"),
-        n_disasters = n()
-      )
-```
-
-```{r}
-library(data.table)
-library(readr)
-
-# stnd2010, 1990-2021
-dt <- as.data.table(read_csv("sheldus/direct_loss_aggregated_output_27826.csv", show_col_types = FALSE))
+disasters$fips_changes[disasters$county.geoid == "02158"] <- "02270" # 02270 got new FIPS 02158 in 2015
+disasters$fips_changes[disasters$county.geoid == "46102"] <- "46113" # 46113 got new FIPS 46102 in 2015
+disasters$fips_changes[disasters$county.geoid == "51780"] <- "51083" # 51780 added to 51083 in 1995
+disasters$fips_changes[disasters$county.geoid == "51560"] <- "51005" # 51560 added to 51005 in 2001
+disasters$fips_changes[disasters$county.geoid == "51515"] <- "51019" # 51515 added to 51019 in 2013
+disasters$fips_changes[disasters$county.geoid == "12025"] <- "12086" # 12025 got new FIPS 12086 in 1997
 
 # Checking for duplicates
-key_var <- c("County_FIPS", "Year")
-dup_groups <- dt[, .N, by = key_var][N > 1]
-dups <- dt[dup_groups, on = key_var]
+key_var <- c("county.geoid", "TAX_YEAR", "Hazard")
+dup_groups <- disasters[, .N, by = key_var][N > 1]
+dups <- disasters[dup_groups, on = key_var]
+
+# Checking for duplicates
+key_var <- c("fips_changes", "TAX_YEAR", "Hazard")
+dup_groups2 <- disasters[, .N, by = key_var][N > 1]
+dups2 <- disasters[dup_groups2, on = key_var] 
 
 # We can safely remove the records where CountyName begins with an asterick because those are "historical" counties that no longer exist
-dups <- dups[substr(CountyName, 1, 1) == "*"]
-dt <- fsetdiff(dt, dups[, !c("N"), with = FALSE])
+dups <- dups2[substr(CountyName, 1, 1) == "*"]
+disasters <- fsetdiff(disasters, dups[, !c("N"), with = FALSE])
 
-setnames(dt,
-         old = c("County_FIPS", "Year"),
-         new = c("county.geoid", "TAX_YEAR"))
+# df.counties <- df$geoid_2010
+# dis.ids.new <- unique(disasters$fips_changes)
+# setdiff(df.counties, dis.ids)
+# setdiff(df.counties, dis.ids.new)
+# 
+# setdiff(dis.ids, df.counties)
+# setdiff(dis.ids.new, df.counties)
+# setdiff(setdiff(dis.ids, df.counties), setdiff(dis.ids.new, df.counties))
+# 
+# merge(df, disasters,
+#       by.x = c('geoid_2010', 'TAX_YEAR'),
+#       by.y = c('fips_changes', 'TAX_YEAR'), all.x = TRUE)
 
-# saveRDS(dt, "disasters.rds")
+# Collapse to a per-county-per-year dataset
+disasters <- disasters |> 
+      group_by(fips_changes, TAX_YEAR) |>
+      summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE), .names = "{.col}_TOT"),
+                n_disasters = n()) |>
+      ungroup()
+
+# saveRDS(disasters, "disasters.rds")
 ```
 
 
