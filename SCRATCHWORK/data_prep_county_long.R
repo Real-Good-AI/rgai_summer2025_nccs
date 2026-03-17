@@ -12,15 +12,15 @@ library(fastDummies)
 # Aggregate nonprofit data by county and year
 #################################################################################################
 
-df <- readRDS("mega.rds") # 1773 orgs have "00000" as geoid; 86,752 are missing NTEE code (~6.74%) -- 1,285,846 total orgs
+df <- readRDS("mega.rds") |>
+      filter(county.census.geoid != "00000")# 1773 orgs have "00000" as geoid; 86,752 are missing NTEE code (~6.74%) -- 1,285,846 total orgs
 
 # Split up NTEEV2 into 14 dummy variables (12 categories, 1 unknown category, 1 missing category)
 ntee <- df |> 
       select(EIN2, NTEEV2, TAX_YEAR, county.census.geoid) |>
-      filter(county.census.geoid != "00000") |>
       dummy_cols(select_columns = c("NTEEV2"), ignore_na = FALSE, remove_selected_columns = TRUE)
 
-# Add aggregate the totals of each NTEEV2 category by county and year
+# Aggregate the totals of each NTEEV2 category by county and year
 ntee <- ntee |> select(-EIN2) |>
       group_by(county.census.geoid, TAX_YEAR) |>
       summarise(across(everything(), ~sum(.x, na.rm = TRUE))) |>
@@ -31,25 +31,41 @@ ntee <- ntee |> mutate(NUM_ORGS = rowSums(ntee |> select(-county.census.geoid, -
                        NTEE_NA_PROP = NTEEV2_NA/NUM_ORGS)
 
 # Within each county,year pair, I want to keep track of the proportion of records with missing financial data
-# I also want to compute the total revenue, expenses, and assets across that county in that year
-# For now, we are dropping records that listed the invalid county code "00000" (1773 orgs)
-df <- df |> select(TAX_YEAR, TOT_REV, TOT_EXP, TOT_ASSET, county.census.geoid) |>
+df.tot_rev <- df |> select(TAX_YEAR, TOT_REV, TOT_EXP, TOT_ASSET, county.census.geoid) |>
       rename(REV = TOT_REV, EXP = TOT_EXP, ASSET = TOT_ASSET) |>
       group_by(county.census.geoid, TAX_YEAR) |> 
       summarize(across(where(is.numeric), ~sum(is.na(.x))/n(), .names = "{.col}_prop_miss"),
-                across(any_of(c("REV", "EXP", "ASSET")), ~sum(.x, na.rm = TRUE), .names = "TOT_{.col}"),
                 .groups = "drop") |>
-      ungroup() |>
-      filter(county.census.geoid != "00000")
+      ungroup()
 
-df <- merge(df, ntee, by = c("county.census.geoid", "TAX_YEAR")) 
+# I need the total assets and revenue stratified by county, year, and NTEE category
+df.ntee_rev <- df |> select(TAX_YEAR, TOT_REV, TOT_EXP, TOT_ASSET, county.census.geoid, NTEEV2) |>
+      rename(REV = TOT_REV, EXP = TOT_EXP, ASSET = TOT_ASSET) |>
+      mutate(NTEEV2 = replace_na(NTEEV2, "NA")) |>
+      group_by(county.census.geoid, TAX_YEAR, NTEEV2) |> 
+      summarize(across(any_of(c("REV", "EXP", "ASSET")), ~sum(.x, na.rm = TRUE)),
+                .groups = "drop") |>
+      ungroup() 
+
+df.ntee_rev <- df.ntee_rev |> select(-EXP) |>
+      pivot_wider(names_from = NTEEV2, values_from = c("REV", "ASSET"), values_fill = 0)
+
+rev_cols <- grep("^REV_", names(df.ntee_rev), value = TRUE)
+ass_cols <- grep("^ASSET_", names(df.ntee_rev), value = TRUE)
+df.ntee_rev <- df.ntee_rev |> mutate(TOT_REV = rowSums(across(all_of(rev_cols)), na.rm = TRUE),
+                                     TOT_ASSET = rowSums(across(all_of(ass_cols)), na.rm = TRUE))
+
+# df now will have total assets and revenue per county,year pair stratified by NTEE category
+# as well as the number of nonprofits  per county,year pair stratified by NTEE category
+df <- merge(df.ntee_rev, ntee, by = c("county.census.geoid", "TAX_YEAR")) 
+df <- merge(df, df.tot_rev, by = c("county.census.geoid", "TAX_YEAR")) 
 
 # IDs for two counties were changed after 2010. Some datasets use latest ID, others use 2010 ID
 df <- df |> mutate(geoid_2010 = county.census.geoid)
 df$geoid_2010[df$county.census.geoid == "02158"] <- "02270"
 df$geoid_2010[df$county.census.geoid == "46102"] <- "46113"
 
-rm(ntee)
+rm(ntee, df.ntee_rev, df.tot_rev, ass_cols, rev_cols)
 #################################################################################################
 # Add location data: county name, latitude & longitude of centroid, state, region, and division
 #################################################################################################
