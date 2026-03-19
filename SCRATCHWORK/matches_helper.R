@@ -14,27 +14,27 @@ create_formulas <- function(panel_df, svc_flag = FALSE){
       
       if (svc_flag){
             svc_vars <- colnames(panel_df)[which(colnames(panel_df) == "x_s1"):ncol(panel_df)] # all spatially varying coefficients
-            formulas <- list("L1" = paste("~ TAX_YEAR +",
+            formulas <- list("L1" = paste("~ ",
                                           paste0("I(lag(", se_vars, ", 0:1))", collapse = " + "), "+",
                                           paste0("I(lag(", org_vars, ", 1:1))", collapse = " + "), "+",
                                           paste(svc_vars, collapse = " + ")), 
-                             "L3" = paste("~ TAX_YEAR +",
+                             "L3" = paste("~ ",
                                           paste0("I(lag(", se_vars, ", 0:3))", collapse = " + "), "+",
                                           paste0("I(lag(", org_vars, ", 1:3))", collapse = " + "), "+",
                                           paste(svc_vars, collapse = " + ")), 
-                             "L5" = paste("~ TAX_YEAR +",
+                             "L5" = paste("~ ",
                                           paste0("I(lag(", se_vars, ", 0:5))", collapse = " + "), "+",
                                           paste0("I(lag(", org_vars, ", 1:5))", collapse = " + "), "+",
                                           paste(svc_vars, collapse = " + "))
                              )
       } else {
-            formulas <- list("L1" = paste("~ TAX_YEAR + lat*lng +",
+            formulas <- list("L1" = paste("~ lat*lng +",
                                           paste0("I(lag(", se_vars, ", 0:1))", collapse = " + "), "+",
                                           paste0("I(lag(", org_vars, ", 1:1))", collapse = " + ")), 
-                             "L3" = paste("~ TAX_YEAR + lat*lng +",
+                             "L3" = paste("~ lat*lng +",
                                           paste0("I(lag(", se_vars, ", 0:3))", collapse = " + "), "+",
                                           paste0("I(lag(", org_vars, ", 1:3))", collapse = " + ")), 
-                             "L5" = paste("~ TAX_YEAR + lat*lng +",
+                             "L5" = paste("~ lat*lng +",
                                           paste0("I(lag(", se_vars, ", 0:5))", collapse = " + "), "+",
                                           paste0("I(lag(", org_vars, ", 1:5))", collapse = " + "))
             )
@@ -43,7 +43,7 @@ create_formulas <- function(panel_df, svc_flag = FALSE){
       
 }
 
-create_adj_list <- function(panel_data, dist_cutoff){
+create_adj_list <- function(panel_data, dist_cutoff = 25){
       coords <- as.data.frame(panel_data |> dplyr::select(geoid_2010, lng, lat) |> unique())
       county_IDs <- coords$geoid_2010
       
@@ -77,7 +77,6 @@ create_adj_list <- function(panel_data, dist_cutoff){
       D <- distm(coords |> dplyr::select(-geoid_2010), fun = distHaversine) / 1609.344 # meters to miles conversion
       dimnames(D) <- list(county_IDs, county_IDs)
       
-      dist_cutoff <- 25
       idx <- which(D <= dist_cutoff & D > 0, arr.ind = TRUE) # list of array indices where distance is within cutoff
       
       edges <- data.frame(county1 = county_IDs[idx[, 1]], 

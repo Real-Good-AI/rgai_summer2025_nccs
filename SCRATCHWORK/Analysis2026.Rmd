@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 
 # PanelMatch - No Interference
 ## Setup
+For matching (just tot rev)
 ```{r, message = F}
 library(data.table)
 library(readr)
@@ -31,16 +32,90 @@ df <- df |>
 covs_to_check <- c("white_perc", "bachelors_perc", "poverty_perc", "unemployment", "med_family_income_adj", "med_household_income_adj", "total_population")
 df <- df |> mutate(across(all_of(covs_to_check), as.numeric)) # make sure these are numeric
 
-# These are the variables we will assess balance for
-covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population", "TOT_REV", "TOT_ASSET", "NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA")
-
-df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "geoid_2010", "treat.FEMA_nDis", "lat", "lng", "REGION"), covs_to_check)))
-
+# Add REGION dummy columns
 df <- df |> dummy_cols(select_columns = c("REGION"), ignore_na = FALSE, remove_selected_columns = TRUE, remove_first_dummy = FALSE)
+
+# These are the variables we will adjust for
+adj_set <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population", "TOT_REV", "TOT_ASSET", "lat", "lng")
+
+# Other variables
+ntee_vars <- grep("^NTEEV2_", names(df), value = TRUE)
+region_vars <- grep("^REGION_", names(df), value = TRUE)
+
+df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "geoid_2010", "treat.FEMA_nDis"), adj_set, ntee_vars, region_vars)))
 
 # 1859 is New York County
 df$treat.FEMA_nDis[((df$CountyID == 1859) & (df$TAX_YEAR == 2001))] <- NA
-# df[((df$CountyID == 1859) & (df$TAX_YEAR == 2001)),]
+
+# log transform
+#saveRDS(df |> filter(TOT_REV < 0 | TOT_ASSET < 0), "misc_analysis/no_intV1_negative.rds")
+df <- df |> mutate(TOT_REV = case_when(TOT_REV < 0 ~ 0,
+                                       .default = TOT_REV),
+                   TOT_ASSET = case_when(TOT_ASSET < 0 ~ 0,
+                                       .default = TOT_ASSET))
+df <- df |> mutate(across(c("TOT_REV", "TOT_ASSET"), log1p)) #log1p adds 1 first to avoid 0s
+
+# Adding spatially varying coefficients
+source("matches_helper.R")
+df <- add_SVC(df, num_E_vec = 50)
+df$lat <- NULL
+df$lng <- NULL
+
+df$geoid_2010 <- NULL
+
+# https://stackoverflow.com/questions/74815244/panelmatch-r-errors-please-convert-time-id-to-consecutive-integers-and-pleas
+panel_df <- PanelData(panel.data = as.data.frame(df),
+                      unit.id = "CountyID",
+                      time.id = "TAX_YEAR",
+                      treatment = "treat.FEMA_nDis",
+                      outcome = "TOT_REV")
+# rm(df)
+
+# saveRDS(panel_df, "panel_data/no_int_panelV1.rds") # No SVC
+# saveRDS(panel_df, "panel_data/no_int_panelV2.rds") # Yes SVC
+
+#write.csv(df |> select(TAX_YEAR, FEMA_threshADJ) |> unique(), "updated_threshold.csv", row.names = FALSE)
+```
+
+Full (all outcomes)
+```{r, message = F}
+library(data.table)
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(fastDummies)
+
+df <- readRDS("county_long.rds")
+df <- df |> 
+      group_by(geoid_2010) |>
+      mutate(CountyID = as.integer(cur_group_id())) |>
+      ungroup()
+
+# These are some socioeconomic covariates we may evaluate balance for but need to convert from string to num
+covs_to_check <- c("white_perc", "bachelors_perc", "poverty_perc", "unemployment", "med_family_income_adj", "med_household_income_adj", "total_population")
+df <- df |> mutate(across(all_of(covs_to_check), as.numeric)) # make sure these are numeric
+
+# Add REGION dummy columns
+df <- df |> dummy_cols(select_columns = c("REGION"), ignore_na = FALSE, remove_selected_columns = TRUE, remove_first_dummy = FALSE)
+
+# These are the variables we will adjust for
+adj_set <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population", "TOT_REV", "TOT_ASSET", "lat", "lng")
+
+# Other variables
+ntee_vars <- grep("^NTEEV2_", names(df), value = TRUE)
+outcome_vars <- grep("^REV_", names(df), value = TRUE)
+region_vars <- grep("^REGION_", names(df), value = TRUE)
+
+df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "geoid_2010", "treat.FEMA_nDis"), adj_set, outcome_vars, ntee_vars, region_vars)))
+
+# 1859 is New York County
+df$treat.FEMA_nDis[((df$CountyID == 1859) & (df$TAX_YEAR == 2001))] <- NA
+
+# log transform
+df <- df |> mutate(across(c("TOT_REV", "TOT_ASSET", outcome_vars), log1p)) #log1p adds 1 first to avoid 0s
 
 # Adding spatially varying coefficients
 # source("matches_helper.R")
@@ -753,6 +828,68 @@ quantile(signif(abs(bal_ps.weight$value[bal_ps.weight$unrefined == FALSE]), 3))
 
 ## Estimates
 ### Lag = 3
+Stratified by NTEE category
+```{r}
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(tidyr)
+library(stringr)
+library(khroma)
+source("matches_helper.R")
+
+# Set up the folder path and saved object names
+L = 3 # lag, options: 1, 3, 5
+folder_path_match <- "matches/with_svc/no_int_panelV2/config1/"
+save_name <- paste0("Lag", L)
+estimates_save_name <- "estimates/with_svc_no_intV2_con1_"
+match_method <- "CBPS.match"
+
+# Retrieve the PanelMatch objects
+matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
+m.out <- matches_list[[match_method]]
+
+panel_df <- readRDS("panel_data/no_int_panelV2.rds")
+
+# Need to compute the estimates for each NTEE category
+outcome_vars <- c("TOT_REV", "REV_ART", "REV_EDU", "REV_HMS", "REV_PSB", "REV_ENV", "REV_HEL", "REV_HOS", "REV_UNI") # REV_MMB, REV_REL, REV_ENV, REV_IFA, REV_UNU, REV_NA
+```
+
+```{r}
+res <- list()
+for (x in outcome_vars){
+      print(x)
+      attr(panel_df, "outcome") <- x
+      attr(m.out, "outcome") <- x
+      attr(m.out, "outcome.var") <- x
+      
+      res[[x]] <- PanelEstimate(sets = m.out,
+                     panel.data = panel_df,
+                     se.method = "bootstrap",
+                     parallel = TRUE,
+                     num.cores = 6)
+}
+
+for (x in outcome_vars){
+      file_name <- paste0("estimates/", x, ".png")
+      print(file_name)
+      png(file_name)
+      plot(res[[x]])
+      dev.off()
+}
+
+file_name <- paste0(estimates_save_name, save_name, ".xlsx")
+print(file_name)
+estimate_summaries <- lapply(res, summary)
+estimate_summaries <- lapply(estimate_summaries, as.data.frame)
+write_xlsx(estimate_summaries, file_name)
+```
+
+
+Just total revenue
 ```{r}
 library(readr)
 library(dplyr)
@@ -784,8 +921,7 @@ res <- PanelEstimate(sets = matches_list$CBPS.match,
 plot(res)
 summary(res)
 ```
-
-
+Misc Analysis - Distribution of Matched Set Treatment Effects
 ```{r}
 ind.res <- get_set_treatment_effects(pm.obj = matches_list$CBPS.match,
                                      panel.data = panel_df,
@@ -804,7 +940,7 @@ hist(ind.res[[5]], main = "Distribution of Matched Set Treatment Effects\n F = 5
      ylim = c(0,100))
 ```
 
-
+Pooled estimates
 ```{r}
 # Winner: CBPS Matching with SVC Coefficients
 res.pooled <- PanelEstimate(sets = matches_list$CBPS.match,
@@ -816,7 +952,7 @@ res.pooled <- PanelEstimate(sets = matches_list$CBPS.match,
 plot(res.pooled)
 ```
 
-
+Different SE computation
 ```{r}
 # Winner: CBPS Matching with SVC Coefficients
 # res.indep <- PanelEstimate(sets = matches_list$CBPS.match,
@@ -844,10 +980,25 @@ covs_to_check <- c("white_perc", "bachelors_perc", "poverty_perc", "unemployment
 df <- df |> mutate(across(all_of(covs_to_check), as.numeric)) # make sure these are numeric
 
 # These are the variables we will assess balance for
-covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population", "TOT_REV", "TOT_ASSET", "NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA")
+se_vars <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population")
+other_vars <- c("TOT_REV", "TOT_ASSET")
 ntee_vars <- c("NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA")
 
-df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "geoid_2010", "treat.FEMA_nDis", "lat", "lng"), covs_to_check)))
+df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "geoid_2010", "treat.FEMA_nDis", "lat", "lng"), se_vars, other_vars, ntee_vars)))
+
+df <- df |> mutate(TOT_REV = case_when(TOT_REV < 0 ~ 0,
+                                       .default = TOT_REV),
+                   TOT_ASSET = case_when(TOT_ASSET < 0 ~ 0,
+                                       .default = TOT_ASSET))
+df <- df |> mutate(across(c("TOT_REV", "TOT_ASSET"), log1p)) #log1p adds 1 first to avoid 0s
+
+library(data.table)
+df <- arrange(df, TAX_YEAR)
+df.lag <- shift(df[,7:ncol(df)], n = 1:3, give.names = TRUE)
+df <- bind_cols(df, df.lag)
+rm(df.lag)
+
+df <- df |> filter(TAX_YEAR >= 1994)
 
 df_sub <- df |> dplyr::select(CountyID, lat, lng) |> unique()
 
@@ -859,7 +1010,10 @@ K <- Matern(d, smoothness=.5) # for smoothness paramter, should we do some sort 
 E <- eigen(K)
 
 options(repr.plot.width = 6, repr.plot.height = 4)
+lls = list()
+ls_list = list()
 for (num_svc in seq(10,100,10)){
+      curr_name <- as.character(num_svc*2)
       x_s <- cbind(x[,1] * E$vectors[,1:num_svc], x[,2] * E$vectors[,1:num_svc]) # would have to play around with this number
       
       # add SVC back into panel data
@@ -868,19 +1022,35 @@ for (num_svc in seq(10,100,10)){
       df_sub.temp <- cbind(df_sub, x_s)
       
       df.temp <- merge(df, df_sub.temp |> dplyr::select(-lat, -lng), by = "CountyID", all = TRUE)
-      
+
       upper_formula <- paste(
         "treat.FEMA_nDis ~ TAX_YEAR + bachelors_perc + med_household_income_adj + white_perc + total_population +",
-        paste(ntee_vars, collapse = " + "), "+",
+        paste0(do.call(paste0, expand.grid(paste0(se_vars, "_lag_"), 1:3)), collapse = " + "), "+",
+        paste0(do.call(paste0, expand.grid(paste0(ntee_vars, "_lag_"), 1:3)), collapse = " + "), "+",
+        paste0(do.call(paste0, expand.grid(paste0(other_vars, "_lag_"), 1:3)), collapse = " + "), "+",
         paste(xs_vars, collapse = " + "))
       
       # regression
-      ls <- glm(as.formula(upper_formula), data = df.temp, family = binomial(link = "logit"))
-      summary(ls)
+      ls_list[[curr_name]] <- glm(as.formula(upper_formula), data = df.temp, family = binomial(link = "logit"))
+      #summary(ls)
 
-      yweight <- predict(ls, type="response")
+      yweight <- predict(ls_list[[curr_name]], type="response")
+      png(paste0("svc_plots/no_interference/svc", num_svc*2, "_Mar19.png"))
       plot(sort(yweight), main = paste("# SVC =", num_svc*2), cex = 0.10)
-} # winner was num_svc = 30
+      dev.off()
+} # winner was num_svc = 30 on March 10, but on March 19 200 is the winner by a landslide
+
+library(lmtest)
+my_test <- lrtest(ls_list[["100"]], ls_list[["200"]])
+my_test
+
+AIC(ls_list[["100"]], ls_list[["200"]])
+BIC(ls_list[["100"]], ls_list[["200"]])
+
+y_pred <- predict(ls_list[["200"]], df.temp, type = "response")
+quantile(y_pred, na.rm = TRUE, probs = seq(0,1,0.1)) # all probs between 0.02 and 0.95
+# sum(near(y_pred, 1), na.rm = TRUE)
+# sort(y_pred, decreasing = FALSE) 
 ```
 
 # PanelMatch - Interference
@@ -2264,14 +2434,48 @@ summary(m.initial)
 ```
 
 # Scratchwork
-```{r}
-tst <- df.ntee_rev |> select(county.census.geoid, TAX_YEAR, TOT_REV, TOT_ASSET)
-# tst
 
-all.equal(tst, df.tot_rev |> select(all_of(names(tst))))
+Testing if simply manually changing the outcome attributes for PanelData and PanelMatch objects will allow PanelEstimate to do its thing
+```{r}
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(tidyr)
+library(stringr)
+library(khroma)
+source("matches_helper.R")
+
+# Set up the folder path and saved object names
+L = 3 # lag, options: 1, 3, 5
+folder_path_match <- "matches/with_svc/no_int_panelV2/config1/"
+save_name <- paste0("Lag", L)
+
+# Retrieve the PanelMatch objects
+matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
+
+panel_df <- readRDS("panel_data/no_int_panelV2.rds")
+# attributes(panel_df)
+attr(panel_df, "outcome") <- "TOT_ASSET"
+
+m.out <- matches_list$CBPS.match
+# attributes(m.out)
+attr(m.out, "outcome") <- "TOT_ASSET"
+attr(m.out, "outcome.var") <- "TOT_ASSET"
+
+res <- PanelEstimate(sets = m.out,
+                     panel.data = panel_df,
+                     se.method = "bootstrap",
+                     parallel = TRUE,
+                     num.cores = 6)
+plot(res, ylim=c(-90000000, 40000000))
+summary(res)
 ```
 
 
+County FIPS disrepencies in SHELDUS data
 ```{r}
 # 51: Virginia, 48: Texas, 46: SD, 30: Montana, 12: Florida, 02: Alaska
 # 51780: South Boston City (After 1990, added to Halifax County: 51083 in 1995)

@@ -10,7 +10,9 @@ library(foreach)
 refine_methods <- c("none", "ps.match", "CBPS.match", "ps.weight", "CBPS.weight")
 # refine_methods <- c("none")
 lags <- c(3,5) #1, 3, 5
-folder_paths <- c("No_Int_V2/", "No_Int_V3/", "Int_V1/", "Int_V2/")
+
+folder_paths <- c("no_svc/no_int_panelV1/config1/", "with_svc/no_int_panelV2/config1/",
+                  "no_svc/int_panelV1/config1/", "with_svc/int_panelV2/config1/")
 
 #### No Interference ####
 startTime <- Sys.time()
