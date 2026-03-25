@@ -16,25 +16,25 @@ matching_flags <- list("none" = FALSE, "ps.match" = TRUE, "CBPS.match" = TRUE, "
 lags <- c(3) # Pena et al paper uses up to lag = 3 so we will too
 
 no_interference_model_list <- list(
-      # list("full_path" = "no_svc/no_int_panelV1/config1/",
-      #      "data" = "panel_data/no_int_panelV1.rds",
-      #      "match_on_NA" = FALSE,
-      #      "svc_flag" = FALSE),
-      list("full_path" = "with_svc/no_int_panelV2/config2/",
-           "data" = "panel_data/no_int_panelV2.rds",
+      list("full_path" = "no_svc/no_int_panelV1/config2/",
+           "data" = "panel_data/no_int_panelV1.rds",
            "match_on_NA" = FALSE,
-           "svc_flag" = TRUE)
+           "svc_flag" = FALSE)#,
+      # list("full_path" = "with_svc/no_int_panelV2/config2/",
+      #      "data" = "panel_data/no_int_panelV2.rds",
+      #      "match_on_NA" = FALSE,
+      #      "svc_flag" = TRUE)
 )
 
 interference_model_list <- list(
-      # list("full_path" = "no_svc/int_panelV1/config1/",
-      #      "data" = "panel_data/int_panelV1.rds",
-      #      "match_on_NA" = FALSE,
-      #      "svc_flag" = FALSE),
-      list("full_path" = "with_svc/int_panelV2/config2/",
-           "data" = "panel_data/int_panelV2.rds",
+      list("full_path" = "no_svc/int_panelV1/config2/",
+           "data" = "panel_data/int_panelV1.rds",
            "match_on_NA" = FALSE,
-           "svc_flag" = TRUE)
+           "svc_flag" = FALSE)#,
+      # list("full_path" = "with_svc/int_panelV2/config2/",
+      #      "data" = "panel_data/int_panelV2.rds",
+      #      "match_on_NA" = FALSE,
+      #      "svc_flag" = TRUE)
 )
 
 cat("\n",paste(as.character(Sys.Date())), file = "run_matching_times.txt", append = TRUE)
@@ -73,7 +73,8 @@ for (mdl in no_interference_model_list){
                                       matching = matching_flags[[cur_METHOD]])
 
                   match_list[[cur_METHOD]] <- m.out
-
+                  
+                  print("balances...")
                   balance_list[[cur_METHOD]] <- get_covariate_balance(m.out,
                                                                       panel.data = panel_df,
                                                                       covariates = covs_to_check)

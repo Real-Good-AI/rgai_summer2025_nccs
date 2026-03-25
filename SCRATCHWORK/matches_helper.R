@@ -173,13 +173,13 @@ tidy_bal_df <- function(bal_data, covariates, long_or_wide = "long"){
 
 no_int_no_SVC_plots <- function(bal_df_tidy, match_method, ylim_base = c(-1,1), ylim_ntee = c(-1,1), ylim_loc = c(-1,1), ylim_all = c(-1,1), ylim_unrefined = c(-1,1), include.unrefined.panel = FALSE){
       bal_df_tidy <- bal_df_tidy |> 
-            mutate(covariate = str_remove(covariate, "NTEEV2_"),
-                   covariate = str_remove(covariate, "REGION_"),
-                   covariate = case_when(covariate == "NA" ~ "NTEE_NA", .default = covariate))
+            mutate(covariate = case_when(covariate == "NTEEV2_NA" ~ "NTEE_NA", .default = covariate),
+                   covariate = str_remove(covariate, "NTEEV2_"),
+                   covariate = str_remove(covariate, "REGION_"))
       
       se_vars <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population")
       nonprofit_vars <- c("TOT_REV", "TOT_ASSET")
-      ntee_vars <- c("ART", "EDU", "ENV", "HEL", "HMS", "HOS", "IFA", "MMB", "PSB", "REL", "UNI", "UNU", "NA")
+      ntee_vars <- c("ART", "EDU", "ENV", "HEL", "HMS", "HOS", "IFA", "MMB", "PSB", "REL", "UNI", "UNU", "NTEE_NA")
       loc_vars <- c("MIDWEST", "NORTHEAST", "SOUTH", "WEST")
       
       
@@ -294,13 +294,12 @@ no_int_no_SVC_plots <- function(bal_df_tidy, match_method, ylim_base = c(-1,1), 
                   mutate(covariate = factor(covariate, levels = unique(covariate))) |>
                   ggplot(mapping = aes(x = time, y = value)) +
                   geom_hline(yintercept = 0, linetype = "dashed") +
-                  geom_point(mapping = aes(colour = variable_type)) +
-                  geom_line(mapping = aes(colour = variable_type, linetype = variable_type)) +
-                  scale_linetype_manual(values = c("socioeconomic" = "solid", "nonprofit" = "dotdash", "ntee" = "F1", "location" = "dotted")) + 
+                  geom_point(mapping = aes(colour = covariate)) +
+                  geom_line(mapping = aes(colour = covariate)) +
                   scale_x_reverse(breaks = c(5, 4, 3, 2, 1, 0), labels = c("t-5", "t-4", "t-3", "t-2", "t-1", "t")) +
                   theme_bw() +
                   coord_cartesian(ylim = ylim_all) +
-                  labs(title = paste(match_method, ":", "Covariate Balance - All Variables"))
+                  labs(title = paste(match_method, ":", "Covariate Balance (Unrefined) - All Variables"))
             return(list("base" = p1, "base_unrefined" = p1_un, "ntee" = p2, "ntee_unrefined" = p2_un, "loc" = p3, "loc_unrefined" = p3_un, "all" = p4, "all_unrefined" = p4_un))
       } else {
             return(list("base" = p1, "ntee" = p2, "location" = p3, "all" = p4))

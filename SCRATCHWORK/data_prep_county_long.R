@@ -55,17 +55,33 @@ ass_cols <- grep("^ASSET_", names(df.ntee_rev), value = TRUE)
 df.ntee_rev <- df.ntee_rev |> mutate(TOT_REV = rowSums(across(all_of(rev_cols)), na.rm = TRUE),
                                      TOT_ASSET = rowSums(across(all_of(ass_cols)), na.rm = TRUE))
 
+# Now add in stratified by size as well (according to NCCS size categories)
+# Levels: [0,100000) [100000,500000) [500000,1000000) [1000000,5000000) [5000000,10000000) [10000000,7.02e+10)
+breaks_vec = c(0,100000,500000,1000000,5000000,10000000,max(df$TOT_EXP, na.rm = TRUE)+1)
+df$SIZE.CAT <- df$TOT_EXP |> cut(breaks = breaks_vec, right = FALSE, labels = FALSE) |> factor()
+
+df.size_rev <- df |> select(TAX_YEAR, TOT_REV, SIZE.CAT, county.census.geoid, NTEEV2) |>
+      rename(REV = TOT_REV) |>
+      group_by(county.census.geoid, TAX_YEAR, SIZE.CAT) |> 
+      summarize(across(any_of(c("REV", "EXP", "ASSET")), ~sum(.x, na.rm = TRUE)),
+                .groups = "drop") |>
+      ungroup() 
+
+df.size_rev <- df.size_rev |>
+      pivot_wider(names_from = SIZE.CAT, values_from = c("REV"), values_fill = 0, names_prefix = "REV_SIZE.")
+
 # df now will have total assets and revenue per county,year pair stratified by NTEE category
 # as well as the number of nonprofits  per county,year pair stratified by NTEE category
 df <- merge(df.ntee_rev, ntee, by = c("county.census.geoid", "TAX_YEAR")) 
 df <- merge(df, df.tot_rev, by = c("county.census.geoid", "TAX_YEAR")) 
+df <- merge(df, df.size_rev, by = c("county.census.geoid", "TAX_YEAR")) 
 
 # IDs for two counties were changed after 2010. Some datasets use latest ID, others use 2010 ID
 df <- df |> mutate(geoid_2010 = county.census.geoid)
 df$geoid_2010[df$county.census.geoid == "02158"] <- "02270"
 df$geoid_2010[df$county.census.geoid == "46102"] <- "46113"
 
-rm(ntee, df.ntee_rev, df.tot_rev, ass_cols, rev_cols)
+rm(ntee, df.ntee_rev, df.tot_rev, df.size_rev, ass_cols, rev_cols)
 #################################################################################################
 # Add location data: county name, latitude & longitude of centroid, state, region, and division
 #################################################################################################
@@ -230,10 +246,28 @@ df <- df |> mutate(TotPerCapADJ = (exp(LOG_TotDmgADJ)-1)/as.numeric(total_popula
                    treat.FEMA_nDis = as.numeric(TotPerCapADJ >= FEMA_threshADJ)
                    )
 
-saveRDS(df, "county_long.rds")
+quartiles_df <- df |> group_by(TAX_YEAR) |>
+      summarise(top_25 = quantile(TotPerCapADJ, 0.75, na.rm = TRUE),
+                bot_50 = quantile(TotPerCapADJ, 0.50, na.rm = TRUE),
+                top_90 = quantile(TotPerCapADJ, 0.9, na.rm = TRUE))
 
+df <- merge(df, quartiles_df, by = "TAX_YEAR")
 
+df <- df |> mutate(in.top25 = TotPerCapADJ >= top_25,
+                   in.bot50 = TotPerCapADJ <= bot_50,
+                   in.top90 = TotPerCapADJ >= top_90,
+                   treat.top25 = case_when(
+                         in.top25 ~ 1,
+                         in.bot50 ~ 0,
+                         .default = NA),
+                   treat.top90 = case_when(
+                         in.top90 ~ 1,
+                         in.bot50 ~ 0,
+                         .default = NA),
+                   )
 
+# 
+# saveRDS(df, "county_long.rds")
 
 
 

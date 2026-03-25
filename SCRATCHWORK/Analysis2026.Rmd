@@ -53,13 +53,13 @@ df <- df |> mutate(TOT_REV = case_when(TOT_REV < 0 ~ 0,
                                        .default = TOT_REV),
                    TOT_ASSET = case_when(TOT_ASSET < 0 ~ 0,
                                        .default = TOT_ASSET))
-df <- df |> mutate(across(c("TOT_REV", "TOT_ASSET"), log1p)) #log1p adds 1 first to avoid 0s
+df <- df |> mutate(across(c("TOT_REV", "TOT_ASSET"), log1p, .names = "LOG_{.col}")) #log1p adds 1 first to avoid 0s
 
 # Adding spatially varying coefficients
-source("matches_helper.R")
-df <- add_SVC(df, num_E_vec = 100)
-df$lat <- NULL
-df$lng <- NULL
+# source("matches_helper.R")
+# df <- add_SVC(df, num_E_vec = 50)
+# df$lat <- NULL
+# df$lng <- NULL
 
 df$geoid_2010 <- NULL
 
@@ -768,6 +768,349 @@ quantile(signif(abs(bal_ps.weight$value[bal_ps.weight$unrefined == FALSE]), 3))
 ```
 
 
+## Matching Methods - Config 2, With SVC
+```{r}
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(tidyr)
+library(stringr)
+library(khroma)
+source("matches_helper.R")
+
+# panel_df <- readRDS("panel_data/no_int_panelV2.rds")
+
+# Set up the folder path and saved object names
+L = 3 # lag, options: 1, 3, 5
+folder_path_match <- "matches/with_svc/no_int_panelV2/config2/"
+folder_path_balance <- "balances/with_svc/no_int_panelV2/config2/"
+save_name <- paste0("Lag", L)
+
+# Retrieve the PanelMatch objects
+matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
+
+# Retrieve the PanelBalance objects
+balances_list <- readRDS(paste0(folder_path_balance, save_name, ".rds"))
+
+# Make the balances for each lag easy to work with as a dataframe
+bal_df <- lapply(balances_list, summary)
+bal_df <- lapply(bal_df, as.data.frame)
+bal_df <- lapply(bal_df, tibble::rownames_to_column, var = "time")
+
+# Print information about matching and balances
+summary(matches_list$none)
+summary(matches_list$ps.match)
+summary(matches_list$CBPS.match)
+summary(matches_list$ps.weight)
+summary(matches_list$CBPS.weight)
+
+plot(matches_list$none)
+```
+
+
+Default Matching Weights Plots
+```{r}
+# plot(extract(matches_list$CBPS.weight), panel.data = panel_df)
+```
+
+
+Default Scatter Plots
+```{r}
+# plot(balances_list$none, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE, 
+#      main = "Standardized Mean Difference of Covariates (No Matching)")
+plot(balances_list$ps.match, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (PS Matching)")
+plot(balances_list$CBPS.match, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (CBPS Matching)")
+plot(balances_list$ps.weight, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (PS Weighting)")
+plot(balances_list$CBPS.weight, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (CBPS Weighting)")
+```
+
+
+Default Covariate Balance Plots
+```{r}
+# plot(balances_list$none, type = "panel", include.unrefined.panel = FALSE, legend = TRUE, main = "No Matching") 
+# plot(balances_list$ps.match, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "PS Matching", main.unrefined = "PS Matching (unrefined)") 
+# plot(balances_list$CBPS.match, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "CBPS Matching", main.unrefined = "CBPS Matching (unrefined)") 
+# plot(balances_list$ps.weight, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "PS Weighting", main.unrefined = "PS Weighting (unrefined)") 
+# plot(balances_list$CBPS.weight, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "CBPS Weighting", main.unrefined = "CBPS Weighting (unrefined)") 
+```
+
+My Covariate Balance Plots
+```{r}
+covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population", "TOT_REV", "TOT_ASSET", "NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA", "REGION_MIDWEST", "REGION_NORTHEAST", "REGION_SOUTH", "REGION_WEST")
+
+bal_none <- tidy_bal_df(bal_data = bal_df$none, covariates = paste0("m.out.",covs_to_check))
+bal_ps.match <- tidy_bal_df(bal_data = bal_df$ps.match, covariates = paste0("m.out.",covs_to_check))
+bal_cbps.match <- tidy_bal_df(bal_data = bal_df$CBPS.match, covariates = paste0("m.out.",covs_to_check))
+bal_ps.weight <- tidy_bal_df(bal_data = bal_df$ps.weight, covariates = paste0("m.out.",covs_to_check))
+bal_cbps.weight <- tidy_bal_df(bal_data = bal_df$CBPS.weight, covariates = paste0("m.out.",covs_to_check))
+```
+
+```{r}
+ylims <- list("base" = c(-0.15, 0.05), "ntee" = c(-0.15, 0.05), "loc" = c(-0.15,0.15), "unrefined" = c(-0.15, 0.05), "all" = c(-0.15, 0.15))
+p_none <- no_int_no_SVC_plots(bal_none,
+                              match_method = "No Matching",
+                              ylim_base = ylims[["base"]], 
+                              ylim_ntee = ylims[["ntee"]],
+                              ylim_loc = ylims[["loc"]],
+                              ylim_all = ylims[["all"]],
+                              include.unrefined.panel = FALSE)
+p_ps.match <- no_int_no_SVC_plots(bal_ps.match, 
+                                  match_method = "PS Matching",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  ylim_unrefined = ylims[["unrefined"]],
+                                  include.unrefined.panel = TRUE)
+p_cbps.match <- no_int_no_SVC_plots(bal_cbps.match,
+                                  match_method = "CBPS Matching",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  include.unrefined.panel = FALSE)
+p_ps.weight <- no_int_no_SVC_plots(bal_ps.weight,
+                                  match_method = "PS Weighting",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  include.unrefined.panel = FALSE)
+p_cbps.weight <- no_int_no_SVC_plots(bal_cbps.weight,
+                                  match_method = "CBPS Weighting",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  include.unrefined.panel = FALSE)
+
+options(repr.plot.width = 6, repr.plot.height = 4)
+
+# p_none$all
+# p_ps.match$all_unrefined
+# p_ps.match$all
+# p_cbps.match$all
+# p_ps.weight$all
+# p_cbps.weight$all
+# 
+p_none$base
+# p_ps.match$base_unrefined
+p_ps.match$base
+# p_cbps.match$base
+# p_ps.weight$base
+# p_cbps.weight$base
+# 
+p_none$ntee
+# p_ps.match$ntee_unrefined
+p_ps.match$ntee
+# p_cbps.match$ntee
+# p_ps.weight$ntee
+# p_cbps.weight$ntee
+# 
+p_none$loc
+# p_ps.match$loc_unrefined
+p_ps.match$loc
+# p_cbps.match$loc
+# p_ps.weight$loc
+# p_cbps.weight$loc
+
+```
+
+```{r}
+q_none <- quantile(signif(abs(bal_none$value[bal_none$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+q_ps.mat <- quantile(signif(abs(bal_ps.match$value[bal_ps.match$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+q_cbps.mat <- quantile(signif(abs(bal_cbps.match$value[bal_cbps.match$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+q_cbps.w <- quantile(signif(abs(bal_cbps.weight$value[bal_cbps.weight$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+
+cbind(as.data.frame(q_none), as.data.frame(q_ps.mat), as.data.frame(q_cbps.mat), as.data.frame(q_cbps.w))
+
+# write.csv(bal_none |> filter(unrefined == FALSE) |> select(-unrefined) |> pivot_wider(names_from = covariate, values_from = value),
+#           file = "balance.csv")
+# 
+# write.csv(bal_ps.match |> filter(unrefined == FALSE) |> select(-unrefined) |> pivot_wider(names_from = covariate, values_from = value),
+#           file = "balance.csv")
+```
+
+## Matching Methods - Config 2, NO SVC
+```{r}
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(tidyr)
+library(stringr)
+library(khroma)
+source("matches_helper.R")
+
+# panel_df <- readRDS("panel_data/no_int_panelV2.rds")
+
+# Set up the folder path and saved object names
+L = 3 # lag, options: 1, 3, 5
+folder_path_match <- "matches/no_svc/no_int_panelV1/config2/"
+folder_path_balance <- "balances/no_svc/no_int_panelV1/config2/"
+save_name <- paste0("Lag", L)
+
+# Retrieve the PanelMatch objects
+matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
+
+# Retrieve the PanelBalance objects
+balances_list <- readRDS(paste0(folder_path_balance, save_name, ".rds"))
+
+# Make the balances for each lag easy to work with as a dataframe
+bal_df <- lapply(balances_list, summary)
+bal_df <- lapply(bal_df, as.data.frame)
+bal_df <- lapply(bal_df, tibble::rownames_to_column, var = "time")
+
+# Print information about matching and balances
+# summary(matches_list$none)
+# summary(matches_list$ps.match)
+# summary(matches_list$CBPS.match)
+# summary(matches_list$ps.weight)
+# summary(matches_list$CBPS.weight)
+# 
+# plot(matches_list$none)
+```
+
+
+Default Matching Weights Plots
+```{r}
+# plot(extract(matches_list$CBPS.weight), panel.data = panel_df)
+```
+
+
+Default Scatter Plots
+```{r}
+# plot(balances_list$none, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE, 
+#      main = "Standardized Mean Difference of Covariates (No Matching)")
+plot(balances_list$ps.match, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (PS Matching)")
+plot(balances_list$CBPS.match, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (CBPS Matching)")
+plot(balances_list$ps.weight, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (PS Weighting)")
+plot(balances_list$CBPS.weight, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (CBPS Weighting)")
+```
+
+
+Default Covariate Balance Plots
+```{r}
+# plot(balances_list$none, type = "panel", include.unrefined.panel = FALSE, legend = TRUE, main = "No Matching") 
+# plot(balances_list$ps.match, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "PS Matching", main.unrefined = "PS Matching (unrefined)") 
+# plot(balances_list$CBPS.match, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "CBPS Matching", main.unrefined = "CBPS Matching (unrefined)") 
+# plot(balances_list$ps.weight, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "PS Weighting", main.unrefined = "PS Weighting (unrefined)") 
+# plot(balances_list$CBPS.weight, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "CBPS Weighting", main.unrefined = "CBPS Weighting (unrefined)") 
+```
+
+My Covariate Balance Plots
+```{r}
+covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population", "TOT_REV", "TOT_ASSET", "NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA", "REGION_MIDWEST", "REGION_NORTHEAST", "REGION_SOUTH", "REGION_WEST")
+
+bal_none <- tidy_bal_df(bal_data = bal_df$none, covariates = paste0("m.out.",covs_to_check))
+bal_ps.match <- tidy_bal_df(bal_data = bal_df$ps.match, covariates = paste0("m.out.",covs_to_check))
+bal_cbps.match <- tidy_bal_df(bal_data = bal_df$CBPS.match, covariates = paste0("m.out.",covs_to_check))
+bal_ps.weight <- tidy_bal_df(bal_data = bal_df$ps.weight, covariates = paste0("m.out.",covs_to_check))
+bal_cbps.weight <- tidy_bal_df(bal_data = bal_df$CBPS.weight, covariates = paste0("m.out.",covs_to_check))
+```
+
+```{r}
+ylims <- list("base" = c(-0.15, 0.05), "ntee" = c(-0.15, 0.05), "loc" = c(-0.15,0.15), "unrefined" = c(-0.15, 0.05), "all" = c(-0.15, 0.15))
+p_none <- no_int_no_SVC_plots(bal_none,
+                              match_method = "No Matching",
+                              ylim_base = ylims[["base"]], 
+                              ylim_ntee = ylims[["ntee"]],
+                              ylim_loc = ylims[["loc"]],
+                              ylim_all = ylims[["all"]],
+                              include.unrefined.panel = FALSE)
+p_ps.match <- no_int_no_SVC_plots(bal_ps.match, 
+                                  match_method = "PS Matching",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  ylim_unrefined = ylims[["unrefined"]],
+                                  include.unrefined.panel = TRUE)
+p_cbps.match <- no_int_no_SVC_plots(bal_cbps.match,
+                                  match_method = "CBPS Matching",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  include.unrefined.panel = FALSE)
+p_ps.weight <- no_int_no_SVC_plots(bal_ps.weight,
+                                  match_method = "PS Weighting",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  include.unrefined.panel = FALSE)
+p_cbps.weight <- no_int_no_SVC_plots(bal_cbps.weight,
+                                  match_method = "CBPS Weighting",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  include.unrefined.panel = FALSE)
+
+options(repr.plot.width = 6, repr.plot.height = 4)
+
+p_none$all
+p_ps.match$all_unrefined
+p_ps.match$all
+p_cbps.match$all
+p_ps.weight$all
+p_cbps.weight$all
+# 
+# p_none$base
+# p_ps.match$base_unrefined
+# p_ps.match$base
+# p_cbps.match$base
+# p_ps.weight$base
+# p_cbps.weight$base
+# 
+# p_none$ntee
+# p_ps.match$ntee_unrefined
+# p_ps.match$ntee
+# p_cbps.match$ntee
+# p_ps.weight$ntee
+# p_cbps.weight$ntee
+# 
+# p_none$loc
+# p_ps.match$loc_unrefined
+# p_ps.match$loc
+# p_cbps.match$loc
+# p_ps.weight$loc
+# p_cbps.weight$loc
+
+```
+
+```{r}
+q_none <- quantile(signif(abs(bal_none$value[bal_none$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+q_ps.mat <- quantile(signif(abs(bal_ps.match$value[bal_ps.match$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+q_cbps.mat <- quantile(signif(abs(bal_cbps.match$value[bal_cbps.match$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+q_cbps.w <- quantile(signif(abs(bal_cbps.weight$value[bal_cbps.weight$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+
+df <- cbind(as.data.frame(q_none), as.data.frame(q_ps.mat), as.data.frame(q_cbps.mat), as.data.frame(q_cbps.w))
+
+df$winner <- colnames(df)[max.col(-df, ties.method = "first")]
+
+
+# write.csv(bal_none |> filter(unrefined == FALSE) |> select(-unrefined) |> pivot_wider(names_from = covariate, values_from = value),
+#           file = "balance.csv")
+# 
+# write.csv(bal_ps.match |> filter(unrefined == FALSE) |> select(-unrefined) |> pivot_wider(names_from = covariate, values_from = value),
+#           file = "balance.csv")
+```
+
 ## Estimates
 Full (all outcomes)
 ```{r, message = F}
@@ -786,14 +1129,14 @@ df <- df |>
       mutate(CountyID = as.integer(cur_group_id())) |>
       ungroup()
 
-outcome_vars <- grep("^REV_", names(df), value = TRUE)
+outcome_vars <- outcome_vars <- c("REV_SIZE.1", "REV_SIZE.2", "REV_SIZE.3", "REV_SIZE.4", "REV_SIZE.5", "REV_SIZE.6")
 
 df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "treat.FEMA_nDis", "TOT_REV", "TOT_ASSET"), outcome_vars)))
 
 # log transform
-# saveRDS(df |> filter(if_any(all_of(c("TOT_REV", "TOT_ASSET", outcome_vars)), ~ .x < 0)), "misc_analysis/no_intV1_negative_stratified.rds")
-df <- df |> mutate(across(c("TOT_REV", outcome_vars), ~ if_else(.x < 0, 0, .x)))
-df <- df |> mutate(across(c("TOT_REV", outcome_vars), log1p)) #log1p adds 1 first to avoid 0s
+# saveRDS(df |> filter(if_any(all_of(c("TOT_REV",  outcome_vars)), ~ .x < 0)), "misc_analysis/no_intV1_negative_stratified.rds")
+df <- df |> mutate(across(all_of(c("TOT_REV", outcome_vars)), ~ if_else(.x < 0, 0, .x)))
+df <- df |> mutate(across(all_of(c("TOT_REV", outcome_vars)), log1p)) #log1p adds 1 first to avoid 0s
 
 df$treat.FEMA_nDis[((df$CountyID == 1859) & (df$TAX_YEAR == 2001))] <- NA
 # https://stackoverflow.com/questions/74815244/panelmatch-r-errors-please-convert-time-id-to-consecutive-integers-and-pleas
@@ -811,7 +1154,7 @@ panel_df <- PanelData(panel.data = as.data.frame(df),
 
 rm(df)
 ```
-### Lag = 3
+### with SVC - Config 2
 Stratified by NTEE category
 ```{r}
 library(readr)
@@ -821,16 +1164,13 @@ library(PanelMatch)
 library(ggplot2)
 library(writexl)
 library(tidyr)
-library(stringr)
-library(khroma)
-source("matches_helper.R")
 
 # Set up the folder path and saved object names
 L = 3 # lag, options: 1, 3, 5
-folder_path_match <- "matches/with_svc/no_int_panelV2/config1/"
+folder_path_match <- "matches/with_svc/no_int_panelV2/config2/"
 save_name <- paste0("Lag", L)
-estimates_save_name <- "estimates/with_svc_no_intV2_con1_"
-match_method <- "CBPS.match"
+estimates_save_name <- "estimates/with_svc_no_intV2_con2_"
+match_method <- "ps.match"
 
 # Retrieve the PanelMatch objects
 matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
@@ -839,7 +1179,9 @@ m.out <- matches_list[[match_method]]
 # panel_df <- readRDS("panel_data/no_int_panelV2.rds")
 
 # Need to compute the estimates for each NTEE category
-outcome_vars <- c("TOT_REV", "REV_ART", "REV_EDU", "REV_HMS", "REV_PSB", "REV_ENV", "REV_HEL", "REV_HOS", "REV_UNI") # REV_MMB, REV_REL, REV_ENV, REV_IFA, REV_UNU, REV_NA
+# outcome_vars <- c("TOT_REV", "REV_ART", "REV_EDU", "REV_HMS", "REV_PSB", "REV_ENV", "REV_HEL", "REV_HOS", "REV_UNI", "REV_MMB", "REV_ENV") # REV_REL, REV_IFA, REV_UNU, REV_NA
+# Levels: [0,100000) [100000,500000) [500000,1000000) [1000000,5000000) [5000000,10000000) [10000000,7.02e+10)
+outcome_vars <- c("REV_SIZE.1", "REV_SIZE.2", "REV_SIZE.3", "REV_SIZE.4", "REV_SIZE.5", "REV_SIZE.6") # "REV_SIZE.NA"
 ```
 
 ```{r}
@@ -853,15 +1195,16 @@ for (x in outcome_vars){
       res[[x]] <- PanelEstimate(sets = m.out,
                      panel.data = panel_df,
                      se.method = "bootstrap",
+                     number.iterations = 10000,
                      parallel = TRUE,
                      num.cores = 6)
-}
+} 
 
 for (x in outcome_vars){
       file_name <- paste0("estimates/", x, ".png")
       print(file_name)
       png(file_name)
-      plot(res[[x]])
+      plot(res[[x]], main = paste0("Estimated Effects (", x, ") - ", match_method))
       dev.off()
 }
 
@@ -873,7 +1216,7 @@ write_xlsx(estimate_summaries, file_name)
 ```
 
 
-Just total revenue
+No Matching
 ```{r}
 library(readr)
 library(dplyr)
@@ -887,24 +1230,31 @@ library(khroma)
 source("matches_helper.R")
 
 # Set up the folder path and saved object names
-L = 3 # lag, options: 1, 3, 5
-folder_path_match <- "matches/with_svc/no_int_panelV2/config1/"
-save_name <- paste0("Lag", L)
+# L = 3 # lag, options: 1, 3, 5
+# folder_path_match <- "matches/with_svc/no_int_panelV2/config2/"
+# save_name <- paste0("Lag", L)
+# 
+# # Retrieve the PanelMatch objects
+# matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
 
-# Retrieve the PanelMatch objects
-matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
+# panel_df <- readRDS("panel_data/no_int_panelV2.rds")
 
-panel_df <- readRDS("panel_data/no_int_panelV2.rds")
+m.out.none <- matches_list$none
+# attr(m.out.none, "outcome") <- "EXP_LN_REV"
+# attr(m.out.none, "outcome.var") <- "EXP_LN_REV"
 
-# Winner: CBPS Matching with SVC Coefficients
-res <- PanelEstimate(sets = matches_list$CBPS.match,
+# Do we get significant results if we don't do any matching?
+res_no.match <- PanelEstimate(sets = m.out.none,
                      panel.data = panel_df,
                      se.method = "bootstrap",
                      parallel = TRUE,
-                     num.cores = 6)
-plot(res)
-summary(res)
+                     num.cores = 6,
+                     number.iterations = 10000)
+plot(res_no.match, main = "Estimated Effects (TOT REV) - No Matching")
+summary(res_no.match)
+hist(res_no.match$bootstrapped.estimates)
 ```
+
 Misc Analysis - Distribution of Matched Set Treatment Effects
 ```{r}
 ind.res <- get_set_treatment_effects(pm.obj = matches_list$CBPS.match,
@@ -943,6 +1293,130 @@ Different SE computation
 #                      panel.data = panel_df,
 #                      se.method = "conditional")
 # plot(res.indep)
+```
+
+### No SVC - Config 2
+```{r}
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(tidyr)
+
+# Set up the folder path and saved object names
+L = 3 # lag, options: 1, 3, 5
+folder_path_match <- "matches/no_svc/no_int_panelV1/config2/"
+save_name <- paste0("Lag", L)
+estimates_save_name <- "estimates/no_svc_no_intV2_con2_"
+match_method <- "CBPS.weight"
+
+# Retrieve the PanelMatch objects
+matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
+m.out <- matches_list[[match_method]]
+
+# panel_df <- readRDS("panel_data/no_int_panelV2.rds")
+
+# Need to compute the estimates for each NTEE category
+# outcome_vars <- c("TOT_REV", "REV_ART", "REV_EDU", "REV_HMS", "REV_PSB", "REV_ENV", "REV_HEL", "REV_HOS", "REV_UNI", "REV_MMB", "REV_ENV") # REV_REL, REV_IFA, REV_UNU, REV_NA
+# Levels: [0,100000) [100000,500000) [500000,1000000) [1000000,5000000) [5000000,10000000) [10000000,7.02e+10)
+outcome_vars <- c("REV_SIZE.1", "REV_SIZE.2")#, "REV_SIZE.3", "REV_SIZE.4", "REV_SIZE.5", "REV_SIZE.6") # "REV_SIZE.NA"
+```
+
+```{r}
+res <- list()
+for (x in outcome_vars){
+      print(x)
+      attr(panel_df, "outcome") <- x
+      attr(m.out, "outcome") <- x
+      attr(m.out, "outcome.var") <- x
+      
+      res[[x]] <- PanelEstimate(sets = m.out,
+                     panel.data = panel_df,
+                     se.method = "bootstrap",
+                     number.iterations = 10000,
+                     parallel = TRUE,
+                     num.cores = 6)
+} 
+# 
+# for (x in outcome_vars){
+#       file_name <- paste0("estimates/", x, ".png")
+#       print(file_name)
+#       png(file_name)
+#       plot(res[[x]], main = paste0("Estimated Effects (", x, ") - ", match_method))
+#       dev.off()
+# }
+
+# file_name <- paste0(estimates_save_name, save_name, ".xlsx")
+# print(file_name)
+# estimate_summaries <- lapply(res, summary)
+# estimate_summaries <- lapply(estimate_summaries, as.data.frame)
+# write_xlsx(estimate_summaries, file_name)
+
+plot(res[["REV_SIZE.1"]], main = paste0("Estimated Effects (REV_SIZE.1) - ", match_method))
+summary(res[["REV_SIZE.1"]])
+
+plot(res[["REV_SIZE.2"]], main = paste0("Estimated Effects (REV_SIZE.2) - ", match_method))
+summary(res[["REV_SIZE.2"]])
+```
+
+Compparing treated versus control revenue 
+```{r}
+panel_df <- panel_df |> mutate(key = paste(CountyID, TAX_YEAR, sep = "."))
+
+msets <- extract(m.out.none)
+treated.units <- names(msets)
+matched_controls <- weights(msets)
+matched_controls <- lapply(matched_controls, function(x) x[x > 0])
+
+control.units <- unique(unlist(
+  Map(function(inner, outer_name) {
+    yr <- sub(".*\\.", "", outer_name)
+    paste0(names(inner), ".", yr)
+  }, matched_controls, names(matched_controls))
+))
+
+df_treated <- panel_df |> filter(key %in% treated.units)
+df_control <- panel_df |> filter(key %in% control.units)
+
+quantile(df_treated$TOT_REV, na.rm = TRUE)
+quantile(df_control$TOT_REV, na.rm = TRUE)
+
+quantile(df_treated$REV_SIZE.1, na.rm = TRUE)
+quantile(df_control$REV_SIZE.1, na.rm = TRUE)
+
+quantile(df_treated$REV_SIZE.5, na.rm = TRUE)
+quantile(df_control$REV_SIZE.5, na.rm = TRUE)
+```
+
+No Matching
+```{r}
+
+# Set up the folder path and saved object names
+# L = 3 # lag, options: 1, 3, 5
+# folder_path_match <- "matches/with_svc/no_int_panelV2/config2/"
+# save_name <- paste0("Lag", L)
+# 
+# # Retrieve the PanelMatch objects
+# matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
+
+# panel_df <- readRDS("panel_data/no_int_panelV1.rds")
+
+m.out.none <- matches_list$none
+# attr(m.out.none, "outcome") <- "EXP_LN_REV"
+# attr(m.out.none, "outcome.var") <- "EXP_LN_REV"
+
+# Do we get significant results if we don't do any matching?
+res_no.match <- PanelEstimate(sets = m.out.none,
+                     panel.data = panel_df,
+                     se.method = "bootstrap",
+                     parallel = TRUE,
+                     num.cores = 6,
+                     number.iterations = 10000)
+plot(res_no.match, main = "Estimated Effects (LOG TOT REV) - No Matching")
+summary(res_no.match)
+hist(res_no.match$bootstrapped.estimates)
 ```
 
 ## Choosing the number of SVC
@@ -1109,9 +1583,9 @@ df$treat.FEMA.adj[((df$CountyID == 1859) & (df$TAX_YEAR == 2001))] <- NA # note 
 # df[((df$CountyID == 1859) & (df$TAX_YEAR == 2001)),]
 
 # Adding spatially varying coefficients
-df <- add_SVC(df, num_E_vec = 100)
-df$lat <- NULL
-df$lng <- NULL
+# df <- add_SVC(df, num_E_vec = 50)
+# df$lat <- NULL
+# df$lng <- NULL
 
 df$geoid_2010 <- NULL
 df$treat.FEMA_nDis <- NULL
@@ -1736,6 +2210,349 @@ p_cbps.weight$base
 
 
 
+## Matching Methods - Config 2 SVC
+```{r}
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(tidyr)
+library(stringr)
+library(khroma)
+source("matches_helper.R")
+
+# panel_df <- readRDS("panel_data/no_int_panelV2.rds")
+
+# Set up the folder path and saved object names
+L = 3 # lag, options: 1, 3, 5
+folder_path_match <- "matches/with_svc/int_panelV2/config2/"
+folder_path_balance <- "balances/with_svc/int_panelV2/config2/"
+save_name <- paste0("Lag", L)
+
+# Retrieve the PanelMatch objects
+matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
+
+# Retrieve the PanelBalance objects
+balances_list <- readRDS(paste0(folder_path_balance, save_name, ".rds"))
+
+# Make the balances for each lag easy to work with as a dataframe
+bal_df <- lapply(balances_list, summary)
+bal_df <- lapply(bal_df, as.data.frame)
+bal_df <- lapply(bal_df, tibble::rownames_to_column, var = "time")
+
+# # Print information about matching and balances
+# summary(matches_list$none)
+# summary(matches_list$ps.match)
+# summary(matches_list$CBPS.match)
+# summary(matches_list$ps.weight)
+# summary(matches_list$CBPS.weight)
+# 
+# plot(matches_list$none)
+```
+
+
+Default Matching Weights Plots
+```{r}
+# plot(extract(matches_list$CBPS.weight), panel.data = panel_df)
+```
+
+
+Default Scatter Plots
+```{r}
+# plot(balances_list$none, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE, 
+#      main = "Standardized Mean Difference of Covariates (No Matching)")
+plot(balances_list$ps.match, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (PS Matching)")
+plot(balances_list$CBPS.match, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (CBPS Matching)")
+plot(balances_list$ps.weight, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (PS Weighting)")
+plot(balances_list$CBPS.weight, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (CBPS Weighting)")
+```
+
+
+Default Covariate Balance Plots
+```{r}
+# plot(balances_list$none, type = "panel", include.unrefined.panel = FALSE, legend = TRUE, main = "No Matching") 
+# plot(balances_list$ps.match, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "PS Matching", main.unrefined = "PS Matching (unrefined)") 
+# plot(balances_list$CBPS.match, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "CBPS Matching", main.unrefined = "CBPS Matching (unrefined)") 
+# plot(balances_list$ps.weight, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "PS Weighting", main.unrefined = "PS Weighting (unrefined)") 
+# plot(balances_list$CBPS.weight, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "CBPS Weighting", main.unrefined = "CBPS Weighting (unrefined)") 
+```
+
+My Covariate Balance Plots
+```{r}
+covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population", "TOT_REV", "TOT_ASSET", "NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA", "REGION_MIDWEST", "REGION_NORTHEAST", "REGION_SOUTH", "REGION_WEST")
+
+bal_none <- tidy_bal_df(bal_data = bal_df$none, covariates = paste0("m.out.",covs_to_check))
+bal_ps.match <- tidy_bal_df(bal_data = bal_df$ps.match, covariates = paste0("m.out.",covs_to_check))
+bal_cbps.match <- tidy_bal_df(bal_data = bal_df$CBPS.match, covariates = paste0("m.out.",covs_to_check))
+bal_ps.weight <- tidy_bal_df(bal_data = bal_df$ps.weight, covariates = paste0("m.out.",covs_to_check))
+bal_cbps.weight <- tidy_bal_df(bal_data = bal_df$CBPS.weight, covariates = paste0("m.out.",covs_to_check))
+```
+
+```{r}
+ylims <- list("base" = c(-0.15, 0.05), "ntee" = c(-0.15, 0.05), "loc" = c(-0.15,0.15), "unrefined" = c(-0.15, 0.05), "all" = c(-0.15, 0.2))
+p_none <- no_int_no_SVC_plots(bal_none,
+                              match_method = "No Matching",
+                              ylim_base = ylims[["base"]], 
+                              ylim_ntee = ylims[["ntee"]],
+                              ylim_loc = ylims[["loc"]],
+                              ylim_all = ylims[["all"]],
+                              include.unrefined.panel = FALSE)
+p_ps.match <- no_int_no_SVC_plots(bal_ps.match, 
+                                  match_method = "PS Matching",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  ylim_unrefined = ylims[["unrefined"]],
+                                  include.unrefined.panel = TRUE)
+p_cbps.match <- no_int_no_SVC_plots(bal_cbps.match,
+                                  match_method = "CBPS Matching",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  include.unrefined.panel = FALSE)
+p_ps.weight <- no_int_no_SVC_plots(bal_ps.weight,
+                                  match_method = "PS Weighting",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  include.unrefined.panel = FALSE)
+p_cbps.weight <- no_int_no_SVC_plots(bal_cbps.weight,
+                                  match_method = "CBPS Weighting",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  include.unrefined.panel = FALSE)
+
+options(repr.plot.width = 6, repr.plot.height = 4)
+
+# p_none$all
+# p_ps.match$all_unrefined
+# p_ps.match$all
+# p_cbps.match$all
+# p_ps.weight$all
+# p_cbps.weight$all
+# 
+p_none$base
+# # p_ps.match$base_unrefined
+# p_ps.match$base
+# p_cbps.match$base
+# p_ps.weight$base
+p_cbps.weight$base
+# 
+p_none$ntee
+# # p_ps.match$ntee_unrefined
+# p_ps.match$ntee
+# p_cbps.match$ntee
+# p_ps.weight$ntee
+p_cbps.weight$ntee
+# 
+p_none$loc
+# # p_ps.match$loc_unrefined
+# p_ps.match$loc
+# p_cbps.match$loc
+# p_ps.weight$loc
+p_cbps.weight$loc
+
+```
+
+```{r}
+q_none <- quantile(signif(abs(bal_none$value[bal_none$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+q_ps.mat <- quantile(signif(abs(bal_ps.match$value[bal_ps.match$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+q_cbps.mat <- quantile(signif(abs(bal_cbps.match$value[bal_cbps.match$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+q_cbps.w <- quantile(signif(abs(bal_cbps.weight$value[bal_cbps.weight$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+
+cbind(as.data.frame(q_none), as.data.frame(q_ps.mat), as.data.frame(q_cbps.w))
+
+# write.csv(bal_none |> filter(unrefined == FALSE) |> select(-unrefined) |> pivot_wider(names_from = covariate, values_from = value),
+#           file = "balance.csv")
+# 
+# write.csv(bal_ps.match |> filter(unrefined == FALSE) |> select(-unrefined) |> pivot_wider(names_from = covariate, values_from = value),
+#           file = "balance.csv")
+```
+
+## Matching Methods - Config 2 NO SVC
+```{r}
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(tidyr)
+library(stringr)
+library(khroma)
+source("matches_helper.R")
+
+# panel_df <- readRDS("panel_data/no_int_panelV2.rds")
+
+# Set up the folder path and saved object names
+L = 3 # lag, options: 1, 3, 5
+folder_path_match <- "matches/no_svc/int_panelV1/config2/"
+folder_path_balance <- "balances/no_svc/int_panelV1/config2/"
+save_name <- paste0("Lag", L)
+
+# Retrieve the PanelMatch objects
+matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
+
+# Retrieve the PanelBalance objects
+balances_list <- readRDS(paste0(folder_path_balance, save_name, ".rds"))
+
+# Make the balances for each lag easy to work with as a dataframe
+bal_df <- lapply(balances_list, summary)
+bal_df <- lapply(bal_df, as.data.frame)
+bal_df <- lapply(bal_df, tibble::rownames_to_column, var = "time")
+
+# # Print information about matching and balances
+# summary(matches_list$none)
+# summary(matches_list$ps.match)
+# summary(matches_list$CBPS.match)
+# summary(matches_list$ps.weight)
+# summary(matches_list$CBPS.weight)
+# 
+# plot(matches_list$none)
+```
+
+
+Default Matching Weights Plots
+```{r}
+# plot(extract(matches_list$CBPS.weight), panel.data = panel_df)
+```
+
+
+Default Scatter Plots
+```{r}
+# plot(balances_list$none, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE, 
+#      main = "Standardized Mean Difference of Covariates (No Matching)")
+plot(balances_list$ps.match, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (PS Matching)")
+plot(balances_list$CBPS.match, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (CBPS Matching)")
+plot(balances_list$ps.weight, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (PS Weighting)")
+plot(balances_list$CBPS.weight, type = "scatter", include.unrefined.panel = TRUE, legend = TRUE,
+     ylim = c(-0.01,.1), main = "Standardized Mean Difference of Covariates (CBPS Weighting)")
+```
+
+
+Default Covariate Balance Plots
+```{r}
+# plot(balances_list$none, type = "panel", include.unrefined.panel = FALSE, legend = TRUE, main = "No Matching") 
+# plot(balances_list$ps.match, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "PS Matching", main.unrefined = "PS Matching (unrefined)") 
+# plot(balances_list$CBPS.match, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "CBPS Matching", main.unrefined = "CBPS Matching (unrefined)") 
+# plot(balances_list$ps.weight, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "PS Weighting", main.unrefined = "PS Weighting (unrefined)") 
+# plot(balances_list$CBPS.weight, type = "panel", include.unrefined.panel = TRUE, legend = FALSE, main = "CBPS Weighting", main.unrefined = "CBPS Weighting (unrefined)") 
+```
+
+My Covariate Balance Plots
+```{r}
+covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population", "TOT_REV", "TOT_ASSET", "NTEEV2_ART", "NTEEV2_EDU", "NTEEV2_ENV", "NTEEV2_HEL", "NTEEV2_HMS", "NTEEV2_HOS", "NTEEV2_IFA", "NTEEV2_MMB", "NTEEV2_PSB", "NTEEV2_REL", "NTEEV2_UNI", "NTEEV2_UNU", "NTEEV2_NA", "REGION_MIDWEST", "REGION_NORTHEAST", "REGION_SOUTH", "REGION_WEST")
+
+bal_none <- tidy_bal_df(bal_data = bal_df$none, covariates = paste0("m.out.",covs_to_check))
+bal_ps.match <- tidy_bal_df(bal_data = bal_df$ps.match, covariates = paste0("m.out.",covs_to_check))
+bal_cbps.match <- tidy_bal_df(bal_data = bal_df$CBPS.match, covariates = paste0("m.out.",covs_to_check))
+bal_ps.weight <- tidy_bal_df(bal_data = bal_df$ps.weight, covariates = paste0("m.out.",covs_to_check))
+bal_cbps.weight <- tidy_bal_df(bal_data = bal_df$CBPS.weight, covariates = paste0("m.out.",covs_to_check))
+```
+
+```{r}
+ylims <- list("base" = c(-0.15, 0.05), "ntee" = c(-0.15, 0.05), "loc" = c(-0.15,0.15), "unrefined" = c(-0.15, 0.05), "all" = c(-0.15, 0.2))
+p_none <- no_int_no_SVC_plots(bal_none,
+                              match_method = "No Matching",
+                              ylim_base = ylims[["base"]], 
+                              ylim_ntee = ylims[["ntee"]],
+                              ylim_loc = ylims[["loc"]],
+                              ylim_all = ylims[["all"]],
+                              include.unrefined.panel = FALSE)
+p_ps.match <- no_int_no_SVC_plots(bal_ps.match, 
+                                  match_method = "PS Matching",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  ylim_unrefined = ylims[["unrefined"]],
+                                  include.unrefined.panel = TRUE)
+p_cbps.match <- no_int_no_SVC_plots(bal_cbps.match,
+                                  match_method = "CBPS Matching",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  include.unrefined.panel = FALSE)
+p_ps.weight <- no_int_no_SVC_plots(bal_ps.weight,
+                                  match_method = "PS Weighting",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  include.unrefined.panel = FALSE)
+p_cbps.weight <- no_int_no_SVC_plots(bal_cbps.weight,
+                                  match_method = "CBPS Weighting",
+                                  ylim_base = ylims[["base"]], 
+                                  ylim_ntee = ylims[["ntee"]],
+                                  ylim_loc = ylims[["loc"]],
+                                  ylim_all = ylims[["all"]],
+                                  include.unrefined.panel = FALSE)
+
+options(repr.plot.width = 6, repr.plot.height = 4)
+
+# p_none$all
+# p_ps.match$all_unrefined
+# p_ps.match$all
+# p_cbps.match$all
+# p_ps.weight$all
+# p_cbps.weight$all
+# 
+p_none$base
+# # p_ps.match$base_unrefined
+# p_ps.match$base
+# p_cbps.match$base
+# p_ps.weight$base
+p_cbps.weight$base
+# 
+p_none$ntee
+# # p_ps.match$ntee_unrefined
+# p_ps.match$ntee
+# p_cbps.match$ntee
+# p_ps.weight$ntee
+p_cbps.weight$ntee
+# 
+p_none$loc
+# # p_ps.match$loc_unrefined
+# p_ps.match$loc
+# p_cbps.match$loc
+# p_ps.weight$loc
+p_cbps.weight$loc
+
+```
+
+```{r}
+q_none <- quantile(signif(abs(bal_none$value[bal_none$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+q_ps.mat <- quantile(signif(abs(bal_ps.match$value[bal_ps.match$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+q_cbps.mat <- quantile(signif(abs(bal_cbps.match$value[bal_cbps.match$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+q_cbps.w <- quantile(signif(abs(bal_cbps.weight$value[bal_cbps.weight$unrefined == FALSE]), 3), probs = seq(0,1,0.1))
+
+df <- cbind(as.data.frame(q_none), as.data.frame(q_ps.mat), as.data.frame(q_cbps.mat), as.data.frame(q_cbps.w))
+
+df$winner <- colnames(df)[max.col(-df, ties.method = "first")]
+
+
+# write.csv(bal_none |> filter(unrefined == FALSE) |> select(-unrefined) |> pivot_wider(names_from = covariate, values_from = value),
+#           file = "balance.csv")
+# 
+# write.csv(bal_ps.match |> filter(unrefined == FALSE) |> select(-unrefined) |> pivot_wider(names_from = covariate, values_from = value),
+#           file = "balance.csv")
+```
+
 ## Estimates
 ```{r, message = F}
 library(data.table)
@@ -1753,20 +2570,27 @@ df <- df |>
       mutate(CountyID = as.integer(cur_group_id())) |>
       ungroup()
 
-outcome_vars <- grep("^REV_", names(df), value = TRUE)
+# outcome_vars <- grep("^REV_", names(df), value = TRUE)
+outcome_vars <- c("REV_SIZE.1", "REV_SIZE.2", "REV_SIZE.3", "REV_SIZE.4", "REV_SIZE.5", "REV_SIZE.6")
 
-df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "treat.FEMA_nDis", "TOT_REV"), outcome_vars)))
+df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "TOT_REV"), outcome_vars))) #|>rename(EXP_LN_REV = TOT_REV)
 
 # log transform
 # saveRDS(df |> filter(if_any(all_of(c("TOT_REV", "TOT_ASSET", outcome_vars)), ~ .x < 0)), "misc_analysis/no_intV1_negative_stratified.rds")
+# df <- df |> mutate(across(all_of(c("EXP_LN_REV", outcome_vars)), ~ if_else(.x < 0, 0, .x)))
 df <- df |> mutate(across(all_of(c("TOT_REV", outcome_vars)), ~ if_else(.x < 0, 0, .x)))
 df <- df |> mutate(across(all_of(c("TOT_REV", outcome_vars)), log1p)) #log1p adds 1 first to avoid 0s
 
-df$treat.FEMA_nDis[((df$CountyID == 1859) & (df$TAX_YEAR == 2001))] <- NA
-df <- df |> rename(treat.FEMA.adj = treat.FEMA_nDis)
+# df$treat.FEMA_nDis[((df$CountyID == 1859) & (df$TAX_YEAR == 2001))] <- NA
+# df <- df |> rename(treat.FEMA.adj = treat.FEMA_nDis)
 # https://stackoverflow.com/questions/74815244/panelmatch-r-errors-please-convert-time-id-to-consecutive-integers-and-pleas
 
-panel_df <- PanelData(panel.data = as.data.frame(df),
+panel_df <- readRDS("panel_data/int_panelV2.rds")
+df <- merge(panel_df, df |> select("CountyID", "TAX_YEAR", all_of(outcome_vars)),
+            by = c("CountyID", "TAX_YEAR"))
+
+df <- as.data.frame(df) |> select(all_of(c(c("CountyID", "TAX_YEAR", "TOT_REV", "treat.FEMA.adj"), outcome_vars)))
+panel_df <- PanelData(panel.data = df,
                       unit.id = "CountyID",
                       time.id = "TAX_YEAR",
                       treatment = "treat.FEMA.adj",
@@ -1778,7 +2602,13 @@ panel_df <- PanelData(panel.data = as.data.frame(df),
 #           panel_df2 |> dplyr::select("CountyID", "TAX_YEAR", "TOT_REV"))
 
 rm(df)
+# 
+# outcome_vars <- c("REV_SIZE.1", "REV_SIZE.2", "REV_SIZE.3", "REV_SIZE.4", "REV_SIZE.5", "REV_SIZE.6")
+# df |> filter(if_any(all_of(c(outcome_vars)), ~ .x < 0))
+# 
+# df |> filter(if_any(all_of(c("TOT_REV")), ~ .x < 0))
 ```
+
 ### Without Matching
 ```{r}
 library(readr)
@@ -1794,26 +2624,47 @@ source("matches_helper.R")
 
 # Set up the folder path and saved object names
 L = 3 # lag, options: 1, 3, 5
-folder_path_match <- "matches/with_svc/int_panelV2/config1/"
+folder_path_match <- "matches/with_svc/int_panelV2/config2/"
 save_name <- paste0("Lag", L)
 
 # Retrieve the PanelMatch objects
 matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
 
-panel_df <- readRDS("panel_data/int_panelV2.rds")
+# panel_df <- readRDS("panel_data/int_panelV2.rds")
+m.out.none <- matches_list$none
+attr(m.out.none, "outcome") <- "EXP_LN_REV"
+attr(m.out.none, "outcome.var") <- "EXP_LN_REV"
 
 # Do we get significant results if we don't do any matching?
-res <- PanelEstimate(sets = matches_list$none,
+res_no.match <- PanelEstimate(sets = m.out.none,
                      panel.data = panel_df,
                      se.method = "bootstrap",
                      parallel = TRUE,
-                     num.cores = 6)
-plot(res)
-summary(res)
+                     num.cores = 6,
+                     number.iterations = 10000)
+plot(res_no.match, main = "Estimated Effects (TOT REV) - No Matching")
+summary(res_no.match)
+hist(res_no.match$bootstrapped.estimates)
 ```
+(res_no.match_pool)
 
 
 ### With Matching
+```{r}
+estimates_save_name <- "estimates/with_svc_intV2_con2_"
+match_method <- "CBPS.weight"
+
+m.out <- matches_list[[match_method]]
+
+# panel_df <- readRDS("panel_data/no_int_panelV2.rds")
+
+# Need to compute the estimates for each NTEE category
+# outcome_vars <- c("TOT_REV", "REV_ART", "REV_EDU", "REV_HMS", "REV_PSB", "REV_ENV", "REV_HEL", "REV_HOS", "REV_UNI", "REV_MMB", "REV_ENV") # REV_REL, REV_IFA, REV_UNU, REV_NA
+
+outcome_vars <- c("REV_SIZE.1", "REV_SIZE.2", "REV_SIZE.3", "REV_SIZE.4", "REV_SIZE.5", "REV_SIZE.6") # "REV_SIZE.NA"
+```
+
+
 ```{r}
 library(readr)
 library(dplyr)
@@ -1828,31 +2679,97 @@ source("matches_helper.R")
 
 # Set up the folder path and saved object names
 L = 3 # lag, options: 1, 3, 5
-folder_path_match <- "matches/with_svc/int_panelV2/config1/"
+folder_path_match <- "matches/with_svc/int_panelV2/config2/"
 save_name <- paste0("Lag", L)
 
 # Retrieve the PanelMatch objects
 matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
 
-panel_df <- readRDS("panel_data/int_panelV2.rds")
-
-# Winner: CBPS Weighting, no SVC Coefficients
-res <- PanelEstimate(sets = matches_list$CBPS.weight,
+# panel_df <- readRDS("panel_data/int_panelV2.rds")
+m.out.none <- matches_list$none
+res <- list()
+for (x in outcome_vars){
+      print(x)
+      attr(panel_df, "outcome") <- x
+      attr(m.out, "outcome") <- x
+      attr(m.out, "outcome.var") <- x
+      
+      res[[x]] <- PanelEstimate(sets = m.out,
                      panel.data = panel_df,
                      se.method = "bootstrap",
-                     parallel = FALSE,
-                     num.cores = 6)
-plot(res)
-summary(res)
+                     parallel = TRUE,
+                     num.cores = 6,
+                     number.iterations = 10000)
+}
+
+for (x in outcome_vars){
+      file_name <- paste0("estimates/interference/", x, ".png")
+      print(file_name)
+      png(file_name)
+      plot(res[[x]], main = paste0("Estimated Effects (", x, ") - ", match_method))
+      dev.off()
+}
+
+file_name <- paste0(estimates_save_name, save_name, ".xlsx")
+print(file_name)
+estimate_summaries <- lapply(res, summary)
+estimate_summaries <- lapply(estimate_summaries, as.data.frame)
+write_xlsx(estimate_summaries, file_name)
 ```
 
 ```{r}
-# Winner: CBPS Weighting, no SVC Coefficients
-res.uncond <- PanelEstimate(sets = matches_list$CBPS.weight,
-                     panel.data = panel_df,
-                     se.method = "unconditional")
-plot(res.uncond)
-summary(res.uncond)
+hist(res[["TOT_REV"]]$bootstrapped.estimates)
+```
+```{r}
+hist(panel_df$TOT_REV)
+hist(exp(panel_df$TOT_REV), ylim=c(0,5000))
+```
+
+
+Comparing dist of treated versus control rev
+```{r}
+# Set up the folder path and saved object names
+L = 3 # lag, options: 1, 3, 5
+folder_path_match <- "matches/no_svc/int_panelV1/config2/"
+save_name <- paste0("Lag", L)
+
+# Retrieve the PanelMatch objects
+matches_list <- readRDS(paste0(folder_path_match, save_name, ".rds"))
+
+# panel_df <- readRDS("panel_data/int_panelV2.rds")
+m.out.none <- matches_list$none
+
+panel_df <- panel_df |> mutate(key = paste(CountyID, TAX_YEAR, sep = "."))
+
+msets <- extract(m.out.none)
+treated.units <- names(msets)
+
+control.units <- setdiff(panel_df$key, treated.units)
+
+# matched_controls <- weights(msets)
+# matched_controls <- lapply(matched_controls, function(x) x[x > 0])
+# 
+# control.units <- unique(unlist(
+#   Map(function(inner, outer_name) {
+#     yr <- sub(".*\\.", "", outer_name)
+#     paste0(names(inner), ".", yr)
+#   }, matched_controls, names(matched_controls))
+# ))
+
+df_treated <- panel_df |> filter(key %in% treated.units)
+df_control <- panel_df |> filter(key %in% control.units & TAX_YEAR >= 1994 & TAX_YEAR <= 2020)
+
+quantile(df_treated$TOT_REV, na.rm = TRUE)
+quantile(df_control$TOT_REV, na.rm = TRUE)
+
+quantile(df_treated$REV_SIZE.1, na.rm = TRUE)
+quantile(df_control$REV_SIZE.1, na.rm = TRUE)
+
+quantile(df_treated$REV_SIZE.5, na.rm = TRUE)
+quantile(df_control$REV_SIZE.5, na.rm = TRUE)
+
+hist(df_treated$TOT_REV)
+hist(df_control$TOT_REV)
 ```
 
 ## Choosing the number of SVC
@@ -2186,6 +3103,15 @@ top_counts <- df.tst |>
 
 top_counts |> filter(n > 30) |> select(top_ntee) |> unique()
 
+asset_by_ntee <- df |> select(TOT_ASSET, NTEEV2) |>
+      rename(ASSET = TOT_ASSET) |>
+      mutate(NTEEV2 = replace_na(NTEEV2, "NA")) |>
+      group_by(NTEEV2) |> 
+      summarize(across(any_of(c("REV", "EXP", "ASSET")), ~sum(.x, na.rm = TRUE), .names = "TOT_{.col}"),
+                .groups = "drop") |>
+      ungroup() 
+
+asset_by_ntee |> arrange(TOT_ASSET)
 ```
 
 # MATCHIT: Total Effect of a County Experiencing 1 or More Disasters on the County's Nonprofit Revenue
@@ -2572,6 +3498,271 @@ summary(m.initial)
 ```
 
 # Scratchwork
+
+For matching (just tot rev)
+```{r, message = F}
+library(data.table)
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(PanelMatch)
+library(ggplot2)
+library(writexl)
+library(fastDummies)
+
+# df <- readRDS("county_long.rds")
+
+df <- df |> dplyr::select("TAX_YEAR", "geoid_2010", "TOT_REV", "TOT_ASSET", "TotPerCapADJ", "LOG_TotDmgADJ", "total_population", "top_25", "bot_50", "top_90", "in.top25", "in.bot50", "in.top90", "treat.top25", "treat.top90")
+
+# log transform
+#saveRDS(df |> filter(TOT_REV < 0 | TOT_ASSET < 0), "misc_analysis/no_intV1_negative.rds")
+df <- df |> mutate(TOT_REV = case_when(TOT_REV < 0 ~ 0,
+                                       .default = TOT_REV),
+                   TOT_ASSET = case_when(TOT_ASSET < 0 ~ 0,
+                                       .default = TOT_ASSET))
+df <- df |> mutate(across(c("TOT_REV", "TOT_ASSET"), log1p, .names = "LOG_{.col}"))
+
+# quantile(df$TOT_ASSET)
+# quantile(df$LOG_TOT_ASSET)
+
+df <- df |>
+      group_by(geoid_2010) |>
+      mutate(CountyID = as.integer(cur_group_id())) |>
+      ungroup()
+
+df$in.top90 <- as.numeric(df$in.top90)
+panel_df <- PanelData(panel.data = as.data.frame(df),
+                      unit.id = "CountyID",
+                      time.id = "TAX_YEAR",
+                      treatment = "treat.top90",
+                      outcome = "LOG_TOT_REV")
+
+DisplayTreatment(panel.data = panel_df, legend.position = "none", xlab = "TAX_YEAR", ylab = "County Code", hide.x.tick.label = TRUE, hide.y.tick.label = TRUE, dense.plot = TRUE)
+
+m.out.none <- PanelMatch(panel.data = panel_df,
+                         lag = 3,
+                         refinement.method = "none",
+                         qoi = "att",
+                         match.missing = TRUE,
+                         restrict.control.period = 1,
+                         lead = 1:5,
+                         matching = FALSE)
+
+summary(m.out.none)
+```
+
+Compparing treated versus control revenue 
+```{r}
+panel_df <- panel_df |> mutate(key = paste(CountyID, TAX_YEAR, sep = "."))
+
+msets <- extract(m.out.none)
+treated.units <- names(msets)
+control.units <- panel_df |> filter(treat.top25 == 0) |> select(key) |> unique()
+control.units  <- setdiff(control.units$key, treated.units)
+
+matched_controls <- weights(msets)
+matched_controls <- lapply(matched_controls, function(x) x[x > 0])
+
+control.units <- unique(unlist(
+  Map(function(inner, outer_name) {
+    yr <- sub(".*\\.", "", outer_name)
+    paste0(names(inner), ".", yr)
+  }, matched_controls, names(matched_controls))
+))
+
+df_treated <- panel_df |> filter(key %in% treated.units)
+df_control <- panel_df |> 
+      filter(key %in% control.units & TAX_YEAR >= min(df_treated$TAX_YEAR) & TAX_YEAR <= max(df_treated$TAX_YEAR))
+
+quantile(df_treated$TOT_REV, na.rm = TRUE)
+quantile(df_control$TOT_REV, na.rm = TRUE)
+
+quantile(df_treated$LOG_TOT_REV, na.rm = TRUE)
+quantile(df_control$LOG_TOT_REV, na.rm = TRUE)
+```
+```{r}
+res_no.match <- PanelEstimate(sets = m.out.none,
+                     panel.data = panel_df,
+                     se.method = "bootstrap",
+                     parallel = TRUE,
+                     num.cores = 6,
+                     number.iterations = 10000)
+plot(res_no.match, main = "Estimated Effects (LOG TOT REV) - No Matching")
+summary(res_no.match)
+hist(res_no.match$bootstrapped.estimates)
+
+x <- "TOT_REV"
+attr(panel_df, "outcome") <- x
+attr(m.out.none, "outcome") <- x
+attr(m.out.none, "outcome.var") <- x
+res_no.match <- PanelEstimate(sets = m.out.none,
+                     panel.data = panel_df,
+                     se.method = "bootstrap",
+                     parallel = TRUE,
+                     num.cores = 6,
+                     number.iterations = 10000)
+plot(res_no.match, main = "Estimated Effects (TOT REV) - No Matching")
+summary(res_no.match)
+hist(res_no.match$bootstrapped.estimates)
+```
+
+
+
+Comparing dist of treated versus control rev
+```{r}
+# DisplayTreatment(panel.data = panel_df.bot, legend.position = "none", xlab = "TAX_YEAR", ylab = "County Code", hide.x.tick.label = TRUE, hide.y.tick.label = TRUE, dense.plot = TRUE)
+
+# quartiles_df <- df |> group_by(TAX_YEAR) |>
+#       summarise(
+#             bottom_25 = quantile(TOT_ASSET, 0.25, na.rm = TRUE),
+#             top_25 = quantile(TOT_ASSET, 0.75, na.rm = TRUE)
+#             )
+# 
+# df <- merge(df, quartiles_df, by = "TAX_YEAR")
+# 
+# df.bottom <- df |> filter(TOT_ASSET <= bottom_25)
+# df.top <- df |> filter(TOT_ASSET >= top_25)
+# 
+# df.bottom <- df.bottom |> 
+#       group_by(geoid_2010) |>
+#       mutate(CountyID = as.integer(cur_group_id())) |>
+#       ungroup()
+# 
+# df.top <- df.top |> 
+#       group_by(geoid_2010) |>
+#       mutate(CountyID = as.integer(cur_group_id())) |>
+#       ungroup()
+# 
+# # https://stackoverflow.com/questions/74815244/panelmatch-r-errors-please-convert-time-id-to-consecutive-integers-and-pleas
+# panel_df.bot <- PanelData(panel.data = as.data.frame(df.bottom),
+#                       unit.id = "CountyID",
+#                       time.id = "TAX_YEAR",
+#                       treatment = "treat.FEMA_nDis",
+#                       outcome = "TOT_REV")
+# 
+# panel_df.top <- PanelData(panel.data = as.data.frame(df.top),
+#                       unit.id = "CountyID",
+#                       time.id = "TAX_YEAR",
+#                       treatment = "treat.FEMA_nDis",
+#                       outcome = "TOT_REV")
+# 
+# DisplayTreatment(panel.data = panel_df.bot, legend.position = "none", xlab = "TAX_YEAR", ylab = "County Code", hide.x.tick.label = TRUE, hide.y.tick.label = TRUE, dense.plot = TRUE)
+# 
+# DisplayTreatment(panel.data = panel_df.top, legend.position = "none", xlab = "TAX_YEAR", ylab = "County Code", hide.x.tick.label = TRUE, hide.y.tick.label = TRUE, dense.plot = TRUE)
+# 
+# rm(df, df.bottom.log, df.top.log, quartiles_df)
+
+m.out.none_bottom <- PanelMatch(panel.data = panel_df.bot,
+                         lag = 3,
+                         refinement.method = "none",
+                         qoi = "att",
+                         match.missing = TRUE,
+                         lead = 1:5,
+                         matching = FALSE)
+
+panel_df.bot <- panel_df.bot |> mutate(key = paste(CountyID, TAX_YEAR, sep = "."))
+
+msets_bottom <- extract(m.out.none_bottom)
+treated.unit_bottom <- names(msets_bottom)
+
+control.units_bottom  <- setdiff(panel_df.bot$key, treated.unit_bottom)
+
+# matched_controls <- weights(msets)
+# matched_controls <- lapply(matched_controls, function(x) x[x > 0])
+# 
+# control.units <- unique(unlist(
+#   Map(function(inner, outer_name) {
+#     yr <- sub(".*\\.", "", outer_name)
+#     paste0(names(inner), ".", yr)
+#   }, matched_controls, names(matched_controls))
+# ))
+
+df_treated <- panel_df.bot |> filter(key %in% treated.unit_bottom)
+df_control <- panel_df.bot |> filter((key %in% control.units_bottom) & (TAX_YEAR >= min(df_treated$TAX_YEAR)) & (TAX_YEAR <= max(df_treated$TAX_YEAR)))
+
+quantile(df_treated$TOT_REV, na.rm = TRUE)
+quantile(df_control$TOT_REV, na.rm = TRUE)
+
+quantile(df_treated$LOG_TOT_REV, na.rm = TRUE)
+quantile(df_control$LOG_TOT_REV, na.rm = TRUE)
+
+
+# quantile(df_treated$REV_SIZE.1, na.rm = TRUE)
+# quantile(df_control$REV_SIZE.1, na.rm = TRUE)
+# 
+# quantile(df_treated$REV_SIZE.5, na.rm = TRUE)
+# quantile(df_control$REV_SIZE.5, na.rm = TRUE)
+
+hist(df_treated$TOT_REV)
+hist(df_control$TOT_REV)
+```
+
+```{r}
+library(data.table)
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(fastDummies)
+
+df <- readRDS("mega.rds") |>
+      filter(county.census.geoid != "00000")# 1773 orgs have "00000" as geoid; 86,752 are missing NTEE code (~6.74%) -- 1,285,846 total orgs
+
+#Create a factor version of size by splitting SIZE into categories
+# Levels: [0,29000) [29000,72000) [72000,178000) [178000,662000) [662000,~10^10)
+
+# neg_vals <- df |> filter(if_any(any_of(c("TOT_ASSET", "TOT_REV")), ~ .x < 0)) # 87,154 unique orgs, or about 6.8% of orgs
+# table(neg_vals$TAX_YEAR) # although all years are represented, 2001-203 and 2008-2009 are overly represented so that's something to think about
+
+breaks_vec = c(0,100000,500000,1000000,5000000,10000000,max(df$TOT_EXP, na.rm = TRUE)+1)
+df$SIZE.CAT <- df$TOT_EXP |> cut(breaks = breaks_vec, right = FALSE, labels = FALSE) |> factor()
+
+# Levels: [0,100000) [100000,500000) [500000,1000000) [1000000,5000000) [5000000,10000000) [10000000,max)
+# breaks_vec_quant = c(min(df$TOT_EXP, na.rm = TRUE), 25000, 102000, 348000, 1468000, max(df$TOT_EXP, na.rm = TRUE)+1)
+# df$SIZE.CAT.quant <- df$TOT_EXP |> cut(breaks = breaks_vec_log, right = FALSE, labels = FALSE) |> factor()
+
+# I need the total assets and revenue stratified by county, year, and SIZE category
+df.size_rev <- df |> select(TAX_YEAR, TOT_REV, SIZE.CAT, county.census.geoid, NTEEV2) |>
+      rename(REV = TOT_REV) |>
+      group_by(county.census.geoid, TAX_YEAR, SIZE.CAT) |> 
+      summarize(across(any_of(c("REV", "EXP", "ASSET")), ~sum(.x, na.rm = TRUE)),
+                .groups = "drop") |>
+      ungroup() 
+
+# neg_vals <- df.size_rev |> filter(REV < 0) # about 1057
+# hist(neg_vals$TAX_YEAR)
+# saveRDS(neg_vals, "misc_analysis/negative_stratified_SIZE_CAT.rds")
+
+df.size_rev <- df.size_rev |>
+      pivot_wider(names_from = SIZE.CAT, values_from = c("REV"), values_fill = 0, names_prefix = "REV_SIZE.")
+
+rev_cols <- grep("^REV_", names(df.size_rev), value = TRUE)
+df.size_rev <- df.size_rev |> mutate(TOT_REV = rowSums(across(all_of(rev_cols)), na.rm = TRUE))
+
+filter(df, is.na(SIZE.CAT))
+
+all.equal(df.ntee_rev |> select(county.census.geoid, TAX_YEAR, TOT_REV),
+          df.size_rev |> select(county.census.geoid, TAX_YEAR, TOT_REV))
+
+# df |> filter(county.census.geoid =="55079" & is.na(SIZE.CAT))
+tmpdf <- df |> filter(TOT_EXP < 0)
+tmpdf <- tmpdf |> mutate(TOT_REV = replace_na(TOT_REV, 1),
+                         TOT_EXP = replace_na(TOT_EXP, 1),
+                         LOG_REV = log10(abs(TOT_REV)+1),
+                         LOG_EXP = log10(abs(TOT_EXP))) |>
+      mutate(SAME_MAGNITUDE = (abs(LOG_REV - LOG_EXP) < 1),
+             DIFF = abs(LOG_REV - LOG_EXP))
+# quantile(-tmpdf$TOT_EXP, probs = seq(0,1,0.1))
+table(tmpdf$SAME_MAGNITUDE)
+quantile(tmpdf$DIFF, probs = seq(0,1,0.1))
+
+tmpdf |> filter(DIFF < 1.2)
+
+breaks_vec = c(0,100000,500000,1000000,5000000,10000000,max(abs(tmpdf$TOT_REV), na.rm = TRUE)+1)
+tmpdf$REV.CAT <- abs(tmpdf$TOT_REV) |> cut(breaks = breaks_vec, right = FALSE, labels = FALSE) |> factor()
+breaks_vec = c(0,100000,500000,1000000,5000000,10000000,max(abs(tmpdf$TOT_EXP), na.rm = TRUE)+1)
+tmpdf$EXP.CAT <- abs(tmpdf$TOT_EXP) |> cut(breaks = breaks_vec, right = FALSE, labels = FALSE) |> factor()
+sum(tmpdf$REV.CAT == tmpdf$EXP.CAT)
+```
 
 
 Testing if simply manually changing the outcome attributes for PanelData and PanelMatch objects will allow PanelEstimate to do its thing
