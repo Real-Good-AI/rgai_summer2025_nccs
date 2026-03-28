@@ -3221,7 +3221,10 @@ df[df$geoid_2010 == "46113", cols_to_fill] <- list("Oglala Lakota",
                                                    "CENTRAL-NW")
 ```
 
-From [Bureau of Labor Statistics - New 2024 Connecticut Counties](https://www.bls.gov/cew/classifications/areas/new-2024-connecticut-counties.htm#:~:text=Table_title:%20New%20County%20Codes%20and%20Titles%20Table_content:,Title:%20Northeastern%20Connecticut%20Planning%20Region%2C%20Connecticut%20%7C):
+From [Bureau of Labor Statistics - New 2024 Connecticut Counties](
+
+
+):
 "In 2022, the State of Connecticut requested that The U.S. Census Bureau adopt its nine planning regions as county-equivalents. These nine planning regions replace Connecticut's eight counties used historically... There is no direct mapping between the old and new counties."
 - "09001" : Fairfield County
 - "09003" : Hartford County
@@ -3498,6 +3501,21 @@ summary(m.initial)
 ```
 
 # Scratchwork
+
+```{r}
+#"02261" : Valdez-Cordova Census Area (Alaska). In 2019, was split into two areas: 02063 and 02066
+# df$geoid_2010[df$county.census.geoid == "02158"] <- "02270"
+# df$geoid_2010[df$county.census.geoid == "46102"] <- "46113"
+# "09001"- "09001" : Fairfield County
+
+myvec <- c("09001", "09003", "09005", "09007", "09009", "09011", "09013", "09015")
+df |> filter(geoid_2010 %in% myvec | county.census.geoid %in% myvec)
+df.mega |> filter(county.census.geoid %in% myvec) |> select(EIN2, TAX_YEAR, county.census.geoid)
+
+myvec %in% unique(census_df$geoid_2010)
+myvec %in% unique(counties$county_fips)
+```
+
 
 For matching (just tot rev)
 ```{r, message = F}

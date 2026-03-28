@@ -293,7 +293,7 @@ dt_with_na[order(EIN2)]
 
 # This is a duplicate we can resolve by hand because the two records were exactly the same in every column except PF_02_LIAB_TOT_EOY_BV, where the difference was that the value was missing in one of the records but not in the other
 dt <- dt[-which(EIN2 == "EIN-26-3424915" & is.na(PF_02_LIAB_TOT_EOY_BV))]
-saveRDS(dt, "pf_merged.rds")
+# saveRDS(dt, "pf_merged.rds")
 ```
 
 ## Merge with BMF
@@ -425,6 +425,11 @@ table(tst$DATA_COUNT)
 quantile(tst$DATA_COUNT, probs = seq(0,1,0.1))
 saveRDS(dt, "pf_processed.rds")
 ```
+
+```{r}
+merged.dt |> mutate(state.FIPS = as.integer(state.FIPS)) |> filter(state.FIPS <= 56)
+```
+
 
 ```{r}
 library(data.table)
@@ -612,6 +617,52 @@ disasters <- disasters |>
 
 
 # Scratchwork
+```{r}
+key_var <- c("EIN2")
+setDT(bmf_subset)
+# duplicates that need to be resolved
+dup_groups <- bmf_subset[, .N, by = key_var][N > 1]
+
+# subset duplicate records
+dups <- bmf_subset[dup_groups, on = key_var]
+
+na_counts_df(dups)
+
+dups <- dups |> filter(!is.na(NTEEV2))
+dups <- dups |> filter(county.census.geoid != "00000")
+
+dupes2022 <- dupes(dups)
+dupes2022_list <- dupes2022$dupes
+dupes2022_groups <- dupes2022$dupes_groups
+dupe2022_info <- duplicateEIN2_info(dups, dupes2022_groups)
+
+dups$stateFIPS <- substr(dups$county.census.geoid, 1, 2) # 1741 counties, all states represented
+table(dups$stateFIPS)
+
+# top states: 06, 48
+bmf_subset$stateFIPS <- substr(bmf_subset$county.census.geoid, 1, 2) # 1741 counties, all states represented
+plot(table(as.integer(dups$stateFIPS)))
+plot(table(as.integer(bmf_subset$stateFIPS)))
+
+df.temp <- bmf_subset |> filter(n > 1) |> mutate(state.FIPS = as.integer(state.FIPS)) # 14,306 records
+df.temp <- df.temp |> filter(state.FIPS <= 56) # because these codes correspond to US States, not territories, left with 14,258
+df.temp <- df.temp |> select(EIN2, state.FIPS) |> distinct()
+plot(table(as.numeric(df.temp$state.FIPS)), 
+     main = "State Distribution, Organizations with Conflicting NTEE code",
+     xlab = "State FIPS code",
+     ylab = "Count")
+
+df.temp <- bmf_subset |> filter(n == 1) |> mutate(state.FIPS = as.integer(state.FIPS)) # 3,423,014 records
+df.temp <- df.temp |> filter(state.FIPS <= 56) # because these codes correspond to US States, not territories, left with 3,416,270
+df.temp <- df.temp |> select(EIN2, state.FIPS) |> distinct() # doesn't change because these were unique to begin with
+plot(table(as.numeric(df.temp$state.FIPS)), 
+     main = "State Distribution, Organizations with no NTEE Conflict",
+     xlab = "State FIPS code",
+     ylab = "Count")
+
+```
+
+
 ```{r} 
 n.counties <- length(unique(df$county.census.geoid))
 avg.n.dis.per.year <- disasters |> group_by(TAX_YEAR) |> summarise(avg.num.dis = sum(n_disasters)/n.counties) 

@@ -64,7 +64,8 @@ dt.pz[, TOT_EXP :=
                   default = NA_real_
             )
 ]
-pz.na_counts <- na_counts_df(dt.pz) # In PZ_CHARITY TOT_REV and TOT_EXP are never missing! So I think its fine to drop the other rev/exp columns; but in PZ_NONPROFIT TOT_REV sometimes missing
+pz.na_counts <- na_counts_df(dt.pz) 
+# In PZ_CHARITY TOT_REV and TOT_EXP are never missing! So I think its fine to drop the other rev/exp columns; but in PZ_NONPROFIT TOT_REV sometimes missing
 
 # Checking TOT_REV for PZ_NONPROFIT
 dt.pz[, FLAG := fcase(
@@ -140,7 +141,7 @@ dups <- dt.pz[dup_groups, on = key_var]
 
 #diagnostics <- dups[, compare_pair_dt(.SD, dollar_cols), by = .(EIN2, TAX_YEAR)]
 
-saveRDS(dt.pz, "SCRATCHWORK/pz_merged.rds") # "SCRATCHWORK/pz_ce_merged.rds"
+# saveRDS(dt.pz, "SCRATCHWORK/pz_merged.rds") # "SCRATCHWORK/pz_ce_merged.rds"
 
 ###################################
 ######## STEP TWO #################
@@ -148,41 +149,23 @@ saveRDS(dt.pz, "SCRATCHWORK/pz_merged.rds") # "SCRATCHWORK/pz_ce_merged.rds"
 
 library(data.table)
 library(readr)
-source("SCRIPTS/clean_BMF.R")
 
-dt <- readRDS("SCRATCHWORK/pz_merged.rds")
+dt <- readRDS("decDATA/pz_merged.rds") # "decDATA/pz_merged.rds" "decDATA/pz_ce_merged.rds"
+bmf <- readRDS("cleanBMF.rds")
 
-unified_bmf <- as.data.frame(read_csv("CORE/BMF_UNIFIED_V1.1.csv", show_col_types = FALSE))
-unified_bmf <- unified_bmf[!(unified_bmf$EIN2 %in% "EIN-00-0000000"),]
-
-#bmf <- as.data.table(read_csv("../CLEAN/cleanBMF.csv", show_col_types = FALSE))
-vars_to_keep <- c("EIN2", "NTEEV2", "F990_TOTAL_ASSETS_RECENT","CENSUS_BLOCK_FIPS", "LATITUDE", "LONGITUDE", "CENSUS_COUNTY_NAME", "CENSUS_STATE_ABBR")
-thresh <- 7
-bmf <- clean_BMF(vars_to_keep, thresh, saveFlag = FALSE)
-na_counts <- bmf$na.count
-bmf <- bmf$clean.data
-
-# 1. Find organizations only in dt not cleaned bmf
+# 1. Get all the records from organizations whose EIN is missing from bmf
 # Use the `key_col` as the join key and perform an anti-join
-only_in_dt1_clean_bmf <- dt[!bmf, on = .(EIN2)]
+only_in_dt1_clean_bmf <- dt[!bmf, on = .(EIN2)] # PZ-C3: 13,657 records from 4058 organizations; PZ-CE: 101,707 records from 49,212 organizations
 
-# 2. Count the occurrences of these keys in dt
+# 2. Count the number of records for each of these (i.e. time series length)
 # Group by `key_col` and count the number of rows (.N)
 count_only_in_dt1_clean <- only_in_dt1_clean_bmf[, .N, by = EIN2]
 
-print(nrow(count_only_in_dt1_clean)) # 2982
+nrow(count_only_in_dt1_clean[N < 5]) # PZ-C3: 3383 out of the 4058 have < 5 records; PZ-C3: 44,676 out of 49,212 have < 5 records (that's 90%)
 
-only_in_dt1_bmf <- dt[!unified_bmf, on = .(EIN2)]
-count_only_in_dt1_bmf <- only_in_dt1_bmf[, .N, by = EIN2]
-print(nrow(count_only_in_dt1_bmf)) #2982
+merged.dt <- merge(dt, bmf, by = "EIN2") # PZ-C3: 8,439,047 records from 788,372 unique orgs; PZ-CE: 3,923,315 records from 359,495 unique orgs
 
-nrow(count_only_in_dt1_clean[N >= 3]) # 204
-
-length(intersect(count_only_in_dt1_clean[N >= 7, EIN2], unique(unified_bmf$EIN2))) # 0
-
-merged.dt <- merge(dt, bmf, by = "EIN2")
-
-saveRDS(merged.dt, "SCRATCHWORK/pz_merged_bmf.rds")
+saveRDS(merged.dt, "pz_merged_bmf.rds") #"pz_merged_bmf.rds" "pz_ce_merged_bmf.rds"
 
 ###################################
 ######## STEP THREE ###############
@@ -190,49 +173,21 @@ saveRDS(merged.dt, "SCRATCHWORK/pz_merged_bmf.rds")
 
 library(data.table)
 library(readr)
+library(dplyr)
 
-dt <- readRDS("SCRATCHWORK/pz_merged_bmf.rds")
-dt[, block.census.geoid := sprintf("%015s", CENSUS_BLOCK_FIPS)] 
-dt[, 'county.census.geoid' := substr(block.census.geoid, 1, 5)]
+# merged.dt <- readRDS("pz_ce_merged_bmf.rds") "pz_ce_merged_bmf.rds"
 
-blockX <- as.data.table(read_csv("SCRATCHWORK/BLOCKX.csv", show_col_types = FALSE))
-
-print(length(unique(dt$block.census.geoid)))
-length(intersect(unique(dt$block.census.geoid), blockX$block.census.geoid))
-
-print(length(unique(dt$county.census.geoid)))
-length(intersect(unique(dt$county.census.geoid), blockX$county.census.geoid))
-
-missing_ids <- setdiff(unique(dt$county.census.geoid), unique(blockX$county.census.geoid))
-
-missing_ids <- setdiff(missing_ids, c("02066", "00000", "02063")) # 02066 is Copper River Census Area in Alaska which did not exist until 2019, thus does not appear in the census crosswalk files (which are standardized to 2010) -- I'm thinking I can manually figure out where to put this record; the rest of the counties are census regions in US territories
-
-dt <- dt[!county.census.geoid %in% missing_ids]
-
-print(length(unique(dt$county.census.geoid)))
-length(intersect(unique(dt$county.census.geoid), blockX$county.census.geoid))
+# Remove any orgs from state codes above 56 (because they don't correspond to actual states)
+merged.dt <- merged.dt |> mutate(state.FIPS = as.integer(state.FIPS)) |> filter(state.FIPS <= 56)
 
 # Fixing any records with 02066 and 02063.. using Census Geocoder found that in 2010 these corresponded to Valdez-Cordova Census Area, with geoid 02261
-dt[county.census.geoid %in% c("02066", "02063"), 
+merged.dt[county.census.geoid %in% c("02066", "02063"), 
    county.census.geoid := "02261"]
 
-print(length(unique(dt$county.census.geoid)))
-length(intersect(unique(dt$county.census.geoid), blockX$county.census.geoid))
+setnames(merged.dt,
+         old = c("F9_10_ASSET_TOT_EOY"),
+         new = c("TOT_ASSET"))
 
-dt[, DATA_COUNT := .N, by = c("EIN2")]
-table(dt$DATA_COUNT)
-quantile(dt$DATA_COUNT, probs = seq(0,1,0.1))
+merged.dt[, na_count := NULL]
 
-tst <- dt[county.census.geoid %in% c("00000")]
-tst <- tst[, .SD[1], by = EIN2]
-
-table(tst$DATA_COUNT)
-quantile(tst$DATA_COUNT, probs = seq(0,1,0.1))
-
-setnames(dt,
-         old = c("F9_10_ASSET_TOT_EOY", "F990_TOTAL_ASSETS_RECENT"),
-         new = c("TOT_ASSET", "SIZE"))
-
-dt <- dt[, !c("na_count"), with = FALSE]
-
-saveRDS(dt, "SCRATCHWORK/pz_processed.rds")
+saveRDS(merged.dt, "pz_ce_processed.rds") # "pz_processed.rds"
