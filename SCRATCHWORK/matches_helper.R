@@ -178,7 +178,7 @@ no_int_no_SVC_plots <- function(bal_df_tidy, match_method, ylim_base = c(-1,1), 
                    covariate = str_remove(covariate, "REGION_"))
       
       se_vars <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population")
-      nonprofit_vars <- c("TOT_REV", "TOT_ASSET")
+      nonprofit_vars <- c("TOT_REV", "TOT_ASSET", "TOT_EXP")
       ntee_vars <- c("ART", "EDU", "ENV", "HEL", "HMS", "HOS", "IFA", "MMB", "PSB", "REL", "UNI", "UNU", "NTEE_NA")
       loc_vars <- c("MIDWEST", "NORTHEAST", "SOUTH", "WEST")
       

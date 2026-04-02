@@ -1,7 +1,6 @@
 # RGAI Rating: 4 to 5
 # https://chatgpt.com/share/69962c59-3838-8003-84f4-340e126a124b
 # https://chatgpt.com/share/6996104a-dbec-8003-8d0c-0655d888c942
-
 library(data.table)
 library(readr)
 library(dplyr)
@@ -12,8 +11,19 @@ library(fastDummies)
 # Aggregate nonprofit data by county and year
 #################################################################################################
 
-df <- readRDS("mega.rds") |>
-      filter(county.census.geoid != "00000")# 1773 orgs have "00000" as geoid; 86,752 are missing NTEE code (~6.74%) -- 1,285,846 total orgs
+df <- readRDS("mega.rds") # 14,432,124 records; 1,284,073 organizations
+
+# Adjust dollar amounts for inflation to the year 2019
+adj2019 <- as.data.frame(read_csv("usd_2019_conv.csv", show_col_types = FALSE))
+df <- merge(df, adj2019, by.x = "TAX_YEAR", by.y = "YEAR")
+df <- df |> mutate(TOT_ASSET_OG = TOT_ASSET,
+                   TOT_REV_OG = TOT_REV,
+                   TOT_EXP_OG = TOT_EXP,
+                   TOT_ASSET = TOT_ASSET * ADJ_2019,
+                   TOT_REV = TOT_REV * ADJ_2019,
+                   TOT_EXP = TOT_EXP * ADJ_2019)
+# Optional, just to keep minimal number of columns
+df <- df |> select(-TOT_ASSET_OG, -TOT_REV_OG, -TOT_EXP_OG, -DATA_COUNT)
 
 # Split up NTEEV2 into 14 dummy variables (12 categories, 1 unknown category, 1 missing category)
 ntee <- df |> 
@@ -35,8 +45,11 @@ df.tot_rev <- df |> select(TAX_YEAR, TOT_REV, TOT_EXP, TOT_ASSET, county.census.
       rename(REV = TOT_REV, EXP = TOT_EXP, ASSET = TOT_ASSET) |>
       group_by(county.census.geoid, TAX_YEAR) |> 
       summarize(across(where(is.numeric), ~sum(is.na(.x))/n(), .names = "{.col}_prop_miss"),
-                .groups = "drop") |>
-      ungroup()
+                across(any_of(c("REV", "EXP", "ASSET")), ~sum(.x, na.rm = TRUE)),
+                .groups = "drop",
+                ) |>
+      ungroup() |>
+      rename(TOT_REV = REV, TOT_EXP = EXP, TOT_ASSET = ASSET)
 
 # I need the total assets and revenue stratified by county, year, and NTEE category
 df.ntee_rev <- df |> select(TAX_YEAR, TOT_REV, TOT_EXP, TOT_ASSET, county.census.geoid, NTEEV2) |>
@@ -45,30 +58,29 @@ df.ntee_rev <- df |> select(TAX_YEAR, TOT_REV, TOT_EXP, TOT_ASSET, county.census
       group_by(county.census.geoid, TAX_YEAR, NTEEV2) |> 
       summarize(across(any_of(c("REV", "EXP", "ASSET")), ~sum(.x, na.rm = TRUE)),
                 .groups = "drop") |>
-      ungroup() 
+      ungroup()
 
 df.ntee_rev <- df.ntee_rev |> select(-EXP) |>
       pivot_wider(names_from = NTEEV2, values_from = c("REV", "ASSET"), values_fill = 0)
 
-rev_cols <- grep("^REV_", names(df.ntee_rev), value = TRUE)
-ass_cols <- grep("^ASSET_", names(df.ntee_rev), value = TRUE)
-df.ntee_rev <- df.ntee_rev |> mutate(TOT_REV = rowSums(across(all_of(rev_cols)), na.rm = TRUE),
-                                     TOT_ASSET = rowSums(across(all_of(ass_cols)), na.rm = TRUE))
+# rev_cols <- grep("^REV_", names(df.ntee_rev), value = TRUE)
+# ass_cols <- grep("^ASSET_", names(df.ntee_rev), value = TRUE)
+# exp_cols <- grep("^EXP_", names(df.ntee_rev), value = TRUE)
 
 # Now add in stratified by size as well (according to NCCS size categories)
 # Levels: [0,100000) [100000,500000) [500000,1000000) [1000000,5000000) [5000000,10000000) [10000000,7.02e+10)
 breaks_vec = c(0,100000,500000,1000000,5000000,10000000,max(df$TOT_EXP, na.rm = TRUE)+1)
 df$SIZE.CAT <- df$TOT_EXP |> cut(breaks = breaks_vec, right = FALSE, labels = FALSE) |> factor()
 
-df.size_rev <- df |> select(TAX_YEAR, TOT_REV, SIZE.CAT, county.census.geoid, NTEEV2) |>
-      rename(REV = TOT_REV) |>
+df.size_rev <- df |> select(TAX_YEAR, TOT_REV, TOT_ASSET, SIZE.CAT, county.census.geoid, NTEEV2) |>
+      rename(REV = TOT_REV, ASSET = TOT_ASSET) |>
       group_by(county.census.geoid, TAX_YEAR, SIZE.CAT) |> 
       summarize(across(any_of(c("REV", "EXP", "ASSET")), ~sum(.x, na.rm = TRUE)),
                 .groups = "drop") |>
       ungroup() 
 
 df.size_rev <- df.size_rev |>
-      pivot_wider(names_from = SIZE.CAT, values_from = c("REV"), values_fill = 0, names_prefix = "REV_SIZE.")
+      pivot_wider(names_from = SIZE.CAT, values_from = c("REV", "ASSET"), values_fill = 0, names_prefix = "SIZE.")
 
 # df now will have total assets and revenue per county,year pair stratified by NTEE category
 # as well as the number of nonprofits  per county,year pair stratified by NTEE category
@@ -81,7 +93,7 @@ df <- df |> mutate(geoid_2010 = county.census.geoid)
 df$geoid_2010[df$county.census.geoid == "02158"] <- "02270"
 df$geoid_2010[df$county.census.geoid == "46102"] <- "46113"
 
-rm(ntee, df.ntee_rev, df.tot_rev, df.size_rev, ass_cols, rev_cols)
+rm(ntee, df.ntee_rev, df.tot_rev, df.size_rev)
 #################################################################################################
 # Add location data: county name, latitude & longitude of centroid, state, region, and division
 #################################################################################################
@@ -212,26 +224,22 @@ rm(census_df, dt, lag_years, result)
 #################################################################################################
 disasters <- readRDS("disasters.rds")
 
-disasters <- disasters |>  
-      mutate(LOG_TotPropDmgADJ = log(`PropertyDmg(ADJ 2021)_TOT` + 1),
-             LOG_TotCropDmgADJ = log(`CropDmg(ADJ 2021)_TOT` + 1),
-             LOG_TotDmgADJ = log(`PropertyDmg(ADJ 2021)_TOT` + `CropDmg(ADJ 2021)_TOT` + 1)) 
+disasters <- merge(disasters, adj2019, by.x = "TAX_YEAR", by.y = "YEAR")
+disasters <- disasters |>  mutate(TotDmg = CropDmg_TOT + PropertyDmg_TOT,
+                                  TotDmgADJ = TotDmg * ADJ_2019)       
 
 df <- merge(df, 
-            disasters |> select(fips_changes, TAX_YEAR, LOG_TotPropDmgADJ, LOG_TotCropDmgADJ, LOG_TotDmgADJ, n_disasters), 
+            disasters |> select(fips_changes, TAX_YEAR, TotDmg, TotDmgADJ, n_disasters), 
             by.x = c('geoid_2010', 'TAX_YEAR'), 
             by.y = c('fips_changes', 'TAX_YEAR'), all.x = TRUE)
 
-df <- df |> mutate(LOG_TotPropDmgADJ = replace_na(LOG_TotPropDmgADJ, 0),
-                   LOG_TotCropDmgADJ = replace_na(LOG_TotCropDmgADJ, 0),
-                   LOG_TotDmgADJ = replace_na(LOG_TotDmgADJ, 0),
+df <- df |> mutate(TotDmgADJ = replace_na(TotDmgADJ, 0),
                    n_disasters = replace_na(n_disasters, 0))
 #################################################################################################
 # Disaster Data Treatment Variable for each year
 #################################################################################################
-
 # Based on FEMA county per capita impact indicator
-county_FEMA_indicator <- 3.89 # 2019: 3.78, 2021: 3.89
+county_FEMA_indicator <- 3.78 # 2019: 3.78, 2021: 3.89
 
 n.counties <- length(unique(df$county.census.geoid))
 avg.n.dis.per.year <- disasters |> 
@@ -241,34 +249,30 @@ avg.n.dis.per.year <- disasters |>
 
 df <- merge(df, avg.n.dis.per.year, by = "TAX_YEAR")
 
-df <- df |> mutate(TotPerCapADJ = (exp(LOG_TotDmgADJ)-1)/as.numeric(total_population),
-                   treat.FEMA = as.numeric(TotPerCapADJ >= county_FEMA_indicator),
-                   treat.FEMA_nDis = as.numeric(TotPerCapADJ >= FEMA_threshADJ)
-                   )
+df <- df |> mutate(total_population = as.numeric(total_population),
+                   TotPerCapADJ = TotDmgADJ/total_population,
+                   treat.FEMA = as.numeric(TotPerCapADJ >= FEMA_threshADJ))
 
-quartiles_df <- df |> group_by(TAX_YEAR) |>
-      summarise(top_25 = quantile(TotPerCapADJ, 0.75, na.rm = TRUE),
-                bot_50 = quantile(TotPerCapADJ, 0.50, na.rm = TRUE),
-                top_90 = quantile(TotPerCapADJ, 0.9, na.rm = TRUE))
-
-df <- merge(df, quartiles_df, by = "TAX_YEAR")
-
-df <- df |> mutate(in.top25 = TotPerCapADJ >= top_25,
-                   in.bot50 = TotPerCapADJ <= bot_50,
-                   in.top90 = TotPerCapADJ >= top_90,
-                   treat.top25 = case_when(
-                         in.top25 ~ 1,
-                         in.bot50 ~ 0,
-                         .default = NA),
-                   treat.top90 = case_when(
-                         in.top90 ~ 1,
-                         in.bot50 ~ 0,
-                         .default = NA),
-                   )
+# quartiles_df <- df |> group_by(TAX_YEAR) |>
+#       summarise(top_25 = quantile(TotPerCapADJ, 0.75, na.rm = TRUE),
+#                 bot_50 = quantile(TotPerCapADJ, 0.50, na.rm = TRUE),
+#                 top_10 = quantile(TotPerCapADJ, 0.9, na.rm = TRUE))
+# 
+# df <- merge(df, quartiles_df, by = "TAX_YEAR")
+# 
+# df <- df |> mutate(in.top25 = TotPerCapADJ >= top_25,
+#                    in.bot50 = TotPerCapADJ <= bot_50,
+#                    in.top10 = TotPerCapADJ >= top_10,
+#                    treat.top25 = case_when(
+#                          in.top25 ~ 1,
+#                          in.bot50 ~ 0,
+#                          .default = NA),
+#                    treat.top90 = case_when(
+#                          in.top10 ~ 1,
+#                          in.bot50 ~ 0,
+#                          .default = NA),
+#                    )
 
 # 
-# saveRDS(df, "county_long.rds")
-
-
-
+saveRDS(df, "county_long.rds")
 

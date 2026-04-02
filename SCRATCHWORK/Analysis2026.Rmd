@@ -28,21 +28,23 @@ df <- df |>
       mutate(CountyID = as.integer(cur_group_id())) |>
       ungroup()
 
-# These are some socioeconomic covariates we may evaluate balance for but need to convert from string to num
-covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population")
-df <- df |> mutate(across(all_of(covs_to_check), as.numeric)) # make sure these are numeric
+# make sure these are numeric
+df <- df |> mutate(across(all_of(c("bachelors_perc", "med_household_income_adj", "white_perc")), as.numeric)) 
 
 # Add REGION dummy columns
 df <- df |> dummy_cols(select_columns = c("REGION"), ignore_na = FALSE, remove_selected_columns = TRUE, remove_first_dummy = FALSE)
 
 # These are the variables we will adjust for
-adj_set <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population", "TOT_REV", "TOT_ASSET", "lat", "lng")
+adj_set <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population", "TOT_REV", "TOT_ASSET","TOT_EXP", "lat", "lng")
 
 # Other variables
 ntee_vars <- grep("^NTEEV2_", names(df), value = TRUE)
 region_vars <- grep("^REGION_", names(df), value = TRUE)
 
-df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "geoid_2010", "treat.FEMA_nDis"), adj_set, ntee_vars, region_vars)))
+df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "geoid_2010", "treat.FEMA"), adj_set, ntee_vars, region_vars)))
+
+df <- df |> mutate(total_pop_OG = total_population,
+                   total_population = log(total_population))
 
 # 1859 is New York County
 df$treat.FEMA_nDis[((df$CountyID == 1859) & (df$TAX_YEAR == 2001))] <- NA
@@ -52,14 +54,16 @@ df$treat.FEMA_nDis[((df$CountyID == 1859) & (df$TAX_YEAR == 2001))] <- NA
 df <- df |> mutate(TOT_REV = case_when(TOT_REV < 0 ~ 0,
                                        .default = TOT_REV),
                    TOT_ASSET = case_when(TOT_ASSET < 0 ~ 0,
-                                       .default = TOT_ASSET))
-df <- df |> mutate(across(c("TOT_REV", "TOT_ASSET"), log1p, .names = "LOG_{.col}")) #log1p adds 1 first to avoid 0s
+                                       .default = TOT_ASSET),
+                   TOT_EXP = case_when(TOT_EXP < 0 ~ 0,
+                                       .default = TOT_EXP))
+df <- df |> mutate(across(c("TOT_REV", "TOT_ASSET", "TOT_EXP"), log1p, .names = "LOG_{.col}")) #log1p adds 1 first to avoid 0s
 
 # Adding spatially varying coefficients
-# source("matches_helper.R")
-# df <- add_SVC(df, num_E_vec = 50)
-# df$lat <- NULL
-# df$lng <- NULL
+source("matches_helper.R")
+df <- add_SVC(df, num_E_vec = 50)
+df$lat <- NULL
+df$lng <- NULL
 
 df$geoid_2010 <- NULL
 
@@ -67,20 +71,28 @@ df$geoid_2010 <- NULL
 panel_df <- PanelData(panel.data = as.data.frame(df),
                       unit.id = "CountyID",
                       time.id = "TAX_YEAR",
-                      treatment = "treat.FEMA_nDis",
+                      treatment = "treat.FEMA",
                       outcome = "TOT_REV")
 # rm(df)
 
 # saveRDS(panel_df, "panel_data/no_int_panelV1.rds") # No SVC
-# saveRDS(panel_df, "panel_data/no_int_panelV2.rds") # Yes SVC
+saveRDS(panel_df, "panel_data/no_int_panelV2.rds") # Yes SVC
 
-#write.csv(df |> select(TAX_YEAR, FEMA_threshADJ) |> unique(), "updated_threshold.csv", row.names = FALSE)
+# write.csv(df |> dplyr::select(TAX_YEAR, FEMA_threshADJ) |> unique(), "updated_threshold.csv", row.names = FALSE)
 ```
 
 ```{r}
 sum(is.na(panel_df$treat.FEMA)) # county_FEMA_indicator <- 3.78 #2019
 
-treatVarPlot <- DisplayTreatment(panel.data = panel_df, legend.position = "none", xlab = "TAX_YEAR", ylab = "County Code", hide.x.tick.label = TRUE, hide.y.tick.label = TRUE, dense.plot = TRUE)
+treatVarPlot <- DisplayTreatment(panel.data = panel_df, 
+                                 color.of.treated = "#DC267F",
+                                 color.of.untreated = "#648FFF",
+                                 title = "Treatment Distribution Across Units and Time",
+                                 xlab = "Tax Year", ylab = "County", 
+                                 legend.position = "right",
+                                 legend.labels = c("untreated", "treated"),
+                                 hide.x.tick.label = TRUE, hide.y.tick.label = TRUE, 
+                                 dense.plot = TRUE)
 
 treatVarPlot
 #ggsave("treatment_variation_plot.png", plot = treatVarPlot, width = 7.5, height = 10, units = "in")
@@ -1533,33 +1545,36 @@ df <- df |>
       mutate(CountyID = as.integer(cur_group_id())) |>
       ungroup()
 
-# These are some socioeconomic covariates we may evaluate balance for but need to convert from string to num
-covs_to_check <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population")
-df <- df |> mutate(across(all_of(covs_to_check), as.numeric)) # make sure these are numeric
+# make sure these are numeric
+df <- df |> mutate(across(all_of(c("bachelors_perc", "med_household_income_adj", "white_perc")), as.numeric)) 
 
 # Add REGION dummy columns
 df <- df |> dummy_cols(select_columns = c("REGION"), ignore_na = FALSE, remove_selected_columns = TRUE, remove_first_dummy = FALSE)
 
 # These are the variables we will adjust for
-adj_set <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population", "TOT_REV", "TOT_ASSET", "lat", "lng")
+adj_set <- c("bachelors_perc", "med_household_income_adj", "white_perc",  "total_population", "TOT_REV", "TOT_ASSET","TOT_EXP", "lat", "lng")
 
 # Other variables
 ntee_vars <- grep("^NTEEV2_", names(df), value = TRUE)
 region_vars <- grep("^REGION_", names(df), value = TRUE)
 
-df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "geoid_2010", "treat.FEMA_nDis"), adj_set, ntee_vars, region_vars)))
+df <- df |> dplyr::select(all_of(c(c("CountyID", "TAX_YEAR", "geoid_2010", "treat.FEMA"), adj_set, ntee_vars, region_vars)))
 
 # log transform
 df <- df |> mutate(TOT_REV = case_when(TOT_REV < 0 ~ 0,
                                        .default = TOT_REV),
                    TOT_ASSET = case_when(TOT_ASSET < 0 ~ 0,
-                                       .default = TOT_ASSET))
-df <- df |> mutate(across(c("TOT_REV", "TOT_ASSET"), log1p)) #log1p adds 1 first to avoid 0s
+                                       .default = TOT_ASSET),
+                   TOT_EXP = case_when(TOT_EXP < 0 ~ 0,
+                                       .default = TOT_EXP))
+df <- df |> mutate(across(c("TOT_REV", "TOT_ASSET", "TOT_EXP"), log1p, .names = "LOG_{.col}")) #log1p adds 1 first to avoid 0s
+df <- df |> mutate(total_pop_OG = total_population,
+                   total_population = log(total_population))
 
 # Create new treatment variable that takes a distance-based cutoff adjustment
 adj_lists <- create_adj_list(panel_data = df, dist_cutoff = 25)
 
-res <- add_exposed(panel_data = df, adj_list = adj_lists$union, treatment = "treat.FEMA_nDis")
+res <- add_exposed(panel_data = df, adj_list = adj_lists$union, treatment = "treat.FEMA")
 
 df <- res$df |> mutate(treat.FEMA.adj = replace_na(treat.FEMA.adj, 1))
 
@@ -1583,12 +1598,12 @@ df$treat.FEMA.adj[((df$CountyID == 1859) & (df$TAX_YEAR == 2001))] <- NA # note 
 # df[((df$CountyID == 1859) & (df$TAX_YEAR == 2001)),]
 
 # Adding spatially varying coefficients
-# df <- add_SVC(df, num_E_vec = 50)
-# df$lat <- NULL
-# df$lng <- NULL
+df <- add_SVC(df, num_E_vec = 50)
+df$lat <- NULL
+df$lng <- NULL
 
 df$geoid_2010 <- NULL
-df$treat.FEMA_nDis <- NULL
+df$treat.FEMA <- NULL
 # https://stackoverflow.com/questions/74815244/panelmatch-r-errors-please-convert-time-id-to-consecutive-integers-and-pleas
 panel_df <- PanelData(panel.data = as.data.frame(df),
                       unit.id = "CountyID",
@@ -1600,7 +1615,15 @@ panel_df <- PanelData(panel.data = as.data.frame(df),
 # saveRDS(panel_df, "panel_data/int_panelV1.rds") # No SVC, exposed treatment = 1
 # saveRDS(panel_df, "panel_data/int_panelV2.rds") # With SVC, exposed treatment = 1
 
-# DisplayTreatment(panel.data = panel_df, legend.position = "none", xlab = "TAX_YEAR", ylab = "County Code", hide.x.tick.label = TRUE, hide.y.tick.label = TRUE, dense.plot = TRUE)
+DisplayTreatment(panel.data = panel_df, 
+                  color.of.treated = "#DC267F", #"#FFB000"
+                  color.of.untreated = "#648FFF", #"#785EF0"
+                  title = "Exposure Distribution Across Units and Time",
+                  xlab = "Tax Year", ylab = "County", 
+                  legend.position = "right",
+                  legend.labels = c("unexposed", "exposed"),
+                  hide.x.tick.label = TRUE, hide.y.tick.label = TRUE, 
+                  dense.plot = TRUE)
 ```
 
 ## Matching Methods - Config 1, No SVC
