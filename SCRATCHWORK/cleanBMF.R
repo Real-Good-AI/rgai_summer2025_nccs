@@ -27,6 +27,13 @@ bmf_subset$CENSUS_BLOCK_FIPS <- NULL
 # Drop 6815 records where the county FIPS code is 00000; 189 of these have a missing NTEEV2 / left with 3,437,320 records
 bmf_subset <- bmf_subset |> filter(county.census.geoid != "00000")
 
+bmf_subset |> mutate(NTEEV2 = replace_na(NTEEV2, "Missing")) |>
+      ggplot(aes(x = NTEEV2)) +
+      geom_bar(aes(y = ..count.. / sum(..count..))) +
+      labs(x = "NTEE Broad Sector", y = "Proportion", title = "Proportion of Nonprofits in Each NTEE Sector") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1))
+      
+
 # There are still 7,152 organizations that have at least 2 records in the BMF; all issues are in NTEEV2 column and only about 500 due to missing values
 # Set these to NA due to discrepancy
 bmf_subset <- bmf_subset |>
@@ -37,6 +44,12 @@ bmf_subset <- bmf_subset |>
 bmf_subset <- bmf_subset |>
       mutate(NTEEV2 = ifelse(n > 1, NA_character_, NTEEV2)) |>
       distinct() 
+
+bmf_subset |> mutate(NTEEV2 = replace_na(NTEEV2, "Missing")) |>
+      ggplot(aes(x = NTEEV2)) +
+      geom_bar(aes(y = ..count.. / sum(..count..))) +
+      labs(x = "NTEE Broad Sector", y = "Proportion", title = "Proportion of Nonprofits in Each NTEE Sector") +
+      theme(axis.text.x = element_text(angle = 45, vjust = 0.75, hjust=1))
 
 # Final counts: 3,430,166 records; 172,827 records with missing NTEEV2 (~5% of all records)
 saveRDS(bmf_subset |> select(-n), "cleanBMF.rds")

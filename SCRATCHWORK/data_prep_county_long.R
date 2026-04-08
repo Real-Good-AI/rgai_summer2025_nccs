@@ -246,6 +246,7 @@ avg.n.dis.per.year <- disasters |>
       group_by(TAX_YEAR) |> 
       summarise(avg.num.dis = sum(n_disasters)/n.counties) |>
       mutate(FEMA_threshADJ = county_FEMA_indicator * avg.num.dis)
+# write.csv(avg.n.dis.per.year, "FEMA_thresholds_adj.csv")
 
 df <- merge(df, avg.n.dis.per.year, by = "TAX_YEAR")
 
